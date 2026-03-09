@@ -18,6 +18,7 @@ export class EcoChef extends LitElement {
 
     @state() recipe: {
         title: string;
+        difficulty: string;
         imageUrl?: string;
         ingredientsList: string[];
         instructions: string[];
@@ -120,6 +121,11 @@ export class EcoChef extends LitElement {
                         ` : ''}
 
                         <h2 class="recipe-title">${this.recipe.title}</h2>
+                        <div class="recipe-meta">
+                            <span class="difficulty-badge ${this.recipe.difficulty.toLowerCase()}">
+                                📊 Schwierigkeit: ${this.recipe.difficulty}
+                            </span>
+                        </div>
 
                         <h3 class="recipe-subheading">🛒 Zutaten (für ${this.persons}):</h3>
                         <ul class="ingredients-list">
@@ -207,6 +213,7 @@ export class EcoChef extends LitElement {
             Antworte AUSSCHLIESSLICH mit einem gültigen JSON-Objekt. Das JSON MUSS diese Struktur haben:
             {
               "title": "Name des Gerichts",
+              "difficulty": "Leicht, Mittel oder Schwer",
               "visualDescription": "English description...",
               "ingredientsList": ["1. Zutat", "2. Zutat"],
               "instructions": ["Schritt 1...", "Schritt 2..."],
@@ -230,6 +237,7 @@ export class EcoChef extends LitElement {
 
                 this.recipe = {
                     title: parsedData.title || "Leckeres Gericht",
+                    difficulty: parsedData.difficulty || "Unbekannt",
                     imageUrl: parsedData.imageUrl || data.imageUrl,
                     ingredientsList: parsedData.ingredientsList || ["Zutaten konnten nicht geladen werden."],
                     instructions: parsedData.instructions || ["Zubereitung fehlt."],
