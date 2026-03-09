@@ -34,13 +34,27 @@
         <meta name="viewport" content="initial-scale=1, width=device-width, viewport-fit=cover">
         <meta name="color-scheme" content="light dark">
         <link rel="stylesheet" href="css/index.css">
+        <link rel="manifest" href="/manifest.json">
+        <meta name="theme-color" content="#10b981">
         <title>Eco Chef App</title>
 
     </head>
     <body>
         <eco-chef></eco-chef>
 
-        <script src="cordova.js"></script>
+        <script src="cordova.js">
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js')
+                        .then(registration => {
+                            console.log('ServiceWorker erfolgreich registriert!', registration.scope);
+                        })
+                        .catch(err => {
+                            console.log('ServiceWorker Registrierung fehlgeschlagen: ', err);
+                        });
+                });
+            }
+        </script>
 
     </body>
 </html>

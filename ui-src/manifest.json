@@ -1,0 +1,21 @@
+{
+  "name": "EcoChef - KI Rezept Zauberer",
+  "short_name": "EcoChef",
+  "description": "Deine intelligente Rezept-App für jeden Tag.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

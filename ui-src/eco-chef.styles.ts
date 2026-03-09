@@ -552,6 +552,106 @@ export const ecoChefStyles = css`
      background: #fecaca;
      transform: scale(0.9);
   }
+  
+  
+  /* 10. BEARBEITUNGSMODUS & REGENERIEREN */
+  .icon-btn {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      margin-left: auto; /* Schiebt das Icon nach rechts */
+      padding: 8px;
+      border-radius: 50%;
+      transition: background 0.2s;
+  }
+  
+  .icon-btn:active {
+      background: var(--border);
+  }
+
+  .edit-mode-box {
+      background: #f8fafc;
+      padding: 16px;
+      border-radius: 16px;
+      border: 2px dashed #cbd5e1;
+      margin-bottom: 24px;
+      animation: fadeIn 0.3s;
+  }
+
+  .edit-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: -12px 0 8px 0;
+  }
+
+  .edit-area {
+      width: 100%;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--text-dark);
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1.6;
+      box-sizing: border-box;
+      resize: vertical;
+      margin-bottom: 24px;
+  }
+  
+  .edit-area:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+
+  .save-edit-btn {
+      background: var(--text-dark);
+      margin-top: 0;
+  }
+
+  .regenerate-box {
+      margin-top: 40px;
+      padding: 24px;
+      background: #f1f5f9;
+      border-radius: 20px;
+      text-align: center;
+  }
+
+  .regenerate-box h4 {
+      margin: 0 0 16px 0;
+      color: var(--text-dark);
+  }
+
+  .regenerate-input {
+      margin-bottom: 16px;
+      background: var(--surface);
+  }
+
+  .secondary-btn {
+      width: 100%;
+      padding: 16px;
+      background: var(--surface);
+      color: var(--text-dark);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+  }
+
+  .secondary-btn:active {
+      background: var(--border);
+      transform: scale(0.98);
+  }
+  
+  .inline-loader {
+      width: 32px;
+      height: 32px;
+      margin: 0 auto;
+  }
     
   .difficulty-badge.leicht { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
   .difficulty-badge.mittel { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }

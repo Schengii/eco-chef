@@ -15,6 +15,8 @@ export class EcoChef extends LitElement {
     @state() showExitDialog = false;
     @state() showSavedRecipes = false;
     @state() savedRecipesList: any[] = [];
+    @state() isEditing = false;
+    @state() additionalPrompt = '';
 
     @state() recipe: {
         title: string;
@@ -146,11 +148,15 @@ export class EcoChef extends LitElement {
                     <div class="recipe-paper">
 
                         ${this.recipe.imageUrl ? html`
-                            <img class="recipe-image" src="${this.recipe.imageUrl}" alt="${this.recipe.title}"/>
+                            <img
+                                    class="recipe-image"
+                                    src="${this.recipe.imageUrl}"
+                                    alt="${this.recipe.title}"
+                                    @error="${this.handleImageError}"
+                            />
                         ` : ''}
 
                         <h2 class="recipe-title">${this.recipe.title}</h2>
-
                         <div class="recipe-meta">
                             <span class="difficulty-badge ${this.recipe.difficulty.toLowerCase()}">
                                 📊 ${this.recipe.difficulty}
@@ -160,23 +166,57 @@ export class EcoChef extends LitElement {
                             </span>
                         </div>
 
-                        <h3 class="recipe-subheading">🛒 Zutaten (für ${this.persons}):</h3>
-                        <ul class="ingredients-list">
-                            ${this.recipe.ingredientsList.map(item => html`<li>${item}</li>`)}
-                        </ul>
+                        ${this.isEditing ? html`
+                            <div class="edit-mode-box">
+                                <h3 class="recipe-subheading">🖊️ Zutaten bearbeiten:</h3>
+                                <p class="edit-hint">Eine Zutat pro Zeile</p>
+                                <textarea id="edit-ingredients" class="edit-area" rows="6">${this.recipe.ingredientsList.join('\n')}</textarea>
+                                
+                                <h3 class="recipe-subheading">🖊️ Zubereitung bearbeiten:</h3>
+                                <p class="edit-hint">Ein Schritt pro Zeile</p>
+                                <textarea id="edit-instructions" class="edit-area" rows="8">${this.recipe.instructions.join('\n')}</textarea>
+                                
+                                <button class="main-btn save-edit-btn" @click="${this.saveEdits}">💾 Änderungen übernehmen</button>
+                            </div>
+                        ` : html`
+                            <h3 class="recipe-subheading">
+                                🛒 Zutaten (für ${this.persons}):
+                                <button class="icon-btn" @click="${() => this.isEditing = true}">🖊️</button>
+                            </h3>
+                            <ul class="ingredients-list">
+                                ${this.recipe.ingredientsList.map(item => html`<li>${item}</li>`)}
+                            </ul>
 
-                        <h3 class="recipe-subheading">🍳 Zubereitung:</h3>
-                        <div class="instructions-box">
-                            ${this.recipe.instructions.map((step, index) => html`
-                                <div class="step-item">
-                                    <div class="step-number">${index + 1}</div>
-                                    <div class="step-text">${step}</div>
-                                </div>
-                            `)}
-                        </div>
+                            <h3 class="recipe-subheading">
+                                🍳 Zubereitung:
+                                <button class="icon-btn" @click="${() => this.isEditing = true}">🖊️</button>
+                            </h3>
+                            <div class="instructions-box">
+                                ${this.recipe.instructions.map((step, index) => html`
+                                    <div class="step-item">
+                                        <div class="step-number">${index + 1}</div>
+                                        <div class="step-text">${step}</div>
+                                    </div>
+                                `)}
+                            </div>
+                        `}
 
                         <div class="tip-box">
                             <strong>💡 Chefkoch-Tipp:</strong> ${this.recipe.tip}
+                        </div>
+
+                        <div class="regenerate-box">
+                            <h4>Nicht ganz zufrieden?</h4>
+                            <input
+                                    type="text"
+                                    class="regenerate-input"
+                                    placeholder="z.B. Mach es schärfer, ohne Eier..."
+                                    .value="${this.additionalPrompt}"
+                                    @input="${(e: Event) => this.additionalPrompt = (e.target as HTMLInputElement).value}"
+                            />
+                            ${this.isLoading ? html`<div class="loader inline-loader"></div>` : html`
+                                <button class="secondary-btn" @click="${this.askGoogle}">🔄 Neu zaubern</button>
+                            `}
                         </div>
 
                         <button class="main-btn finish-btn" @click="${() => this.showExitDialog = true}">
@@ -232,12 +272,15 @@ export class EcoChef extends LitElement {
             - Zeitaufwand: ${this.selectedEffort && this.selectedEffort !== 'egal' ? this.selectedEffort : 'Normal'}
             - Portionen: Berechne die Zutatenmengen für exakt ${portions} Person(en).
             
+            ${this.additionalPrompt ? `🚨 ACHTUNG, DER NUTZER HAT EINEN ÄNDERUNGSWUNSCH ZUM VORHERIGEN REZEPT: 
+            "${this.additionalPrompt}". Bitte passe das neue Rezept exakt an diesen Wunsch an!` : ''}
+            
             Antworte AUSSCHLIESSLICH mit einem gültigen JSON-Objekt. Das JSON MUSS diese Struktur haben:
             {
               "title": "Name des Gerichts",
               "difficulty": "Leicht, Mittel oder Schwer",
               "prepTime": "z.B. 25 Min.",
-              "visualDescription": "English description...",
+              "visualDescription": "Kurze englische Beschreibung für ein Food-Foto...",
               "ingredientsList": ["1. Zutat", "2. Zutat"],
               "instructions": ["Schritt 1...", "Schritt 2..."],
               "tip": "Tipp..."
@@ -253,45 +296,46 @@ export class EcoChef extends LitElement {
 
             const text = response.text || "";
 
-            try {
-                const startIndex = text.indexOf('{');
-                const endIndex = text.lastIndexOf('}');
+                try {
+                    const startIndex = text.indexOf('{');
+                    const endIndex = text.lastIndexOf('}');
 
-                if (startIndex === -1 || endIndex === -1) {
-                    throw new Error("Kein JSON-Format in der Antwort gefunden.");
+                    if (startIndex === -1 || endIndex === -1) {
+                        throw new Error("Kein JSON-Format in der Antwort gefunden.");
+                    }
+                    const jsonString = text.substring(startIndex, endIndex + 1);
+                    const parsedData = JSON.parse(jsonString);
+                    if (!parsedData.title || !parsedData.ingredientsList || !parsedData.instructions || !parsedData.visualDescription) {
+                        throw new Error("Wichtige Rezeptdaten (Titel, Zutaten, Schritte oder Bildbeschreibung) fehlen.");
+                    }
+
+                    const imagePrompt = parsedData.visualDescription || parsedData.title;
+                    const pollinationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=600&height=400&nofeed=true`;
+                    console.log("Die generierte Bild-URL lautet:", pollinationUrl);
+
+                    this.recipe = {
+                        title: parsedData.title,
+                        difficulty: parsedData.difficulty || "Unbekannt",
+                        prepTime: parsedData.prepTime || "Unbekannt",
+                        imageUrl: pollinationUrl,
+                        ingredientsList: Array.isArray(parsedData.ingredientsList)
+                            ? parsedData.ingredientsList
+                            : ["Zutaten konnten nicht geladen werden."],
+
+                        instructions: Array.isArray(parsedData.instructions)
+                            ? parsedData.instructions
+                            : ["Zubereitung fehlt."],
+
+                        tip: parsedData.tip || "Lass es dir schmecken!"
+                    };
+                    window.scrollTo({top: 0, behavior: 'smooth'});
+
+                } catch (parseError) {
+                    console.error("Fehler beim Auswerten der KI-Antwort:", parseError);
+                    console.log("Die originale KI-Antwort war:", text);
+
+                    alert("Upsi! Die KI hat das Rezept-Format etwas durcheinandergebracht. Bitte klicke nochmal auf 'Rezept Zaubern'!");
                 }
-
-                const jsonString = text.substring(startIndex, endIndex + 1);
-
-                const parsedData = JSON.parse(jsonString);
-
-                if (!parsedData.title || !parsedData.ingredientsList || !parsedData.instructions) {
-                    throw new Error("Wichtige Rezeptdaten (Titel, Zutaten oder Schritte) fehlen.");
-                }
-
-                this.recipe = {
-                    title: parsedData.title,
-                    difficulty: parsedData.difficulty || "Unbekannt",
-                    prepTime: parsedData.prepTime || "Unbekannt",
-                    imageUrl: parsedData.imageUrl || undefined,
-                    ingredientsList: Array.isArray(parsedData.ingredientsList)
-                        ? parsedData.ingredientsList
-                        : ["Zutaten konnten nicht geladen werden."],
-
-                    instructions: Array.isArray(parsedData.instructions)
-                        ? parsedData.instructions
-                        : ["Zubereitung fehlt."],
-
-                    tip: parsedData.tip || "Lass es dir schmecken!"
-                };
-                window.scrollTo({top: 0, behavior: 'smooth'});
-
-            } catch (parseError) {
-                console.error("Fehler beim Auswerten der KI-Antwort:", parseError);
-                console.log("Die originale KI-Antwort war:", text);
-
-                alert("Upsi! Die KI hat das Rezept-Format etwas durcheinandergebracht. Bitte klicke nochmal auf 'Rezept Zaubern'!");
-            }
 
             } catch (networkError: any) {
                 console.error("API Verbindungsfehler:", networkError);
@@ -306,6 +350,8 @@ export class EcoChef extends LitElement {
         this.ingredients = '';
         this.showExitDialog = false;
         this.showSavedRecipes = false;
+        this.additionalPrompt = '';
+        this.isEditing = false;
         window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
@@ -361,5 +407,26 @@ export class EcoChef extends LitElement {
         this.savedRecipesList.splice(index, 1);
         localStorage.setItem('ecoChef_savedRecipes', JSON.stringify(this.savedRecipesList));
         this.requestUpdate();
+    }
+
+    saveEdits() {
+        if (!this.recipe) return;
+        const ingArea = this.shadowRoot?.querySelector('#edit-ingredients') as HTMLTextAreaElement;
+        const instArea = this.shadowRoot?.querySelector('#edit-instructions') as HTMLTextAreaElement;
+
+        if (ingArea && instArea) {
+            this.recipe = {
+                ...this.recipe,
+                ingredientsList: ingArea.value.split('\n').filter(line => line.trim() !== ''),
+                instructions: instArea.value.split('\n').filter(line => line.trim() !== '')
+            };
+        }
+        this.isEditing = false;
+    }
+
+    handleImageError(e: Event) {
+        const img = e.target as HTMLImageElement;
+        img.src = 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?q=80&w=600&auto=format&fit=crop';
+        console.warn("Pollinations.ai Bild konnte nicht geladen werden, Fallback wird angezeigt.");
     }
 }
