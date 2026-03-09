@@ -415,6 +415,40 @@ export const ecoChefStyles = css`
       background: #f1f5f9; 
       color: #475569; 
   }
+  
+  .recipe-meta {
+      display: flex;
+      justify-content: center;
+      gap: 12px; 
+      margin-top: -16px;
+      margin-bottom: 32px;
+      flex-wrap: wrap; 
+  }
+    
+  .difficulty-badge, .time-badge {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+  }
+  
+  .time-badge {
+      background: #f8fafc;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+  }
+    
+  .difficulty-badge.leicht { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+  .difficulty-badge.mittel { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+  .difficulty-badge.schwer { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+  .difficulty-badge.unbekannt { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    
     
   .modal-btn.share { background: #f0f9ff; color: #0284c7; }
   .modal-btn.save { background: #f8fafc; color: #475569; }

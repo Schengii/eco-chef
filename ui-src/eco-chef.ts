@@ -19,6 +19,7 @@ export class EcoChef extends LitElement {
     @state() recipe: {
         title: string;
         difficulty: string;
+        prepTime: string;
         imageUrl?: string;
         ingredientsList: string[];
         instructions: string[];
@@ -125,6 +126,9 @@ export class EcoChef extends LitElement {
                             <span class="difficulty-badge ${this.recipe.difficulty.toLowerCase()}">
                                 📊 Schwierigkeit: ${this.recipe.difficulty}
                             </span>
+                            <span class="time-badge">
+                                🕒 ${this.recipe.prepTime}
+                            </span>
                         </div>
 
                         <h3 class="recipe-subheading">🛒 Zutaten (für ${this.persons}):</h3>
@@ -214,6 +218,7 @@ export class EcoChef extends LitElement {
             {
               "title": "Name des Gerichts",
               "difficulty": "Leicht, Mittel oder Schwer",
+              "prepTime": "z.B. 25 Min.",
               "visualDescription": "English description...",
               "ingredientsList": ["1. Zutat", "2. Zutat"],
               "instructions": ["Schritt 1...", "Schritt 2..."],
@@ -238,6 +243,7 @@ export class EcoChef extends LitElement {
                 this.recipe = {
                     title: parsedData.title || "Leckeres Gericht",
                     difficulty: parsedData.difficulty || "Unbekannt",
+                    prepTime: parsedData.prepTime || "z.B. 25 Min.",
                     imageUrl: parsedData.imageUrl || data.imageUrl,
                     ingredientsList: parsedData.ingredientsList || ["Zutaten konnten nicht geladen werden."],
                     instructions: parsedData.instructions || ["Zubereitung fehlt."],
