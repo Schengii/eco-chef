@@ -1,6 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { GoogleGenAI } from '@google/genai';
+import { GEMINI_API_KEY } from './api-config';
 import { ecoChefStyles} from "./eco-chef.styles";
 
 
@@ -213,7 +214,7 @@ export class EcoChef extends LitElement {
             }
         `;
         try {
-            const ai = new GoogleGenAI({apiKey: "AIzaSyCI5pl0jM4F4CjXuRHYPqOEPuzG47yji3Q"});
+            const ai = new GoogleGenAI({apiKey: GEMINI_API_KEY});
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
                 contents: prompt,
