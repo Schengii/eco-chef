@@ -2,21 +2,25 @@ import { css } from 'lit';
 
 export const ecoChefStyles = css`
   :host {
-     display: block;
-     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-     background-color: #f8fafc;
-     min-height: 100vh;
+    display: block;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8fafc;
+    min-height: 100vh;
      
-     --primary: #10b981;        
-     --primary-dark: #059669;
-     --bg-color: #f8fafc;
-     --surface: #ffffff;
-     --text-dark: #0f172a;
-     --text-muted: #64748b;
-     --border: #e2e8f0;
+     
+  /* Zentrale Farbpalette für schnelles Anpassen */
+    --primary: #10b981;        
+    --primary-dark: #059669;
+    --bg-color: #f8fafc;
+    --surface: #ffffff;
+    --text-dark: #0f172a;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
   }
 
-  .card {
+
+    /* 1. App-Layout: Die Card wird zum Bildschirm */
+    .card {
       background-color: var(--surface);
       max-width: 600px;
       margin: 0 auto;
@@ -28,420 +32,525 @@ export const ecoChefStyles = css`
   }
     
   .header {
-      text-align: center;
-      margin-bottom: 32px;
-      padding-top: 12px;
+     text-align: center;
+     margin-bottom: 32px;
+     padding-top: 12px;
   }
     
   h2 {
-      color: var(--text-dark);
-      margin: 0;
-      font-size: 32px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
+     color: var(--text-dark);
+     margin: 0;
+     font-size: 32px;
+     font-weight: 800;
+     letter-spacing: -0.5px;
   }
     
   .subtitle {
-      color: var(--text-muted);
-      margin-top: 8px;
-      font-size: 15px;
-      font-weight: 500;
+     color: var(--text-muted);
+     margin-top: 8px;
+     font-size: 15px;
+     font-weight: 500;
   }
     
+    
+  /* 2. Eingabefelder: groß und einladend */  
   input {
-      width: 100%;
-      padding: 18px 20px;
-      margin-bottom: 32px;
-      box-sizing: border-box;
-      border: 2px solid var(--border);
-      border-radius: 16px;
-      font-size: 16px;
-      transition: all 0.3s ease;
-      background-color: var(--bg-color);
-      color: var(--text-dark);
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+     width: 100%;
+     padding: 18px 20px;
+     margin-bottom: 32px;
+     box-sizing: border-box;
+     border: 2px solid var(--border);
+     border-radius: 16px;
+     font-size: 16px;
+     transition: all 0.3s ease;
+     background-color: var(--bg-color);
+     color: var(--text-dark);
+     box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
   }
-    
+      
   input:focus {
-      outline: none;
-      border-color: var(--primary);
-      background-color: var(--surface);
-      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+     outline: none;
+     border-color: var(--primary);
+     background-color: var(--surface);
+     box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
   }
   
   input::placeholder {
-      color: #94a3b8;
+     color: #94a3b8;
   }
    
   .filter-section {
-      display: flex;
-      flex-direction: column;
-      gap: 24px; 
+     display: flex;
+     flex-direction: column;
+     gap: 24px; 
   }
     
   .filter-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text-dark);
-      margin: 0 0 12px 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+     font-size: 15px;
+     font-weight: 700;
+     color: var(--text-dark);
+     margin: 0 0 12px 4px;
+     text-transform: uppercase;
+     letter-spacing: 0.5px;
   }
-    
+  
+  
+  /* 3. Touch-Targets: Perfekt für den Daumen */  
   .chip-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
+     display: flex;
+     flex-wrap: wrap;
+     gap: 10px;
   }
    
   .chip {
-      padding: 12px 20px;
-      border-radius: 100px;
-      border: 2px solid var(--border);
-      background: var(--surface);
-      color: var(--text-muted);
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      flex-grow: 1; 
-      text-align: center;
+     padding: 12px 20px;
+     border-radius: 100px;
+     border: 2px solid var(--border);
+     background: var(--surface);
+     color: var(--text-muted);
+     font-size: 15px;
+     font-weight: 600;
+     cursor: pointer;
+     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+     flex-grow: 1; 
+     text-align: center;
   }
     
   .chip.active {
-      background: #ecfdf5;
-      border-color: var(--primary);
-      color: var(--primary-dark);
+     background: #ecfdf5;
+     border-color: var(--primary);
+     color: var(--primary-dark);
   }
 
   .chip:active {
-      transform: scale(0.96);
+     transform: scale(0.96);
   }
    
   .stepper-group {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--bg-color);
-      padding: 8px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     background: var(--bg-color);
+     padding: 8px;
+     border-radius: 20px;
+     border: 1px solid var(--border);
   }
     
   .step-btn {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      width: 48px; 
-      height: 48px;
-      border-radius: 14px;
-      font-size: 24px;
-      color: var(--text-dark);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-      transition: 0.1s;
+     background: var(--surface);
+     border: 1px solid var(--border);
+     width: 48px; 
+     height: 48px;
+     border-radius: 14px;
+     font-size: 24px;
+     color: var(--text-dark);
+     cursor: pointer;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+     transition: 0.1s;
   }
     
   .step-btn:active {
-      transform: scale(0.92);
-      background: var(--border);
+     transform: scale(0.92);
+     background: var(--border);
   }
     
   .step-value {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--text-dark);
-      text-align: center;
+     font-size: 18px;
+     font-weight: 700;
+     color: var(--text-dark);
+     text-align: center;
   }
     
+    
+  /* 4. Sticky Action Area: Immer greifbar */  
   .action-area {
-      position: fixed;
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100%;
-      max-width: 600px;
-      padding: 20px 20px 32px 20px;
-      box-sizing: border-box;
-      background: linear-gradient(to top, rgba(255,255,255,1) 70%, rgba(255,255,255,0));
-      z-index: 100;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+     position: fixed;
+     bottom: 0;
+     left: 50%;
+     transform: translateX(-50%);
+     width: 100%;
+     max-width: 600px;
+     padding: 20px 20px 32px 20px;
+     box-sizing: border-box;
+     background: linear-gradient(to top, rgba(255,255,255,1) 70%, rgba(255,255,255,0));
+     z-index: 100;
+     display: flex;
+     flex-direction: column;
+     align-items: center;
   }
     
   .main-btn {
-      width: 100%;
-      padding: 18px;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 16px;
-      cursor: pointer;
-      font-weight: 800;
-      font-size: 18px;
-      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
-      transition: all 0.2s;
+     width: 100%;
+     padding: 18px;
+     background: var(--primary);
+     color: white;
+     border: none;
+     border-radius: 16px;
+     cursor: pointer;
+     font-weight: 800;
+     font-size: 18px;
+     box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+     transition: all 0.2s;
   }
 
   .main-btn:active {
-      transform: translateY(2px);
-      box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+     transform: translateY(2px);
+     box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
   }
     
   .finish-btn {
-      margin-top: 32px;
-      background: var(--text-dark);
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+     margin-top: 32px;
+     background: var(--text-dark);
+     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
   }
     
+    
+  /* 5. Loader Animation */  
   .loader {
-      border: 4px solid var(--border);
-      border-top: 4px solid var(--primary);
-      border-radius: 50%;
-      width: 48px;
-      height: 48px;
-      animation: spin 1s linear infinite;
+     border: 4px solid var(--border);
+     border-top: 4px solid var(--primary);
+     border-radius: 50%;
+     width: 48px;
+     height: 48px;
+     animation: spin 1s linear infinite;
   }
     
   .loader-text {
-      margin-top: 12px;
-      color: var(--text-dark);
-      font-weight: 600;
+     margin-top: 12px;
+     color: var(--text-dark);
+     font-weight: 600;
   }
    
   @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+     0% { transform: rotate(0deg); }
+     100% { transform: rotate(360deg); }
   }
     
+    
+  /* 6. Rezept-Ansicht (Ergebnis) */
   .recipe-paper {
-      animation: fadeIn 0.4s ease-out;
+     animation: fadeIn 0.4s ease-out;
   }
    
   .recipe-image {
-      width: 100%;
-      height: 280px;
-      object-fit: cover;
-      border-radius: 20px;
-      margin-bottom: 24px;
-      box-shadow: 0 12px 24px rgba(0,0,0,0.1);
-      background-color: var(--border);
+     width: 100%;
+     height: 280px;
+     object-fit: cover;
+     border-radius: 20px;
+     margin-bottom: 24px;
+     box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+     background-color: var(--border);
   }
     
   .recipe-title {
-      color: var(--text-dark);
-      margin-top: 0;
-      font-size: 28px;
-      font-weight: 800;
-      line-height: 1.2;
-      margin-bottom: 32px;
+     color: var(--text-dark);
+     margin-top: 0;
+     font-size: 28px;
+     font-weight: 800;
+     line-height: 1.2;
+     margin-bottom: 32px;
   }
   
   .recipe-subheading {
-      color: var(--text-dark);
-      font-size: 20px;
-      font-weight: 700;
-      margin: 32px 0 16px 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+     color: var(--text-dark);
+     font-size: 20px;
+     font-weight: 700;
+     margin: 32px 0 16px 0;
+     display: flex;
+     align-items: center;
+     gap: 8px;
   }
   
   .ingredients-list {
-      padding: 0;
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+     padding: 0;
+     list-style: none;
+     display: flex;
+     flex-direction: column;
+     gap: 12px;
   }
 
   .ingredients-list li {
-      background: var(--bg-color);
-      padding: 16px;
-      border-radius: 12px;
-      color: var(--text-dark);
-      font-weight: 500;
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
+     background: var(--bg-color);
+     padding: 16px;
+     border-radius: 12px;
+     color: var(--text-dark);
+     font-weight: 500;
+     border: 1px solid var(--border);
+     display: flex;
+     align-items: center;
   }
 
   .ingredients-list li::before {
-      content: '*';
-      margin-right: 12px;
+     content: '*';
+     margin-right: 12px;
   }
     
   .instructions-box {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+     display: flex;
+     flex-direction: column;
+     gap: 16px;
   }
     
   .step-item {
-      display: flex;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 20px;
-      border-radius: 16px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+     display: flex;
+     background: var(--surface);
+     border: 1px solid var(--border);
+     padding: 20px;
+     border-radius: 16px;
+     box-shadow: 0 4px 6px rgba(0,0,0,0.02);
   }
     
   .step-number {
-      background: #ecfdf5;
-      color: var(--primary-dark);
-      width: 32px;
-      height: 32px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 16px;
-      margin-right: 16px;
-      flex-shrink: 0;
+     background: #ecfdf5;
+     color: var(--primary-dark);
+     width: 32px;
+     height: 32px;
+     border-radius: 10px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     font-weight: 800;
+     font-size: 16px;
+     margin-right: 16px;
+     flex-shrink: 0;
   }
     
   .step-text {
-      color: var(--text-dark);
-      line-height: 1.6;
-      font-size: 16px;
+     color: var(--text-dark);
+     line-height: 1.6;
+     font-size: 16px;
   }
     
   .tip-box {
-      margin-top: 32px;
-      padding: 20px;
-      background-color: #fffbeb;
-      border: 1px solid #fde68a;
-      border-radius: 16px;
-      color: #92400e;
-      font-size: 15px;
-      line-height: 1.6;
+     margin-top: 32px;
+     padding: 20px;
+     background-color: #fffbeb;
+     border: 1px solid #fde68a;
+     border-radius: 16px;
+     color: #92400e;
+     font-size: 15px;
+     line-height: 1.6;
   }
     
+    
+  /* 7. Modal / Dialog */
   .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(15, 23, 42, 0.4);
-      backdrop-filter: blur(8px);
-      display: flex;
-      align-items: flex-end; 
-      justify-content: center;
-      z-index: 1000;
-      animation: fadeIn 0.2s ease-out;
+     position: fixed;
+     top: 0;
+     left: 0;
+     width: 100%;
+     height: 100%;
+     background: rgba(15, 23, 42, 0.4);
+     backdrop-filter: blur(8px);
+     display: flex;
+     align-items: flex-end; 
+     justify-content: center;
+     z-index: 1000;
+     animation: fadeIn 0.2s ease-out;
   }
     
   .modal-content {
-      background: var(--surface);
-      border-radius: 32px 32px 0 0; 
-      padding: 32px 24px 40px 24px;
-      width: 100%;
-      max-width: 600px;
-      box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
-      animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1);
+     background: var(--surface);
+     border-radius: 32px 32px 0 0; 
+     padding: 32px 24px 40px 24px;
+     width: 100%;
+     max-width: 600px;
+     box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+     animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1);
   }
     
   .modal-content h3 {
-      margin-top: 0;
-      color: var(--text-dark);
-      font-size: 24px;
-      font-weight: 800;
-      margin-bottom: 8px;
+     margin-top: 0;
+     color: var(--text-dark);
+     font-size: 24px;
+     font-weight: 800;
+     margin-bottom: 8px;
   }
     
   .modal-content p {
-      color: var(--text-muted);
-      font-size: 16px;
-      margin-bottom: 32px;
+     color: var(--text-muted);
+     font-size: 16px;
+     margin-bottom: 32px;
   }
     
   .modal-btn {
-      width: 100%;
-      padding: 18px;
-      margin-bottom: 12px;
-      border: none;
-      border-radius: 16px;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-  }
+     width: 100%;
+     padding: 18px;
+     margin-bottom: 12px;
+     border: none;
+     border-radius: 16px;
+     font-size: 16px;
+     font-weight: 700;
+     cursor: pointer;
+     transition: 0.2s;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     gap: 8px;
+  }  
   
+  
+  /* 8. REZEPT-META (Schwierigkeit und Zeit) */
   .recipe-meta {
-      display: flex;
-      justify-content: center;
-      margin-top: -16px;
-      margin-bottom: 32px;
+     display: flex;
+     justify-content: center;
+     margin-top: -16px;
+     margin-bottom: 32px;
   }
     
   .difficulty-badge {
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+     padding: 8px 16px;
+     border-radius: 20px;
+     font-size: 14px;
+     font-weight: 800;
+     text-transform: uppercase;
+     letter-spacing: 0.5px;
+     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
     
   .difficulty-badge.leicht { 
-      background: #dcfce7; 
-      color: #166534; 
-      border: 1px solid #bbf7d0; 
+     background: #dcfce7; 
+     color: #166534; 
+     border: 1px solid #bbf7d0; 
   }
   
   .difficulty-badge.mittel { 
-      background: #fef9c3; 
-      color: #854d0e; 
-      border: 1px solid #fef08a; 
+     background: #fef9c3; 
+     color: #854d0e; 
+     border: 1px solid #fef08a; 
   }
   
   .difficulty-badge.schwer { 
-      background: #fee2e2; 
-      color: #991b1b; 
-      border: 1px solid #fecaca; 
+     background: #fee2e2; 
+     color: #991b1b; 
+     border: 1px solid #fecaca; 
   }
   
   .difficulty-badge.unbekannt { 
-      background: #f1f5f9; 
-      color: #475569; 
+     background: #f1f5f9; 
+     color: #475569; 
   }
   
   .recipe-meta {
-      display: flex;
-      justify-content: center;
-      gap: 12px; 
-      margin-top: -16px;
-      margin-bottom: 32px;
-      flex-wrap: wrap; 
+     display: flex;
+     justify-content: center;
+     gap: 12px; 
+     margin-top: -16px;
+     margin-bottom: 32px;
+     flex-wrap: wrap; 
   }
     
   .difficulty-badge, .time-badge {
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      display: flex;
-      align-items: center;
-      gap: 6px;
+     padding: 8px 16px;
+     border-radius: 20px;
+     font-size: 14px;
+     font-weight: 800;
+     text-transform: uppercase;
+     letter-spacing: 0.5px;
+     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+     display: flex;
+     align-items: center;
+     gap: 6px;
   }
   
   .time-badge {
-      background: #f8fafc;
-      color: #334155;
-      border: 1px solid #cbd5e1;
+     background: #f8fafc;
+     color: #334155;
+     border: 1px solid #cbd5e1;
+  }
+  
+  
+  /* 9. GESPEICHERTE REZEPTE & HEADER-BUTTON */
+  .saved-btn {
+     margin-top: 16px;
+     padding: 10px 20px;
+     background: #ecfdf5;
+     color: var(--primary-dark);
+     border: 1px solid #a7f3d0;
+     border-radius: 100px;
+     font-weight: 700;
+     font-size: 14px;
+     cursor: pointer;
+     transition: all 0.2s;
+     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+  }
+
+  .saved-btn:active {
+     transform: scale(0.95);
+  }
+
+  .saved-recipes-container {
+     animation: fadeIn 0.3s ease-out;
+  }
+
+  .empty-state {
+     text-align: center;
+     color: var(--text-muted);
+     padding: 40px 20px;
+     background: var(--bg-color);
+     border-radius: 16px;
+     border: 2px dashed var(--border);
+     line-height: 1.6;
+  }
+
+  .saved-list {
+     display: flex;
+     flex-direction: column;
+     gap: 16px;
+  }
+
+  .saved-card {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     background: var(--surface);
+     border: 1px solid var(--border);
+     padding: 16px;
+     border-radius: 16px;
+     cursor: pointer;
+     box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+     transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .saved-card:active {
+     transform: scale(0.98);
+     background: var(--bg-color);
+  }
+
+  .saved-card h4 {
+     margin: 0 0 8px 0;
+     color: var(--text-dark);
+     font-size: 16px;
+  }
+
+  .saved-meta {
+     display: flex;
+     gap: 12px;
+     font-size: 12px;
+     color: var(--text-muted);
+     font-weight: 600;
+  }
+
+  .delete-btn {
+     background: #fef2f2;
+     border: none;
+     width: 40px;
+     height: 40px;
+     border-radius: 12px;
+     font-size: 18px;
+     cursor: pointer;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     transition: 0.2s;
+  }
+
+  .delete-btn:active {
+     background: #fecaca;
+     transform: scale(0.9);
   }
     
   .difficulty-badge.leicht { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
