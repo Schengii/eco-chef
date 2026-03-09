@@ -3,172 +3,213 @@ import { css } from 'lit';
 export const ecoChefStyles = css`
   :host {
      display: block;
-     padding: 16px;
-     font-family: 'Segoe UI', system-ui, sans-serif;
-     background-color: #f0f4f8;
+     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+     background-color: #f8fafc;
      min-height: 100vh;
+     
+     --primary: #10b981;        
+     --primary-dark: #059669;
+     --bg-color: #f8fafc;
+     --surface: #ffffff;
+     --text-dark: #0f172a;
+     --text-muted: #64748b;
+     --border: #e2e8f0;
   }
 
   .card {
-      background-color: white;
-      border-radius: 20px;
-      padding: 24px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-      max-width: 500px;
+      background-color: var(--surface);
+      max-width: 600px;
       margin: 0 auto;
+      min-height: 100vh; 
+      padding: 24px 20px 120px 20px; 
+      box-sizing: border-box;
+      position: relative;
+      box-shadow: 0 0 40px rgba(0,0,0,0.05);
   }
     
   .header {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 32px;
+      padding-top: 12px;
   }
     
   h2 {
-      color: #2e7d32;
+      color: var(--text-dark);
       margin: 0;
-      font-size: 28px;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
   }
     
   .subtitle {
-      color: #666;
-      margin-top: 4px;
-      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      font-size: 15px;
+      font-weight: 500;
   }
     
   input {
       width: 100%;
-      padding: 16px;
-      margin-bottom: 20px;
+      padding: 18px 20px;
+      margin-bottom: 32px;
       box-sizing: border-box;
-      border: 2px solid #e2e8f0;
-      border-radius: 12px;
+      border: 2px solid var(--border);
+      border-radius: 16px;
       font-size: 16px;
-      transition: 0.3s;
+      transition: all 0.3s ease;
+      background-color: var(--bg-color);
+      color: var(--text-dark);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
   }
     
   input:focus {
       outline: none;
-      border-color: #4CAF50;
+      border-color: var(--primary);
+      background-color: var(--surface);
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+  }
+  
+  input::placeholder {
+      color: #94a3b8;
   }
    
   .filter-section {
-      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px; 
   }
     
   .filter-title {
-      font-size: 14px;
-      font-weight: bold;
-      color: #4a5568;
-      margin: 0 0 8px 4px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin: 0 0 12px 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
   }
     
   .chip-group {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 16px;
+      gap: 10px;
   }
    
   .chip {
-      padding: 8px 16px;
-      border-radius: 20px;
-      border: 1px solid #cbd5e1;
-      background: white;
-      color: #475569;
-      font-size: 14px;
+      padding: 12px 20px;
+      border-radius: 100px;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 15px;
+      font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-grow: 1; 
+      text-align: center;
   }
     
   .chip.active {
-      background: #e6f4ea;
-      border-color: #4CAF50;
-      color: #2e7d32;
-      font-weight: bold;
+      background: #ecfdf5;
+      border-color: var(--primary);
+      color: var(--primary-dark);
+  }
+
+  .chip:active {
+      transform: scale(0.96);
   }
    
   .stepper-group {
       display: flex;
       align-items: center;
-      gap: 15px; 
-      margin-bottom: 20px; 
-      background: #f8fafc;
+      justify-content: space-between;
+      background: var(--bg-color);
       padding: 8px;
-      border-radius: 16px;
-      width: fit-content;
+      border-radius: 20px;
+      border: 1px solid var(--border);
   }
     
   .step-btn {
-      background: white;
-      border: 1px solid #cbd5e1;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      font-size: 22px;
-      font-weight: bold;
-      color: #2e7d32;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      width: 48px; 
+      height: 48px;
+      border-radius: 14px;
+      font-size: 24px;
+      color: var(--text-dark);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
       transition: 0.1s;
   }
     
   .step-btn:active {
-      transform: scale(0.9);
-      background: #e6f4ea;
+      transform: scale(0.92);
+      background: var(--border);
   }
     
   .step-value {
-      font-size: 16px;
-      font-weight: bold;
-      color: #1e293b;
-      min-width: 90px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-dark);
       text-align: center;
   }
     
   .action-area {
-      text-align: center;
-      min-height: 60px;
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 600px;
+      padding: 20px 20px 32px 20px;
+      box-sizing: border-box;
+      background: linear-gradient(to top, rgba(255,255,255,1) 70%, rgba(255,255,255,0));
+      z-index: 100;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
   }
     
   .main-btn {
       width: 100%;
-      padding: 16px;
-      background: #4CAF50;
+      padding: 18px;
+      background: var(--primary);
       color: white;
       border: none;
-      border-radius: 12px;
+      border-radius: 16px;
       cursor: pointer;
-      font-weight: bold;
-      font-size: 16px;
-      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+      font-weight: 800;
+      font-size: 18px;
+      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+      transition: all 0.2s;
+  }
+
+  .main-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
   }
     
   .finish-btn {
-      margin-top: 30px;
-      background: #1e293b;
-      box-shadow: 0 4px 12px rgba(30, 41, 59, 0.3);
+      margin-top: 32px;
+      background: var(--text-dark);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
   }
     
   .loader {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #4CAF50;
+      border: 4px solid var(--border);
+      border-top: 4px solid var(--primary);
       border-radius: 50%;
-      width: 40px;
-      height: 40px;
+      width: 48px;
+      height: 48px;
       animation: spin 1s linear infinite;
   }
     
   .loader-text {
-      margin-top: 10px;
-      color: #666;
-      font-size: 14px;
+      margin-top: 12px;
+      color: var(--text-dark);
+      font-weight: 600;
   }
    
   @keyframes spin {
@@ -177,88 +218,107 @@ export const ecoChefStyles = css`
   }
     
   .recipe-paper {
-      margin-top: 20px;
-      padding: 20px;
-      background-color: #fff;
-      border-radius: 16px;
-      border: 1px solid #e2e8f0;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+      animation: fadeIn 0.4s ease-out;
   }
    
   .recipe-image {
       width: 100%;
-      height: 250px;
+      height: 280px;
       object-fit: cover;
-      border-radius: 12px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      background-color: #f1f5f9;
+      border-radius: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+      background-color: var(--border);
   }
     
   .recipe-title {
-      color: #1a202c;
+      color: var(--text-dark);
       margin-top: 0;
-      font-size: 22px;
-      text-align: center;
-      line-height: 1.3;
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 32px;
   }
   
   .recipe-subheading {
-      color: #2e7d32;
-      font-size: 18px;
-      margin: 24px 0 12px 0;
-      border-bottom: 2px solid #e6f4ea;
-      padding-bottom: 4px;
+      color: var(--text-dark);
+      font-size: 20px;
+      font-weight: 700;
+      margin: 32px 0 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
   }
   
   .ingredients-list {
-      padding-left: 20px;
-      color: #4a5568;
-      line-height: 1.6;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+  }
+
+  .ingredients-list li {
+      background: var(--bg-color);
+      padding: 16px;
+      border-radius: 12px;
+      color: var(--text-dark);
+      font-weight: 500;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+  }
+
+  .ingredients-list li::before {
+      content: '*';
+      margin-right: 12px;
   }
     
   .instructions-box {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
   }
     
   .step-item {
       display: flex;
-      background: #f8fafc;
-      padding: 12px;
-      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.02);
   }
     
   .step-number {
-      background: #4CAF50;
-      color: white;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
+      background: #ecfdf5;
+      color: var(--primary-dark);
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: bold;
-      margin-right: 12px;
+      font-weight: 800;
+      font-size: 16px;
+      margin-right: 16px;
       flex-shrink: 0;
   }
     
   .step-text {
-      color: #334155;
-      line-height: 1.5;
-      padding-top: 2px;
+      color: var(--text-dark);
+      line-height: 1.6;
+      font-size: 16px;
   }
     
   .tip-box {
-      margin-top: 24px;
-      padding: 16px;
+      margin-top: 32px;
+      padding: 20px;
       background-color: #fffbeb;
-      border-left: 4px solid #f59e0b;
-      border-radius: 8px;
+      border: 1px solid #fde68a;
+      border-radius: 16px;
       color: #92400e;
-      font-size: 14px;
-      line-height: 1.5;
+      font-size: 15px;
+      line-height: 1.6;
   }
     
   .modal-overlay {
@@ -267,94 +327,101 @@ export const ecoChefStyles = css`
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px);
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(8px);
       display: flex;
-      align-items: center;
+      align-items: flex-end; 
       justify-content: center;
       z-index: 1000;
       animation: fadeIn 0.2s ease-out;
   }
     
-  @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-  }
-    
   .modal-content {
-      background: white;
-      border-radius: 24px;
-      padding: 24px;
-      width: 85%;
-      max-width: 350px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-      text-align: center;
-      animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
-    
-  @keyframes slideUp {
-      from { transform: translateY(30px);
-        opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
+      background: var(--surface);
+      border-radius: 32px 32px 0 0; 
+      padding: 32px 24px 40px 24px;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+      animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1);
   }
     
   .modal-content h3 {
       margin-top: 0;
-      color: #1e293b;
-      font-size: 22px;
+      color: var(--text-dark);
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 8px;
   }
     
   .modal-content p {
-      color: #64748b;
-      font-size: 14px;
-      margin-bottom: 24px;
+      color: var(--text-muted);
+      font-size: 16px;
+      margin-bottom: 32px;
   }
     
   .modal-btn {
       width: 100%;
-      padding: 14px;
+      padding: 18px;
       margin-bottom: 12px;
       border: none;
-      border-radius: 12px;
+      border-radius: 16px;
       font-size: 16px;
-      font-weight: bold;
+      font-weight: 700;
       cursor: pointer;
       transition: 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+  }
+  
+  .recipe-meta {
+      display: flex;
+      justify-content: center;
+      margin-top: -16px;
+      margin-bottom: 32px;
   }
     
-  .modal-btn.share {
-      background: #e0f2fe;
-      color: #0284c7;
+  .difficulty-badge {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
     
-  .modal-btn.save {
-      background: #f1f5f9;
-      color: #475569;
+  .difficulty-badge.leicht { 
+      background: #dcfce7; 
+      color: #166534; 
+      border: 1px solid #bbf7d0; 
+  }
+  
+  .difficulty-badge.mittel { 
+      background: #fef9c3; 
+      color: #854d0e; 
+      border: 1px solid #fef08a; 
+  }
+  
+  .difficulty-badge.schwer { 
+      background: #fee2e2; 
+      color: #991b1b; 
+      border: 1px solid #fecaca; 
+  }
+  
+  .difficulty-badge.unbekannt { 
+      background: #f1f5f9; 
+      color: #475569; 
   }
     
-  .modal-btn.new {
-      background: #e6f4ea;
-      color: #2e7d32;
-  }
+  .modal-btn.share { background: #f0f9ff; color: #0284c7; }
+  .modal-btn.save { background: #f8fafc; color: #475569; }
+  .modal-btn.new { background: #ecfdf5; color: var(--primary-dark); }
+  .modal-btn.exit { background: #fef2f2; color: #dc2626; }
+  .modal-btn.cancel { background: transparent; color: var(--text-muted); text-decoration: underline; margin-top: 16px; }
     
-  .modal-btn.exit {
-      background: #fee2e2;
-      color: #dc2626;
-  }
-    
-  .modal-btn.cancel {
-      background: transparent;
-      color: #94a3b8;
-      margin-bottom: 0;
-      text-decoration: underline;
-      font-weight: normal;
-  }
-    
-  .modal-btn:active {
-      transform: scale(0.96);
-  }
-
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 `;
-
-
-
