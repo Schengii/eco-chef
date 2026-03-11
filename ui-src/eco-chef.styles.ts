@@ -245,6 +245,14 @@ export const ecoChefStyles = css`
      background-color: var(--border);
   }
     
+  .image-placeholder {
+     display: flex;
+     flex-direction: column;
+     align-items: center;
+     justify-content: center;
+     background-color: var(--border);
+  }
+    
   .recipe-title {
      color: var(--text-dark);
      margin-top: 0;
