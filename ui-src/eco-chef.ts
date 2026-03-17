@@ -4,6 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 import { GEMINI_API_KEY } from './api-config';
 import { ecoChefStyles } from "./eco-chef.styles";
 
+
 @customElement('eco-chef')
 export class EcoChef extends LitElement {
     @property({type: String}) ingredients = '';
@@ -12,11 +13,18 @@ export class EcoChef extends LitElement {
     @state() selectedDiet = 'egal';
     @state() selectedEffort = 'egal';
     @state() persons = 2;
+    @state() allowExtraIngredients = true;
+
     @state() showExitDialog = false;
     @state() showSavedRecipes = false;
     @state() savedRecipesList: any[] = [];
     @state() isEditing = false;
     @state() additionalPrompt = '';
+
+    @state() isCookingMode = false;
+    @state() currentCookingStep = 0;
+    @state() capturedImage: string | null = null;
+
     @state() recipe: {
         title: string;
         difficulty: string;
@@ -32,21 +40,30 @@ export class EcoChef extends LitElement {
         tip: string;
     } | null = null;
 
+
     static override styles = ecoChefStyles;
+
 
     override connectedCallback() {
         super.connectedCallback();
         document.addEventListener('backbutton', this.handleBackButton, false);
     }
 
+
     override disconnectedCallback() {
         document.removeEventListener('backbutton', this.handleBackButton, false);
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
         super.disconnectedCallback();
     }
 
+
     handleBackButton = (e: Event) => {
         e.preventDefault();
-        if (this.showSavedRecipes) {
+        if (this.isCookingMode) {
+            this.exitCookingMode();
+        } else if (this.showSavedRecipes) {
             this.toggleSavedView();
         } else if (this.recipe && !this.showExitDialog) {
             this.showExitDialog = true;
@@ -56,6 +73,34 @@ export class EcoChef extends LitElement {
             this.exitApp();
         }
     }
+
+    openCamera() {
+        if(!(navigator as any).camera) {
+            alert('Die Kamera funktioniert nur auf einem echten Handy oder konfigurierten Emulator!');
+            return;
+        }
+
+        const options = {
+            quality: 70,
+            destinationType: (navigator as any).camera.DestinationType.DATA_URL,
+            encodingType: (navigator as any).camera.EncodingType.JPEG,
+            mediaType: (navigator as any).camera.MediaType.PICTURE,
+            correctOrientation: true,
+            targetWidth: 800,
+            targetHeight: 800
+        };
+
+        (navigator as any).camera.getPicture(
+            (imageData: string) => {
+                this.capturedImage = imageData;
+            },
+            (error: any) => {
+                console.error("Kamera abgebrochen oder Fehler: ", error);
+            },
+            options
+        );
+    }
+
 
     override render() {
         return html`
@@ -69,15 +114,45 @@ export class EcoChef extends LitElement {
                     </button>
                 </div>
 
+                
                 ${!this.recipe && !this.showSavedRecipes ? html`
-                    <input
-                            type="text"
-                            placeholder="Zutaten (z.B. Tomaten, Eier, Speck)"
-                            .value="${this.ingredients}"
-                            @input="${this._handleInput}"
-                    />
+                    
+                    <div class="input-with-camera">
+                        <input
+                                type="text"
+                                placeholder="Zutaten (z.B. Tomaten, Eier) oder Foto 📷"
+                                .value="${this.ingredients}"
+                                @input="${this._handleInput}"
+                                style="margin-bottom: 0;"
+                        />
+                        <button class="camera-btn" @click="${this.openCamera}" title="Kühlschrank scannen">
+                            📸
+                        </button>
+                    </div>
 
-                    <div class="filter-section">
+                    ${this.capturedImage ? html`
+                        <div class="image-preview-box">
+                            <img src="data:image/jpeg;base64,${this.capturedImage}" alt="Kühlschrank-Bild" />
+                            <button class="remove-image-btn" @click="${() => this.capturedImage = null}">❌ Entfernen</button>
+                        </div>
+                    ` : ''}
+
+                    
+                    <div class="filter-section" style="margin-top: 20px;">
+
+                        <p class="filter-title">KI-Unterstützung:</p>
+                        <div class="toggle-container">
+                            <label class="toggle-switch">
+                                <input type="checkbox"
+                                       .checked="${this.allowExtraIngredients}"
+                                       @change="${(e: Event) => this.allowExtraIngredients = (e.target as HTMLInputElement).checked}">
+                                <span class="slider"></span>
+                            </label>
+                            <span class="toggle-label" style="color: ${this.allowExtraIngredients ? '#4CAF50' : '#f59e0b'};">
+                                ${this.allowExtraIngredients ? '🪄 KI darf Zutaten ergänzen' : '🛑 Streng (NUR meine Zutaten)'}
+                            </span>
+                        </div>
+
                         <p class="filter-title">Portionen:</p>
                         <div class="stepper-group">
                             <button class="step-btn" @click="${() => this.persons > 1 ? this.persons-- : null}">-</button>
@@ -123,6 +198,7 @@ export class EcoChef extends LitElement {
                     </div>
                 ` : ''}
 
+                
                 ${this.showSavedRecipes && !this.recipe ? html`
                     <div class="saved-recipes-container">
                         <h3 class="recipe-subheading">Deine gespeicherten Rezepte</h3>
@@ -148,6 +224,7 @@ export class EcoChef extends LitElement {
                     </div>
                 ` : ''}
 
+                
                 ${this.recipe ? html`
                     <div class="recipe-paper">
 
@@ -163,12 +240,13 @@ export class EcoChef extends LitElement {
                         </div>
 
                         <div style="display: flex; gap: 12px; margin-top: 20px; margin-bottom: 20px; background: #f8fafc; padding: 12px; border-radius: 12px; justify-content: center; flex-wrap: wrap; border: 1px solid #e2e8f0;">
-                            <span style="color: #475569; font-size: 14px;"><strong>🔥 ${this.recipe.nutrition.calories}</strong></span>
-                            <span style="color: #475569; font-size: 14px;"><strong>🥩 ${this.recipe.nutrition.protein}</strong> Protein</span>
-                            <span style="color: #475569; font-size: 14px;"><strong>🌾 ${this.recipe.nutrition.carbs}</strong> KH</span>
-                            <span style="color: #475569; font-size: 14px;"><strong>🥑 ${this.recipe.nutrition.fat}</strong> Fett</span>
+                            <span style="color: #475569; font-size: 14px;"><strong>🔥 ${this.recipe.nutrition?.calories || '? kcal'}</strong></span>
+                            <span style="color: #475569; font-size: 14px;"><strong>🥩 ${this.recipe.nutrition?.protein || '? g'}</strong> Protein</span>
+                            <span style="color: #475569; font-size: 14px;"><strong>🌾 ${this.recipe.nutrition?.carbs || '? g'}</strong> KH</span>
+                            <span style="color: #475569; font-size: 14px;"><strong>🥑 ${this.recipe.nutrition?.fat || '? g'}</strong> Fett</span>
                         </div>
 
+                        
                         ${this.isEditing ? html`
                             <div class="edit-mode-box">
                                 <h3 class="recipe-subheading">🖊️ Zutaten bearbeiten:</h3>
@@ -225,6 +303,10 @@ export class EcoChef extends LitElement {
                             `}
                         </div>
 
+                        <button class="main-btn" @click="${this.startCookingMode}" style="background-color: #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); margin-top: 15px; margin-bottom: 10px;">
+                            👨‍🍳 Kochmodus starten
+                        </button>
+
                         <button class="main-btn finish-btn" @click="${() => this.showExitDialog = true}">
                             ✅ Rezept schließen
                         </button>
@@ -232,6 +314,31 @@ export class EcoChef extends LitElement {
                 ` : ''}
             </div>
 
+            
+            ${this.isCookingMode && this.recipe ? html`
+                <div class="modal-overlay cooking-mode-overlay">
+                    <div class="modal-content cooking-content">
+
+                        <div class="cooking-header">
+                            <span class="step-counter">Schritt ${this.currentCookingStep + 1} von ${this.recipe.instructions.length}</span>
+                            <button class="close-cooking-btn" @click="${this.exitCookingMode}">❌ Beenden</button>
+                        </div>
+
+                        <div class="step-display">
+                            <p>${this.recipe.instructions[this.currentCookingStep]}</p>
+                        </div>
+
+                        <div class="cooking-controls">
+                            <button class="control-btn" @click="${this.prevStep}" ?disabled="${this.currentCookingStep === 0}">⬅️ Zurück</button>
+                            <button class="main-btn voice-btn" @click="${this.readCurrentStep}">🔊 Vorlesen</button>
+                            <button class="control-btn" @click="${this.nextStep}" ?disabled="${this.currentCookingStep === this.recipe.instructions.length - 1}">Weiter ➡️</button>
+                        </div>
+
+                    </div>
+                </div>
+            ` : ''}
+
+            
             ${this.showExitDialog ? html`
                 <div class="modal-overlay">
                     <div class="modal-content">
@@ -256,63 +363,89 @@ export class EcoChef extends LitElement {
         `;
     }
 
+
+    startCookingMode() {
+        if (!this.recipe || this.recipe.instructions.length === 0) return;
+        this.currentCookingStep = 0;
+        this.isCookingMode = true;
+    }
+
+
+    exitCookingMode() {
+        this.isCookingMode = false;
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
+    }
+
+
+    nextStep() {
+        if (this.recipe && this.currentCookingStep < this.recipe.instructions.length - 1) {
+            this.currentCookingStep++;
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        }
+    }
+
+
+    prevStep() {
+        if (this.currentCookingStep > 0) {
+            this.currentCookingStep--;
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        }
+    }
+
+    readCurrentStep() {
+        if (!this.recipe) return;
+        if (!('speechSynthesis' in window)) {
+            alert("Dein aktuelles Gerät unterstützt leider keine automatische Sprachausgabe.");
+            return;
+        }
+
+        window.speechSynthesis.cancel();
+        const textToRead = this.recipe.instructions[this.currentCookingStep];
+        const utterance = new SpeechSynthesisUtterance(textToRead);
+        utterance.lang = 'de-DE';
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+
     private _handleInput(e: Event) {
         this.ingredients = (e.target as HTMLInputElement).value;
     }
 
+
     async askGoogle() {
-        if (!this.ingredients) {
-            alert("Bitte gib zuerst ein paar Zutaten ein!");
+        if (!this.ingredients && !this.capturedImage) {
+            alert("Bitte gib zuerst ein paar Zutaten ein oder mache ein Foto von deinem Kühlschrank!");
             return;
         }
         this.isLoading = true;
         this.recipe = null;
 
-        const TEST_MODE = false;
-        if (TEST_MODE) {
-            console.log("Mock-Daten werden geladen...");
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            this.recipe = {
-                title: "Perfekte Pochierte Eier auf Tomaten-Confit",
-                difficulty: "Mittel",
-                prepTime: "25 Min.",
-                nutrition: {
-                    calories: "320 kcal",
-                    protein: "18g",
-                    carbs: "12g",
-                    fat: "22g"
-                },
-                ingredientsList: [
-                    "2 frische Bio-Eier",
-                    "200g Kirschtomaten",
-                    "4 Scheiben Bacon",
-                    "Frische Minze und Schnittlauch",
-                    "Olivenöl und Meersalz"
-                ],
-                instructions: [
-                    "Tomaten halbieren und in etwas Olivenöl langsam in der Pfanne schmoren (Confit).",
-                    "Den Bacon in einer zweiten Pfanne knusprig braten.",
-                    "Wasser mit einem Schuss Essig zum Kochen bringen. Mit einem Löffel einen Strudel erzeugen.",
-                    "Eier einzeln in den Strudel gleiten lassen und ca. 3 Minuten pochieren.",
-                    "Die Eier auf dem Tomaten-Confit anrichten, mit Bacon und Kräutern garnieren."
-                ],
-                tip: "Gib einen kleinen Schuss Essig ins Kochwasser, das hält das Eiweiß perfekt zusammen!"
-            };
-            this.isLoading = false;
-            window.scrollTo({top: 0, behavior: 'smooth'});
-            return;
-        }
-
         const portions = this.persons || 2;
-        const prompt = `
-            Du bist ein professioneller Sternekoch und Ernährungsexperte. Erstelle ein Rezept basierend auf: ${this.ingredients}.
+        const textIngredients = this.ingredients || "Keine Text-Eingabe, siehe Bild.";
+
+        const strictIngredientRule = this.allowExtraIngredients
+            ? "- Zutaten: Du darfst das Rezept mit passenden, zusätzlichen Zutaten aufwerten (z.B. Gemüse, Beilagen, Saucen), damit es perfekt wird."
+            : `- Zutaten-Regel (EXTREM WICHTIG): Du darfst AUSSCHLIESSLICH die exakt vom Nutzer angegebenen Zutaten oder auf dem Bild erkennbaren Zutaten verwenden.
+               Füge KEINE EINZIGE weitere Hauptzutat zur Zutatenliste hinzu. Basis-Gewürze (Salz, Pfeffer) sowie Öl und Wasser sind okay.
+               Sei kreativ und erfinde ein neues Gericht, das wirklich NUR aus diesen vorhandenen Zutaten besteht!`;
+
+        const promptText = `
+            Du bist ein professioneller Sternekoch und Ernährungsexperte. Der Nutzer schickt dir Zutaten als Text und/oder ein Foto seines Kühlschranks/seiner Zutaten.
+            
+            Text-Eingabe des Nutzers: ${textIngredients}
+            
+            Falls ein Bild beigefügt ist: Analysiere das Bild GANZ GENAU und erkenne alle essbaren Zutaten darauf. Kombiniere sie mit der Text-Eingabe.
+            
             VORGABEN:
             - Ernährungsweise: ${this.selectedDiet && this.selectedDiet !== 'egal' ? this.selectedDiet : 'Keine'}
             - Zeitaufwand: ${this.selectedEffort && this.selectedEffort !== 'egal' ? this.selectedEffort : 'Normal'}
             - Portionen: Berechne die Zutatenmengen für exakt ${portions} Person(en).
+            ${strictIngredientRule}
             
-            ${this.additionalPrompt ? `🚨 ACHTUNG, DER NUTZER HAT EINEN ÄNDERUNGSWUNSCH ZUM VORHERIGEN REZEPT: 
-            "${this.additionalPrompt}". Bitte passe das neue Rezept exakt an diesen Wunsch an!` : ''}
+            ${this.additionalPrompt ? `🚨 ÄNDERUNGSWUNSCH: "${this.additionalPrompt}". Bitte anpassen!` : ''}
             
             Antworte AUSSCHLIESSLICH mit einem gültigen JSON-Objekt. Das JSON MUSS diese exakte Struktur haben:
             {
@@ -333,9 +466,22 @@ export class EcoChef extends LitElement {
 
         try {
             const ai = new GoogleGenAI({apiKey: GEMINI_API_KEY});
+
+            const requestContents: any[] = [];
+
+            if (this.capturedImage) {
+                requestContents.push({
+                    inlineData: {
+                        data: this.capturedImage,
+                        mimeType: "image/jpeg"
+                    }
+                });
+            }
+            requestContents.push(promptText);
+
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
-                contents: prompt,
+                contents: requestContents,
             });
 
             const text = response.text || "";
@@ -385,10 +531,13 @@ export class EcoChef extends LitElement {
     startNewRecipe() {
         this.recipe = null;
         this.ingredients = '';
+        this.capturedImage = null;
         this.showExitDialog = false;
         this.showSavedRecipes = false;
         this.additionalPrompt = '';
         this.isEditing = false;
+        this.isCookingMode = false;
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
         window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
@@ -402,7 +551,7 @@ export class EcoChef extends LitElement {
 
     async shareRecipe() {
         if (!this.recipe) return;
-        const shareText = `Schau mal, was ich mit EcoChef gekocht habe:\n\n${this.recipe.title}\n🔥 ${this.recipe.nutrition.calories} | 🥩 ${this.recipe.nutrition.protein} Protein\n\nLade dir die EcoChef App herunter!`;
+        const shareText = `Schau mal, was ich mit EcoChef gekocht habe:\n\n${this.recipe.title}\n🔥 ${this.recipe.nutrition?.calories || ''} | 🥩 ${this.recipe.nutrition?.protein || ''} Protein\n\nLade dir die EcoChef App herunter!`;
         if (navigator.share) {
             try {
                 await navigator.share({title: this.recipe.title, text: shareText});

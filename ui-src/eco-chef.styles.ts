@@ -660,6 +660,187 @@ export const ecoChefStyles = css`
       height: 32px;
       margin: 0 auto;
   }
+
+    // Kochmodus styles
+    .cooking-mode-overlay {
+        background: rgba(15, 23, 42, 0.95) !important;
+    }
+    .cooking-content {
+        width: 90% !important;
+        height: 75vh !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 30px 20px !important;
+        background: #fff;
+    }
+    .cooking-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #f1f5f9;
+        padding-bottom: 15px;
+    }
+    .step-counter {
+        font-weight: bold;
+        color: #f59e0b;
+        font-size: 18px;
+    }
+    .close-cooking-btn {
+        background: none; border: none; font-size: 16px; color: #94a3b8; cursor: pointer;
+    }
+    .step-display {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 24px;
+        line-height: 1.6;
+        color: #1e293b;
+        padding: 20px 0;
+        overflow-y: auto;
+    }
+    .cooking-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        border-top: 2px solid #f1f5f9;
+        padding-top: 20px;
+    }
+    .control-btn {
+        background: #f1f5f9;
+        border: none;
+        padding: 12px;
+        border-radius: 12px;
+        font-weight: bold;
+        color: #475569;
+        cursor: pointer;
+        flex: 1;
+    }
+    .control-btn[disabled] {
+        opacity: 0.5; cursor: not-allowed;
+    }
+    .voice-btn {
+        background: #4CAF50;
+        flex: 1.5;
+        margin: 0;
+        padding: 12px;
+        font-size: 18px;
+    }
+
+
+    // Toggle Schalter
+    .toggle-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+        background: #f8fafc;
+        padding: 12px 16px;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+    }
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 52px;
+        height: 28px;
+        flex-shrink: 0;
+    }
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #cbd5e1;
+        transition: .3s;
+        border-radius: 30px;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .3s;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    input:checked + .slider {
+        background-color: #4CAF50;
+    }
+    input:checked + .slider:before {
+        transform: translateX(24px);
+    }
+    .toggle-label {
+        font-size: 15px;
+        font-weight: 600;
+        transition: color 0.3s;
+    }
+
+
+    // Bildeingabe
+    .input-with-camera {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .input-with-camera input {
+        flex-grow: 1;
+    }
+    .camera-btn {
+        background: #4CAF50;
+        border: none;
+        border-radius: 12px;
+        width: 56px;
+        height: 56px;
+        font-size: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        transition: 0.2s;
+    }
+    .camera-btn:active {
+        transform: scale(0.9);
+    }
+    .image-preview-box {
+        margin-top: 15px;
+        position: relative;
+        background: #f8fafc;
+        padding: 10px;
+        border-radius: 12px;
+        border: 2px dashed #cbd5e1;
+        text-align: center;
+    }
+    .image-preview-box img {
+        max-width: 100%;
+        max-height: 200px;
+        border-radius: 8px;
+    }
+    .remove-image-btn {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background: #ef4444;
+        color: white;
+        border: none;
+        border-radius: 20px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }  
     
   .difficulty-badge.leicht { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
   .difficulty-badge.mittel { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
