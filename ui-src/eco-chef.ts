@@ -14,6 +14,7 @@ export class EcoChef extends LitElement {
     @state() selectedEffort = 'egal';
     @state() persons = 2;
     @state() allowExtraIngredients = true;
+    @state() isDarkMode = false;
 
     @state() showExitDialog = false;
     @state() showSavedRecipes = false;
@@ -24,8 +25,6 @@ export class EcoChef extends LitElement {
     @state() currentCookingStep = 0;
 
     @state() capturedImage: string | null = null;
-
-    // NEU: ecoScore, beverage und storageTip hinzugefügt
     @state() recipe: {
         title: string;
         difficulty: string;
@@ -49,6 +48,15 @@ export class EcoChef extends LitElement {
     override connectedCallback() {
         super.connectedCallback();
         document.addEventListener('backbutton', this.handleBackButton, false);
+
+        const savedTheme = localStorage.getItem('ecoChef_theme');
+        if (savedTheme === 'dark') {
+            this.isDarkMode = true;
+        } else if (savedTheme === 'light') {
+            this.isDarkMode = false;
+        } else {
+            this.isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
     }
 
     override disconnectedCallback() {
@@ -101,10 +109,21 @@ export class EcoChef extends LitElement {
         );
     }
 
+    toggleDarkMode() {
+        this.isDarkMode = !this.isDarkMode;
+        localStorage.setItem('ecoChef_theme', this.isDarkMode ? 'dark' : 'light');
+    }
+
     override render() {
         return html`
+          <div class="app-wrapper ${this.isDarkMode ? 'dark-theme' : ''}">
             <div class="card">
+                
                 <div class="header">
+                    <button class="theme-toggle-btn" @click="${this.toggleDarkMode}" title="Dark Mode wechseln">
+                        ${this.isDarkMode ? '☀️' : '🌙'}
+                    </button>
+                    
                     <h2>EcoChef</h2>
                     <p class="subtitle">Dein KI-Rezept-Zauberer 🧑‍🍳</p>
 
@@ -360,7 +379,8 @@ export class EcoChef extends LitElement {
                     </div>
                 </div>
             ` : ''}
-        `;
+          </div>
+       `;
     }
 
     startCookingMode() {
