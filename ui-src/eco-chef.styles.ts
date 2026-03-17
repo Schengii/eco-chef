@@ -14,7 +14,7 @@ export const ecoChefStyles = css`
         --text-muted: #64748b;
         --border: #e2e8f0;
     }
-    
+
     .app-wrapper {
         min-height: 100vh;
         background-color: var(--bg-color);
@@ -22,7 +22,6 @@ export const ecoChefStyles = css`
         color: var(--text-dark);
     }
 
-    /* NEU: Die dunkle Farbpalette */
     .app-wrapper.dark-theme {
         --primary: #34d399;
         --primary-dark: #10b981;
@@ -45,7 +44,6 @@ export const ecoChefStyles = css`
         transition: background-color 0.3s ease;
     }
 
-    /* NEU: Der Dark Mode Button */
     .theme-toggle-btn {
         position: absolute;
         top: 24px;
@@ -87,6 +85,14 @@ export const ecoChefStyles = css`
         margin-top: 8px;
         font-size: 15px;
         font-weight: 500;
+    }
+
+    /* NEU: Header Actions für die beiden Top-Buttons */
+    .header-actions {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 16px;
     }
 
     input {
@@ -305,6 +311,21 @@ export const ecoChefStyles = css`
         margin-right: 12px;
     }
 
+    /* NEU: Button zum Hinzufügen zur Einkaufsliste */
+    .add-to-list-btn {
+        background: #e0f2fe;
+        color: #0284c7;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-left: auto;
+        transition: 0.2s;
+    }
+    .add-to-list-btn:active { transform: scale(0.9); }
+
     .instructions-box {
         display: flex;
         flex-direction: column;
@@ -367,7 +388,6 @@ export const ecoChefStyles = css`
     }
     .extras-box p { margin: 0; }
 
-    /* NEU: Macros Box umgestellt auf CSS Klassen */
     .macros-box {
         display: flex; gap: 12px; margin-top: 20px; margin-bottom: 20px;
         background: var(--bg-color); padding: 12px; border-radius: 12px;
@@ -415,7 +435,7 @@ export const ecoChefStyles = css`
     .difficulty-badge.unbekannt { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
 
     .saved-btn {
-        margin-top: 16px; padding: 10px 20px; background: #ecfdf5; color: var(--primary-dark);
+        padding: 10px 20px; background: #ecfdf5; color: var(--primary-dark);
         border: 1px solid #a7f3d0; border-radius: 100px; font-weight: 700; font-size: 14px;
         cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
     }
@@ -436,6 +456,25 @@ export const ecoChefStyles = css`
 
     .delete-btn { background: #fef2f2; border: none; width: 40px; height: 40px; border-radius: 12px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
     .delete-btn:active { background: #fecaca; transform: scale(0.9); }
+
+    /* NEU: Styles für die Einkaufsliste */
+    .shopping-list-container { animation: fadeIn 0.3s ease-out; }
+    .shopping-item {
+        display: flex; align-items: center; background: var(--surface);
+        padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 10px;
+    }
+    .shopping-item.checked span {
+        text-decoration: line-through; color: var(--text-muted);
+    }
+    .shopping-checkbox {
+        width: 24px; height: 24px; margin-right: 16px; cursor: pointer; accent-color: var(--primary);
+    }
+    .shopping-text {
+        flex-grow: 1; font-size: 16px; font-weight: 500;
+    }
+    .add-item-box {
+        display: flex; gap: 10px; margin-bottom: 24px;
+    }
 
     .icon-btn { background: none; border: none; font-size: 18px; cursor: pointer; margin-left: auto; padding: 8px; border-radius: 50%; transition: background 0.2s; }
     .icon-btn:active { background: var(--border); }
@@ -474,7 +513,7 @@ export const ecoChefStyles = css`
     .toggle-label { font-size: 15px; font-weight: 600; transition: color 0.3s; }
 
     .input-with-camera { display: flex; gap: 10px; align-items: center; }
-    .input-with-camera input { flex-grow: 1; }
+    .input-with-camera input { flex-grow: 1; margin-bottom: 0; }
     .camera-btn { background: #4CAF50; border: none; border-radius: 12px; width: 56px; height: 56px; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3); transition: 0.2s; color: white;}
     .camera-btn:active { transform: scale(0.9); }
 
@@ -491,9 +530,7 @@ export const ecoChefStyles = css`
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-    /* ======================================================== */
-    /* NEU: DARK MODE OVERRIDES FÜR FESTE FARBEN & BOXEN        */
-    /* ======================================================== */
+    /* DARK MODE OVERRIDES */
     .dark-theme .action-area { background: linear-gradient(to top, rgba(30,41,59,1) 70%, rgba(30,41,59,0)); }
     .dark-theme .chip.active { background: #064e3b; color: #34d399; }
     .dark-theme .step-number { background: #064e3b; color: #34d399; }
@@ -513,6 +550,7 @@ export const ecoChefStyles = css`
     .dark-theme .modal-btn.exit { background: #450a0a; color: #fca5a5; }
     .dark-theme .delete-btn { background: #450a0a; }
     .dark-theme .delete-btn:active { background: #7f1d1d; }
+    .dark-theme .add-to-list-btn { background: #0c4a6e; color: #38bdf8; }
 
     .dark-theme .cooking-mode-overlay { background: rgba(2, 6, 23, 0.98) !important; }
 `;

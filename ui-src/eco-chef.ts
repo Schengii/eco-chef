@@ -14,6 +14,7 @@ export class EcoChef extends LitElement {
     @state() selectedEffort = 'egal';
     @state() persons = 2;
     @state() allowExtraIngredients = true;
+
     @state() isDarkMode = false;
 
     @state() showExitDialog = false;
@@ -23,6 +24,10 @@ export class EcoChef extends LitElement {
     @state() additionalPrompt = '';
     @state() isCookingMode = false;
     @state() currentCookingStep = 0;
+
+    @state() showShoppingList = false;
+    @state() shoppingList: { name: string, checked: boolean }[] = [];
+    @state() manualShoppingItem = '';
 
     @state() capturedImage: string | null = null;
     @state() recipe: {
@@ -43,6 +48,7 @@ export class EcoChef extends LitElement {
         tip: string;
     } | null = null;
 
+
     static override styles = ecoChefStyles;
 
     override connectedCallback() {
@@ -56,6 +62,11 @@ export class EcoChef extends LitElement {
             this.isDarkMode = false;
         } else {
             this.isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+
+        const savedShopping = localStorage.getItem('ecoChef_shoppingList');
+        if (savedShopping) {
+            this.shoppingList = JSON.parse(savedShopping);
         }
     }
 
@@ -71,6 +82,8 @@ export class EcoChef extends LitElement {
         e.preventDefault();
         if (this.isCookingMode) {
             this.exitCookingMode();
+        } else if (this.showShoppingList) {
+            this.toggleShoppingList();
         } else if (this.showSavedRecipes) {
             this.toggleSavedView();
         } else if (this.recipe && !this.showExitDialog) {
@@ -114,25 +127,82 @@ export class EcoChef extends LitElement {
         localStorage.setItem('ecoChef_theme', this.isDarkMode ? 'dark' : 'light');
     }
 
+    toggleShoppingList() {
+        this.showShoppingList = !this.showShoppingList;
+        if (this.showShoppingList) {
+            this.showSavedRecipes = false;
+            this.recipe = null;
+        }
+    }
+
+    addToShoppingList(ingredient: string) {
+        const cleanName = ingredient.replace(/^(\*|\d+\.)\s*/, '').trim();
+
+        if (!this.shoppingList.some(item => item.name === cleanName)) {
+            this.shoppingList.push({ name: cleanName, checked: false });
+            this.saveShoppingList();
+            alert(`✅ "${cleanName}" wurde zur Einkaufsliste hinzugefügt!`);
+            this.requestUpdate();
+        } else {
+            alert("Das steht bereits auf deiner Einkaufsliste!");
+        }
+    }
+
+    addManualShoppingItem() {
+        if (this.manualShoppingItem.trim() !== '') {
+            this.shoppingList.push({ name: this.manualShoppingItem.trim(), checked: false });
+            this.manualShoppingItem = '';
+            this.saveShoppingList();
+        }
+    }
+
+    toggleShoppingItem(index: number) {
+        this.shoppingList[index].checked = !this.shoppingList[index].checked;
+        this.saveShoppingList();
+        this.requestUpdate();
+    }
+
+    removeShoppingItem(index: number) {
+        this.shoppingList.splice(index, 1);
+        this.saveShoppingList();
+        this.requestUpdate();
+    }
+
+    clearCheckedShoppingItems() {
+        this.shoppingList = this.shoppingList.filter(item => !item.checked);
+        this.saveShoppingList();
+    }
+
+    saveShoppingList() {
+        localStorage.setItem('ecoChef_shoppingList', JSON.stringify(this.shoppingList));
+    }
+
+
     override render() {
         return html`
-          <div class="app-wrapper ${this.isDarkMode ? 'dark-theme' : ''}">
-            <div class="card">
+           <div class="app-wrapper ${this.isDarkMode ? 'dark-theme' : ''}">
+              <div class="card">
                 
-                <div class="header">
+                 <div class="header">
                     <button class="theme-toggle-btn" @click="${this.toggleDarkMode}" title="Dark Mode wechseln">
                         ${this.isDarkMode ? '☀️' : '🌙'}
                     </button>
                     
                     <h2>EcoChef</h2>
                     <p class="subtitle">Dein KI-Rezept-Zauberer 🧑‍🍳</p>
-
-                    <button class="saved-btn" @click="${this.toggleSavedView}">
-                        ${this.showSavedRecipes ? '🔙 Zurück zum Generator' : '📚 Meine Rezepte'}
-                    </button>
-                </div>
-
-                ${!this.recipe && !this.showSavedRecipes ? html`
+                    
+                    <div class="header-actions">
+                        <button class="saved-btn" @click="${this.toggleSavedView}">
+                            ${this.showSavedRecipes ? '🔙 Zurück zum Generator' : '📚 Meine Rezepte'}
+                        </button>
+                        <button class="saved-btn" @click="${this.toggleShoppingList}">
+                            ${this.showShoppingList ? '🔙 Zurück' : '🛒 Einkaufsliste '}
+                        </button>
+                    </div>
+                 </div>
+              
+                  
+                 ${!this.recipe && !this.showSavedRecipes && !this.showShoppingList ? html`
 
                     <div class="input-with-camera">
                         <input
@@ -214,6 +284,47 @@ export class EcoChef extends LitElement {
                     </div>
                 ` : ''}
 
+                  
+                  ${this.showShoppingList ? html`
+                      <div class="shopping-list-container">
+                          <h3 class="recipe-subheading">🛒 Deine Einkaufsliste</h3>
+
+                          <div class="add-item-box">
+                              <input type="text"
+                                     placeholder="Zutat hinzufügen..."
+                                     .value="${this.manualShoppingItem}"
+                                     @input="${(e: Event) => this.manualShoppingItem = (e.target as HTMLInputElement).value}"
+                                     @keypress="${(e: KeyboardEvent) => e.key === 'Enter' && this.addManualShoppingItem()}"
+                                     style="margin-bottom: 0;" />
+                              <button class="camera-btn" @click="${this.addManualShoppingItem}" style="width: auto; padding: 0 20px; font-size: 20px;">+</button>
+                          </div>
+
+                          ${this.shoppingList.length === 0 ? html`
+                              <p class="empty-state">Deine Liste ist leer. Füge Zutaten aus einem Rezept hinzu!</p>
+                          ` : html`
+                              <div class="saved-list">
+                                  ${this.shoppingList.map((item, index) => html`
+                                      <div class="shopping-item ${item.checked ? 'checked' : ''}">
+                                          <input type="checkbox"
+                                                 class="shopping-checkbox"
+                                                 .checked="${item.checked}"
+                                                 @change="${() => this.toggleShoppingItem(index)}" />
+                                          <span class="shopping-text">${item.name}</span>
+                                          <button class="delete-btn" @click="${() => this.removeShoppingItem(index)}" style="width: 32px; height: 32px; font-size: 14px;">❌</button>
+                                      </div>
+                                  `)}
+                              </div>
+
+                              ${this.shoppingList.some(item => item.checked) ? html`
+                                <button class="secondary-btn" @click="${this.clearCheckedShoppingItems}" style="margin-top: 20px;">
+                                    🧹 Erledigte löschen
+                                </button>
+                            ` : ''}
+                          `}
+                      </div>
+                  ` : ''}
+                  
+                  
                 ${this.showSavedRecipes && !this.recipe ? html`
                     <div class="saved-recipes-container">
                         <h3 class="recipe-subheading">Deine gespeicherten Rezepte</h3>
@@ -239,6 +350,7 @@ export class EcoChef extends LitElement {
                     </div>
                 ` : ''}
 
+                  
                 ${this.recipe ? html`
                     <div class="recipe-paper">
 
@@ -256,13 +368,14 @@ export class EcoChef extends LitElement {
                             </span>
                         </div>
 
-                        <div style="display: flex; gap: 12px; margin-top: 20px; margin-bottom: 20px; background: #f8fafc; padding: 12px; border-radius: 12px; justify-content: center; flex-wrap: wrap; border: 1px solid #e2e8f0;">
-                            <span style="color: #475569; font-size: 14px;"><strong>🔥 ${this.recipe.nutrition?.calories || '? kcal'}</strong></span>
-                            <span style="color: #475569; font-size: 14px;"><strong>🥩 ${this.recipe.nutrition?.protein || '? g'}</strong> Protein</span>
-                            <span style="color: #475569; font-size: 14px;"><strong>🌾 ${this.recipe.nutrition?.carbs || '? g'}</strong> KH</span>
-                            <span style="color: #475569; font-size: 14px;"><strong>🥑 ${this.recipe.nutrition?.fat || '? g'}</strong> Fett</span>
+                        <div class="macros-box">
+                            <span class="macro-item"><strong>🔥 ${this.recipe.nutrition?.calories || '? kcal'}</strong></span>
+                            <span class="macro-item"><strong>🥩 ${this.recipe.nutrition?.protein || '? g'}</strong> Protein</span>
+                            <span class="macro-item"><strong>🌾 ${this.recipe.nutrition?.carbs || '? g'}</strong> KH</span>
+                            <span class="macro-item"><strong>🥑 ${this.recipe.nutrition?.fat || '? g'}</strong> Fett</span>
                         </div>
 
+                        
                         ${this.isEditing ? html`
                             <div class="edit-mode-box">
                                 <h3 class="recipe-subheading">🖊️ Zutaten bearbeiten:</h3>
@@ -282,7 +395,14 @@ export class EcoChef extends LitElement {
                                 <button class="icon-btn" @click="${() => this.isEditing = true}">🖊️</button>
                             </h3>
                             <ul class="ingredients-list">
-                                ${this.recipe.ingredientsList.map(item => html`<li>${item}</li>`)}
+                                ${this.recipe.ingredientsList.map(item => html`
+                                    <li>
+                                        <span>${item}</span>
+                                        <button class="add-to-list-btn" @click="${() => this.addToShoppingList(item)}" title="Zur Einkaufsliste hinzufügen">
+                                            + 🛒
+                                        </button>
+                                    </li>
+                                `)}
                             </ul>
 
                             <h3 class="recipe-subheading">
@@ -333,9 +453,10 @@ export class EcoChef extends LitElement {
                         </button>
                     </div>
                 ` : ''}
-            </div>
+             </div>
 
-            ${this.isCookingMode && this.recipe ? html`
+               
+             ${this.isCookingMode && this.recipe ? html`
                 <div class="modal-overlay cooking-mode-overlay">
                     <div class="modal-content cooking-content">
 
