@@ -14,7 +14,6 @@ export class EcoChef extends LitElement {
     @state() selectedEffort = 'egal';
     @state() persons = 2;
     @state() allowExtraIngredients = true;
-
     @state() isDarkMode = false;
 
     @state() showExitDialog = false;
@@ -22,14 +21,20 @@ export class EcoChef extends LitElement {
     @state() savedRecipesList: any[] = [];
     @state() isEditing = false;
     @state() additionalPrompt = '';
+
     @state() isCookingMode = false;
     @state() currentCookingStep = 0;
+
+    @state() currentStepTimeMinutes: number | null = null;
+    @state() timerSecondsRemaining = 0;
+    private timerInterval: number | null = null;
 
     @state() showShoppingList = false;
     @state() shoppingList: { name: string, checked: boolean }[] = [];
     @state() manualShoppingItem = '';
 
     @state() capturedImage: string | null = null;
+
     @state() recipe: {
         title: string;
         difficulty: string;
@@ -72,9 +77,8 @@ export class EcoChef extends LitElement {
 
     override disconnectedCallback() {
         document.removeEventListener('backbutton', this.handleBackButton, false);
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-        }
+        if ('speechSynthesis' in window)  window.speechSynthesis.cancel();
+        this.stopTimer();
         super.disconnectedCallback();
     }
 
@@ -137,7 +141,6 @@ export class EcoChef extends LitElement {
 
     addToShoppingList(ingredient: string) {
         const cleanName = ingredient.replace(/^(\*|\d+\.)\s*/, '').trim();
-
         if (!this.shoppingList.some(item => item.name === cleanName)) {
             this.shoppingList.push({ name: cleanName, checked: false });
             this.saveShoppingList();
@@ -175,6 +178,54 @@ export class EcoChef extends LitElement {
 
     saveShoppingList() {
         localStorage.setItem('ecoChef_shoppingList', JSON.stringify(this.shoppingList));
+    }
+
+
+    analyzeCurrentStep() {
+        if (!this.recipe) return;
+
+        const stepText = this.recipe.instructions[this.currentCookingStep];
+        const minMatch = stepText.match(/(\d+)\s*(Minuten|Minute|Min|Min\.|min|min\.)/i);
+        const hrMatch = stepText.match(/(\d+)\s*(Stunden|Stunde|Std|Std\.|std|std\.)/i);
+
+        let totalMinutes = 0;
+        if (hrMatch) totalMinutes += parseInt(hrMatch[1], 10) * 60;
+        if (minMatch) totalMinutes += parseInt(minMatch[1], 10);
+        this.currentStepTimeMinutes = totalMinutes > 0 ? totalMinutes : null;
+    }
+
+    startTimer() {
+        if (!this.currentStepTimeMinutes) return;
+        this.timerSecondsRemaining = this.currentStepTimeMinutes * 60;
+
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        this.timerInterval = window.setInterval(() => {
+            if (this.timerSecondsRemaining > 0) {
+                this.timerSecondsRemaining--;
+            } else {
+                this.playAlarm();
+                this.stopTimer();
+            }
+        }, 1000) as unknown as number;
+    }
+
+    stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+        this.timerSecondsRemaining = 0;
+    }
+
+    formatTime(seconds: number) {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    playAlarm() {
+        if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
+        alert("⏰ Die Zeit ist abgelaufen! Dein Essen braucht Aufmerksamkeit!");
     }
 
 
@@ -225,7 +276,6 @@ export class EcoChef extends LitElement {
                     ` : ''}
 
                     <div class="filter-section" style="margin-top: 20px;">
-
                         <p class="filter-title">KI-Unterstützung:</p>
                         <div class="toggle-container">
                             <label class="toggle-switch">
@@ -275,11 +325,11 @@ export class EcoChef extends LitElement {
 
                     <div class="action-area">
                         ${this.isLoading
-                                ? html`
-                                    <div class="loader"></div>
-                                    <p class="loader-text">KI kreiert dein Rezept...</p>`
-                                : html`
-                                    <button class="main-btn" @click="${this.askGoogle}">✨ Rezept Zaubern</button>`
+                            ? html`
+                                <div class="loader"></div>
+                                <p class="loader-text">KI kreiert dein Rezept...</p>`
+                            : html`
+                                <button class="main-btn" @click="${this.askGoogle}">✨ Rezept Zaubern</button>`
                         }
                     </div>
                 ` : ''}
@@ -288,7 +338,6 @@ export class EcoChef extends LitElement {
                   ${this.showShoppingList ? html`
                       <div class="shopping-list-container">
                           <h3 class="recipe-subheading">🛒 Deine Einkaufsliste</h3>
-
                           <div class="add-item-box">
                               <input type="text"
                                      placeholder="Zutat hinzufügen..."
@@ -353,9 +402,7 @@ export class EcoChef extends LitElement {
                   
                 ${this.recipe ? html`
                     <div class="recipe-paper">
-
                         <h2 class="recipe-title">${this.recipe.title}</h2>
-
                         <div class="recipe-meta">
                             <span class="difficulty-badge ${this.recipe.difficulty?.toLowerCase()}">
                                 📊 ${this.recipe.difficulty}
@@ -379,13 +426,9 @@ export class EcoChef extends LitElement {
                         ${this.isEditing ? html`
                             <div class="edit-mode-box">
                                 <h3 class="recipe-subheading">🖊️ Zutaten bearbeiten:</h3>
-                                <p class="edit-hint">Eine Zutat pro Zeile</p>
                                 <textarea id="edit-ingredients" class="edit-area" rows="6">${this.recipe.ingredientsList.join('\n')}</textarea>
-
                                 <h3 class="recipe-subheading">🖊️ Zubereitung bearbeiten:</h3>
-                                <p class="edit-hint">Ein Schritt pro Zeile</p>
                                 <textarea id="edit-instructions" class="edit-area" rows="8">${this.recipe.instructions.join('\n')}</textarea>
-
                                 <button class="main-btn save-edit-btn" @click="${this.saveEdits}">💾 Änderungen übernehmen</button>
                             </div>
 
@@ -422,7 +465,6 @@ export class EcoChef extends LitElement {
                         <div class="tip-box">
                             <strong>💡 Chefkoch-Tipp:</strong> ${this.recipe.tip}
                         </div>
-
                         <div class="extras-box">
                             <p><strong>🍷 Getränke-Empfehlung:</strong> ${this.recipe.beverage || 'Ein Glas kaltes Wasser geht immer.'}</p>
                             <p><strong>🧊 Haltbarkeit & Reste:</strong> ${this.recipe.storageTip || 'Am besten frisch genießen!'}</p>
@@ -447,7 +489,6 @@ export class EcoChef extends LitElement {
                         <button class="main-btn" @click="${this.startCookingMode}" style="background-color: #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); margin-top: 15px; margin-bottom: 10px;">
                             👨‍🍳 Kochmodus starten
                         </button>
-
                         <button class="main-btn finish-btn" @click="${() => this.showExitDialog = true}">
                             ✅ Rezept schließen
                         </button>
@@ -469,6 +510,20 @@ export class EcoChef extends LitElement {
                             <p>${this.recipe.instructions[this.currentCookingStep]}</p>
                         </div>
 
+                        ${this.timerSecondsRemaining > 0 ? html`
+                            <div class="timer-display">
+                                <span class="timer-countdown">⏳ ${this.formatTime(this.timerSecondsRemaining)}</span>
+                                <button class="stop-timer-btn" @click="${this.stopTimer}">⏹️ Abbrechen</button>
+                            </div>
+                            
+                        `: this.currentStepTimeMinutes ? html`
+                            <div class="timer-display">
+                                <button class="start-timer-btn" @click="${this.startTimer}">
+                                    ⏳ ${this.currentStepTimeMinutes} Min. Timer starten
+                                </button>
+                            </div>
+                        ` : ''}
+
                         <div class="cooking-controls">
                             <button class="control-btn" @click="${this.prevStep}" ?disabled="${this.currentCookingStep === 0}">⬅️ Zurück</button>
                             <button class="main-btn voice-btn" @click="${this.readCurrentStep}">🔊 Vorlesen</button>
@@ -479,24 +534,25 @@ export class EcoChef extends LitElement {
                 </div>
             ` : ''}
 
-            ${this.showExitDialog ? html`
-                <div class="modal-overlay">
-                    <div class="modal-content">
-                        <h3>Was möchtest du tun?</h3>
-                        <p>Dein Rezept ist fertig. Wie soll es weitergehen?</p>
-                        <button class="modal-btn share" @click="${() => {
-                            this.shareRecipe();
-                            this.showExitDialog = false;
-                        }}">📤 Teilen
-                        </button>
-                        <button class="modal-btn save" @click="${() => {
-                            this.saveRecipe();
-                            this.showExitDialog = false;
-                        }}">💾 Speichern
-                        </button>
-                        <button class="modal-btn new" @click="${this.startNewRecipe}">🔄 Neues Rezept laden</button>
-                        <button class="modal-btn exit" @click="${this.exitApp}">❌ App verlassen</button>
-                        <button class="modal-btn cancel" @click="${() => this.showExitDialog = false}">Zurück zum Rezept</button>
+               
+           ${this.showExitDialog ? html`
+               <div class="modal-overlay">
+                   <div class="modal-content">
+                       <h3>Was möchtest du tun?</h3>
+                       <p>Dein Rezept ist fertig. Wie soll es weitergehen?</p>
+                       <button class="modal-btn share" @click="${() => {
+                           this.shareRecipe();
+                           this.showExitDialog = false;
+                       }}">📤 Teilen
+                       </button>
+                       <button class="modal-btn save" @click="${() => {
+                           this.saveRecipe();
+                           this.showExitDialog = false;
+                       }}">💾 Speichern
+                       </button>
+                       <button class="modal-btn new" @click="${this.startNewRecipe}">🔄 Neues Rezept laden</button>
+                       <button class="modal-btn exit" @click="${this.exitApp}">❌ App verlassen</button>
+                       <button class="modal-btn cancel" @click="${() => this.showExitDialog = false}">Zurück zum Rezept</button>
                     </div>
                 </div>
             ` : ''}
@@ -508,19 +564,19 @@ export class EcoChef extends LitElement {
         if (!this.recipe || this.recipe.instructions.length === 0) return;
         this.currentCookingStep = 0;
         this.isCookingMode = true;
+        this.analyzeCurrentStep();
     }
 
     exitCookingMode() {
         this.isCookingMode = false;
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-        }
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     }
 
     nextStep() {
         if (this.recipe && this.currentCookingStep < this.recipe.instructions.length - 1) {
             this.currentCookingStep++;
             if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            this.analyzeCurrentStep();
         }
     }
 
@@ -528,6 +584,7 @@ export class EcoChef extends LitElement {
         if (this.currentCookingStep > 0) {
             this.currentCookingStep--;
             if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            this.analyzeCurrentStep();
         }
     }
 
@@ -568,7 +625,6 @@ export class EcoChef extends LitElement {
                Füge KEINE EINZIGE weitere Hauptzutat zur Zutatenliste hinzu. Basis-Gewürze (Salz, Pfeffer) sowie Öl und Wasser sind okay.
                Sei kreativ und erfinde ein neues Gericht, das wirklich NUR aus diesen vorhandenen Zutaten besteht!`;
 
-        // NEU: Der Prompt fragt jetzt exakt nach ecoScore, beverage und storageTip!
         const promptText = `
             Du bist ein professioneller Sternekoch und Ernährungsexperte. Der Nutzer schickt dir Zutaten als Text und/oder ein Foto seines Kühlschranks/seiner Zutaten.
             
@@ -604,6 +660,7 @@ export class EcoChef extends LitElement {
             }
         `;
 
+
         try {
             const ai = new GoogleGenAI({apiKey: GEMINI_API_KEY});
 
@@ -620,7 +677,7 @@ export class EcoChef extends LitElement {
             requestContents.push(promptText);
 
             const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: "gemini-flash-latest",
                 contents: requestContents,
             });
 
@@ -642,7 +699,6 @@ export class EcoChef extends LitElement {
 
                 const fallbackNutrition = { calories: "? kcal", protein: "?g", carbs: "?g", fat: "?g" };
 
-                // NEU: ecoScore, beverage und storageTip aus dem JSON auslesen
                 this.recipe = {
                     title: parsedData.title,
                     difficulty: parsedData.difficulty || "Unbekannt",
@@ -677,10 +733,12 @@ export class EcoChef extends LitElement {
         this.capturedImage = null;
         this.showExitDialog = false;
         this.showSavedRecipes = false;
+        this.showShoppingList = false;
         this.additionalPrompt = '';
         this.isEditing = false;
         this.isCookingMode = false;
         if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        this.stopTimer();
         window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
@@ -718,6 +776,7 @@ export class EcoChef extends LitElement {
     toggleSavedView() {
         this.showSavedRecipes = !this.showSavedRecipes;
         if (this.showSavedRecipes) {
+            this.showShoppingList = false;
             const saved = localStorage.getItem('ecoChef_savedRecipes');
             this.savedRecipesList = saved ? JSON.parse(saved) : [];
             this.recipe = null;
