@@ -4,9 +4,9 @@ import { GoogleGenAI } from '@google/genai';
 import { GEMINI_API_KEY } from './api-config';
 import { ecoChefStyles } from "./eco-chef.styles";
 
-
 @customElement('eco-chef')
 export class EcoChef extends LitElement {
+
     @property({type: String}) ingredients = '';
     @property({type: Boolean}) isLoading = false;
 
@@ -20,15 +20,19 @@ export class EcoChef extends LitElement {
     @state() savedRecipesList: any[] = [];
     @state() isEditing = false;
     @state() additionalPrompt = '';
-
     @state() isCookingMode = false;
     @state() currentCookingStep = 0;
+
     @state() capturedImage: string | null = null;
 
+    // NEU: ecoScore, beverage und storageTip hinzugefügt
     @state() recipe: {
         title: string;
         difficulty: string;
         prepTime: string;
+        ecoScore: string;
+        beverage: string;
+        storageTip: string;
         nutrition: {
             calories: string;
             protein: string;
@@ -40,15 +44,12 @@ export class EcoChef extends LitElement {
         tip: string;
     } | null = null;
 
-
     static override styles = ecoChefStyles;
-
 
     override connectedCallback() {
         super.connectedCallback();
         document.addEventListener('backbutton', this.handleBackButton, false);
     }
-
 
     override disconnectedCallback() {
         document.removeEventListener('backbutton', this.handleBackButton, false);
@@ -57,7 +58,6 @@ export class EcoChef extends LitElement {
         }
         super.disconnectedCallback();
     }
-
 
     handleBackButton = (e: Event) => {
         e.preventDefault();
@@ -101,7 +101,6 @@ export class EcoChef extends LitElement {
         );
     }
 
-
     override render() {
         return html`
             <div class="card">
@@ -114,9 +113,8 @@ export class EcoChef extends LitElement {
                     </button>
                 </div>
 
-                
                 ${!this.recipe && !this.showSavedRecipes ? html`
-                    
+
                     <div class="input-with-camera">
                         <input
                                 type="text"
@@ -137,7 +135,6 @@ export class EcoChef extends LitElement {
                         </div>
                     ` : ''}
 
-                    
                     <div class="filter-section" style="margin-top: 20px;">
 
                         <p class="filter-title">KI-Unterstützung:</p>
@@ -198,7 +195,6 @@ export class EcoChef extends LitElement {
                     </div>
                 ` : ''}
 
-                
                 ${this.showSavedRecipes && !this.recipe ? html`
                     <div class="saved-recipes-container">
                         <h3 class="recipe-subheading">Deine gespeicherten Rezepte</h3>
@@ -224,7 +220,6 @@ export class EcoChef extends LitElement {
                     </div>
                 ` : ''}
 
-                
                 ${this.recipe ? html`
                     <div class="recipe-paper">
 
@@ -237,6 +232,9 @@ export class EcoChef extends LitElement {
                             <span class="time-badge">
                                 🕒 ${this.recipe.prepTime}
                             </span>
+                            <span class="eco-badge">
+                                🌍 Eco-Score: ${this.recipe.ecoScore || '🍃🍃🍃'}
+                            </span>
                         </div>
 
                         <div style="display: flex; gap: 12px; margin-top: 20px; margin-bottom: 20px; background: #f8fafc; padding: 12px; border-radius: 12px; justify-content: center; flex-wrap: wrap; border: 1px solid #e2e8f0;">
@@ -246,7 +244,6 @@ export class EcoChef extends LitElement {
                             <span style="color: #475569; font-size: 14px;"><strong>🥑 ${this.recipe.nutrition?.fat || '? g'}</strong> Fett</span>
                         </div>
 
-                        
                         ${this.isEditing ? html`
                             <div class="edit-mode-box">
                                 <h3 class="recipe-subheading">🖊️ Zutaten bearbeiten:</h3>
@@ -287,6 +284,11 @@ export class EcoChef extends LitElement {
                             <strong>💡 Chefkoch-Tipp:</strong> ${this.recipe.tip}
                         </div>
 
+                        <div class="extras-box">
+                            <p><strong>🍷 Getränke-Empfehlung:</strong> ${this.recipe.beverage || 'Ein Glas kaltes Wasser geht immer.'}</p>
+                            <p><strong>🧊 Haltbarkeit & Reste:</strong> ${this.recipe.storageTip || 'Am besten frisch genießen!'}</p>
+                        </div>
+
                         <div class="regenerate-box">
                             <h4>Nicht ganz zufrieden?</h4>
                             <input
@@ -314,7 +316,6 @@ export class EcoChef extends LitElement {
                 ` : ''}
             </div>
 
-            
             ${this.isCookingMode && this.recipe ? html`
                 <div class="modal-overlay cooking-mode-overlay">
                     <div class="modal-content cooking-content">
@@ -338,7 +339,6 @@ export class EcoChef extends LitElement {
                 </div>
             ` : ''}
 
-            
             ${this.showExitDialog ? html`
                 <div class="modal-overlay">
                     <div class="modal-content">
@@ -363,13 +363,11 @@ export class EcoChef extends LitElement {
         `;
     }
 
-
     startCookingMode() {
         if (!this.recipe || this.recipe.instructions.length === 0) return;
         this.currentCookingStep = 0;
         this.isCookingMode = true;
     }
-
 
     exitCookingMode() {
         this.isCookingMode = false;
@@ -378,14 +376,12 @@ export class EcoChef extends LitElement {
         }
     }
 
-
     nextStep() {
         if (this.recipe && this.currentCookingStep < this.recipe.instructions.length - 1) {
             this.currentCookingStep++;
             if ('speechSynthesis' in window) window.speechSynthesis.cancel();
         }
     }
-
 
     prevStep() {
         if (this.currentCookingStep > 0) {
@@ -414,7 +410,6 @@ export class EcoChef extends LitElement {
         this.ingredients = (e.target as HTMLInputElement).value;
     }
 
-
     async askGoogle() {
         if (!this.ingredients && !this.capturedImage) {
             alert("Bitte gib zuerst ein paar Zutaten ein oder mache ein Foto von deinem Kühlschrank!");
@@ -432,6 +427,7 @@ export class EcoChef extends LitElement {
                Füge KEINE EINZIGE weitere Hauptzutat zur Zutatenliste hinzu. Basis-Gewürze (Salz, Pfeffer) sowie Öl und Wasser sind okay.
                Sei kreativ und erfinde ein neues Gericht, das wirklich NUR aus diesen vorhandenen Zutaten besteht!`;
 
+        // NEU: Der Prompt fragt jetzt exakt nach ecoScore, beverage und storageTip!
         const promptText = `
             Du bist ein professioneller Sternekoch und Ernährungsexperte. Der Nutzer schickt dir Zutaten als Text und/oder ein Foto seines Kühlschranks/seiner Zutaten.
             
@@ -452,6 +448,9 @@ export class EcoChef extends LitElement {
               "title": "Name des Gerichts",
               "difficulty": "Leicht, Mittel oder Schwer",
               "prepTime": "z.B. 25 Min.",
+              "ecoScore": "Bewerte die Nachhaltigkeit/Regionalität des Gerichts von 1 bis 5 Blättern (Gib NUR diese Emojis zurück: z.B. '🍃🍃🍃🍃')",
+              "beverage": "Kurze Empfehlung für ein passendes Getränk (Wein, Bier oder was Alkoholfreies)",
+              "storageTip": "Kurzer Tipp zur Aufbewahrung oder Resteverwertung",
               "nutrition": {
                 "calories": "z.B. 450 kcal",
                 "protein": "z.B. 25g",
@@ -485,7 +484,6 @@ export class EcoChef extends LitElement {
             });
 
             const text = response.text || "";
-
             try {
                 const startIndex = text.indexOf('{');
                 const endIndex = text.lastIndexOf('}');
@@ -503,10 +501,14 @@ export class EcoChef extends LitElement {
 
                 const fallbackNutrition = { calories: "? kcal", protein: "?g", carbs: "?g", fat: "?g" };
 
+                // NEU: ecoScore, beverage und storageTip aus dem JSON auslesen
                 this.recipe = {
                     title: parsedData.title,
                     difficulty: parsedData.difficulty || "Unbekannt",
                     prepTime: parsedData.prepTime || "Unbekannt",
+                    ecoScore: parsedData.ecoScore || "🍃🍃🍃",
+                    beverage: parsedData.beverage || "Ein frisches Glas Wasser passt wunderbar.",
+                    storageTip: parsedData.storageTip || "Am besten sofort genießen!",
                     nutrition: parsedData.nutrition || fallbackNutrition,
                     ingredientsList: Array.isArray(parsedData.ingredientsList) ? parsedData.ingredientsList : ["Zutaten konnten nicht geladen werden."],
                     instructions: Array.isArray(parsedData.instructions) ? parsedData.instructions : ["Zubereitung fehlt."],
@@ -551,7 +553,7 @@ export class EcoChef extends LitElement {
 
     async shareRecipe() {
         if (!this.recipe) return;
-        const shareText = `Schau mal, was ich mit EcoChef gekocht habe:\n\n${this.recipe.title}\n🔥 ${this.recipe.nutrition?.calories || ''} | 🥩 ${this.recipe.nutrition?.protein || ''} Protein\n\nLade dir die EcoChef App herunter!`;
+        const shareText = `Schau mal, was ich mit EcoChef gekocht habe:\n\n${this.recipe.title}\n🔥 ${this.recipe.nutrition?.calories || ''} | 🌍 Eco-Score: ${this.recipe.ecoScore || ''}\n🍷 Dazu passt: ${this.recipe.beverage || ''}\n\nLade dir die EcoChef App herunter!`;
         if (navigator.share) {
             try {
                 await navigator.share({title: this.recipe.title, text: shareText});
@@ -559,7 +561,7 @@ export class EcoChef extends LitElement {
                 console.error("Fehler beim Teilen", err);
             }
         } else {
-            navigator.clipboard.writeText(shareText);
+            await navigator.clipboard.writeText(shareText);
             alert("Rezept-Text in die Zwischenablage kopiert!");
         }
     }
