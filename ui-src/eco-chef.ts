@@ -355,7 +355,8 @@ export class EcoChef extends LitElement {
                                   ${this.shoppingList.map((item, index) => html`
                                       <div class="shopping-item ${item.checked ? 'checked' : ''}">
                                           <input type="checkbox"
-                                                 class="shopping-checkbox"
+                                                 class="shopping-c
+                                                 heckbox"
                                                  .checked="${item.checked}"
                                                  @change="${() => this.toggleShoppingItem(index)}" />
                                           <span class="shopping-text">${item.name}</span>
