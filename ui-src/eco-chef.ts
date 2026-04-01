@@ -101,7 +101,8 @@ export class EcoChef extends LitElement {
 
     openCamera() {
         if(!(navigator as any).camera) {
-            alert('Die Kamera funktioniert nur auf einem echten Handy oder konfigurierten Emulator!');
+            const fileInput = this.shadowRoot?.querySelector('#file-upload') as HTMLInputElement;
+            if (fileInput) fileInput.click();
             return;
         }
 
@@ -116,14 +117,24 @@ export class EcoChef extends LitElement {
         };
 
         (navigator as any).camera.getPicture(
-            (imageData: string) => {
-                this.capturedImage = imageData;
-            },
-            (error: any) => {
-                console.error("Kamera abgebrochen oder Fehler: ", error);
-            },
+            (imageData: string) => { this.capturedImage = imageData; },
+            (error: any) => { console.error(error); },
             options
         );
+    }
+
+
+    handleFileUpload(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const result = e.target?.result as string;
+                this.capturedImage = result.includes(',') ? result.split(',')[1] : result;
+            };
+            reader.readAsDataURL(file);
+        }
     }
 
     toggleDarkMode() {
@@ -255,18 +266,12 @@ export class EcoChef extends LitElement {
                   
                  ${!this.recipe && !this.showSavedRecipes && !this.showShoppingList ? html`
 
-                    <div class="input-with-camera">
-                        <input
-                                type="text"
-                                placeholder="Zutaten (z.B. Tomaten, Eier) oder Foto 📷"
-                                .value="${this.ingredients}"
-                                @input="${this._handleInput}"
-                                style="margin-bottom: 0;"
-                        />
-                        <button class="camera-btn" @click="${this.openCamera}" title="Kühlschrank scannen">
-                            📸
-                        </button>
-                    </div>
+                     <div class="input-with-camera">
+                         <input type="text" placeholder="Zutaten (z.B. Tomaten, Eier) oder Foto 📷" .value="${this.ingredients}" @input="${this._handleInput}" style="margin-bottom: 0;" />
+                         <input type="file" id="file-upload" accept="image/*" style="display: none;" @change="${this.handleFileUpload}" />
+                         <button class="camera-btn" @click="${this.openCamera}" title="Kühlschrank scannen">📸</button>
+                     </div>
+                     
 
                     ${this.capturedImage ? html`
                         <div class="image-preview-box">

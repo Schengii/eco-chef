@@ -7,6 +7,7 @@ import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default (_env, {mode}) => {
+
     return {
         mode: mode,
         entry: {
@@ -56,9 +57,9 @@ export default (_env, {mode}) => {
             extensions: ['.tsx', '.ts', '.js', '.jsx'],
         },
         output: {
-            filename: '[name].[contenthash].js',
             path: path.resolve(__dirname, 'www'),
-            clean: true,
+            filename: 'bundle.js',
+            clean: true
         },
         optimization: {
             usedExports: false,
