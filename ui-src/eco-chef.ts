@@ -4,6 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 import { GEMINI_API_KEY } from './api-config';
 import { ecoChefStyles } from "./eco-chef.styles";
 
+
 @customElement('eco-chef')
 export class EcoChef extends LitElement {
 
@@ -31,10 +32,9 @@ export class EcoChef extends LitElement {
 
     @state() showShoppingList = false;
     @state() shoppingList: { name: string, checked: boolean }[] = [];
+
     @state() manualShoppingItem = '';
-
     @state() capturedImage: string | null = null;
-
     @state() recipe: {
         title: string;
         difficulty: string;
@@ -683,7 +683,7 @@ export class EcoChef extends LitElement {
             requestContents.push(promptText);
 
             const response = await ai.models.generateContent({
-                model: "gemini-flash-latest",
+                model: "gemini-2.5-flash",
                 contents: requestContents,
             });
 
