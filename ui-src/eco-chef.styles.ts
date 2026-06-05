@@ -244,6 +244,37 @@ export const ecoChefStyles = css`
     .dark-theme .timer-countdown { color: #fde68a; }
     .dark-theme .stop-timer-btn { background: #7f1d1d; color: #fca5a5; }
 
+    /* Dark Mode: Action-Area Gradient */
+    .dark-theme .action-area {
+        background: linear-gradient(to top, rgba(15, 23, 42, 1) 70%, rgba(15, 23, 42, 0));
+    }
+    .dark-theme .regenerate-box {
+        background: #1e293b;
+    }
+    .dark-theme .edit-mode-box {
+        background: #1e293b;
+        border-color: #334155;
+    }
+    .dark-theme .tip-box {
+        background: #451a03;
+        border-color: #78350f;
+        color: #fde68a;
+    }
+    .dark-theme .extras-box {
+        background: #064e3b;
+        border-color: #047857;
+        color: #34d399;
+    }
+    .dark-theme .chip.active {
+        background: #064e3b;
+        border-color: #34d399;
+        color: #34d399;
+    }
+    .dark-theme .step-number {
+        background: #064e3b;
+        color: #34d399;
+    }
+
     /* --- ERWEITERTE BARRIEREFREIHEIT, LRS & FUNKTIONEN --- */
     
     /* Universeller Fokusring für Tastaturbedienung */
@@ -740,4 +771,71 @@ export const ecoChefStyles = css`
     .stat-bar-fill.calories { background: #f59e0b; }
     .stat-bar-fill.protein { background: #10b981; }
     .stat-bar-fill.co2 { background: #3b82f6; }
+
+    /* --- NEUE FEATURES: Suche, Bewertung, Drucken --- */
+
+    /* Suchfeld */
+    .search-box {
+        margin-bottom: 8px;
+    }
+    .search-box input {
+        border-radius: 20px;
+        padding-left: 20px;
+    }
+
+    /* Sternebewertung */
+    .rating-stars {
+        display: flex;
+        gap: 4px;
+        margin-top: 6px;
+    }
+    .star-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 2px;
+        color: var(--text-muted);
+        transition: transform 0.15s ease, color 0.2s;
+        line-height: 1;
+    }
+    .star-btn:hover {
+        transform: scale(1.2);
+    }
+    .star-btn:active {
+        transform: scale(0.9);
+    }
+    .star-btn.filled {
+        color: #f59e0b;
+    }
+
+    /* Große Sterne für Rezeptansicht */
+    .rating-stars.large {
+        gap: 8px;
+        justify-content: center;
+    }
+    .star-btn.large {
+        font-size: 28px;
+        padding: 4px;
+    }
+
+    /* Bewertungsbox im Rezept */
+    .recipe-rating-box {
+        text-align: center;
+        padding: 20px;
+        background: var(--bg-color);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        margin-top: 24px;
+        margin-bottom: 8px;
+    }
+    .dark-theme .recipe-rating-box {
+        background: #1e293b;
+    }
+
+    /* Saved card improvements */
+    .saved-card-content {
+        flex: 1;
+        min-width: 0;
+    }
 `;

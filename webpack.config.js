@@ -3,6 +3,7 @@ import webpack from 'webpack';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import { fileURLToPath } from 'url';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
+import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -33,7 +34,26 @@ export default (_env, {mode}) => {
                 'npm_package_name': 'packagejson-vars-missing',
                 'npm_package_version': 'packagejson-vars-missing',
                 'buildTimestamp': new Date().toISOString()
-            })
+            }),
+            {
+                apply: (compiler) => {
+                    compiler.hooks.afterEmit.tap('CopyAssetsPlugin', () => {
+                        const wwwDir = path.resolve(__dirname, 'www');
+                        if (fs.existsSync(wwwDir)) {
+                            fs.copyFileSync(path.resolve(__dirname, 'ui-src/sw.js'), path.resolve(wwwDir, 'sw.js'));
+                            fs.copyFileSync(path.resolve(__dirname, 'ui-src/manifest.json'), path.resolve(wwwDir, 'manifest.json'));
+                            // Copy PWA icons
+                            const assetsDir = path.resolve(__dirname, 'ui-src/assets');
+                            if (fs.existsSync(path.resolve(assetsDir, 'icon-192.png'))) {
+                                fs.copyFileSync(path.resolve(assetsDir, 'icon-192.png'), path.resolve(wwwDir, 'icon-192.png'));
+                            }
+                            if (fs.existsSync(path.resolve(assetsDir, 'icon-512.png'))) {
+                                fs.copyFileSync(path.resolve(assetsDir, 'icon-512.png'), path.resolve(wwwDir, 'icon-512.png'));
+                            }
+                        }
+                    });
+                }
+            }
         ],
         module: {
             rules: [

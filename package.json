@@ -1,8 +1,8 @@
 {
-  "name": "io.cordova.hellocordova",
-  "displayName": "HelloCordova",
+  "name": "com.schenk.ecochef",
+  "displayName": "EcoChef",
   "version": "1.0.0",
-  "description": "A sample Apache Cordova application that responds to the deviceready event.",
+  "description": "EcoChef - Dein intelligenter KI-Rezept-Zauberer. Koche nachhaltig mit deinen Kühlschrankzutaten.",
   "scripts": {
     "test": "echo 'Error: no test specified' && exit 1",
     "dev": "kill-port --port 4444 && webpack serve --mode=development",
@@ -11,7 +11,7 @@
   "keywords": [
     "ecosystem:cordova"
   ],
-  "author": "Apache Cordova Team",
+  "author": "Max Schenk",
   "license": "Apache-2.0",
   "cordova": {
     "platforms": [
@@ -34,25 +34,7 @@
     "webpack-dev-server": "5.2.2"
   },
   "dependencies": {
-    "@azure/msal-browser": "3.21.0",
     "@google/genai": "^1.20.0",
-    "@lit-labs/observers": "^2.0.6",
-    "@lit/task": "^1.0.3",
-    "@vaadin/avatar": "^24.8.5",
-    "@vaadin/button": "^24.8.5",
-    "@vaadin/checkbox": "^24.8.5",
-    "@vaadin/dialog": "^24.8.5",
-    "@vaadin/grid": "^24.8.5",
-    "@vaadin/icon": "^24.8.5",
-    "@vaadin/icons": "^24.8.5",
-    "@vaadin/integer-field": "^24.8.5",
-    "@vaadin/markdown": "^24.8.5",
-    "@vaadin/router": "^2.0.0",
-    "@vaadin/scroller": "^24.8.5",
-    "@vaadin/text-field": "^24.9.0",
-    "@vaadin/tooltip": "^24.8.5",
-    "keycloak-js": "^22.0.1",
-    "lit": "3.3.1",
-    "npm": "^11.12.0"
+    "lit": "3.3.1"
   }
 }

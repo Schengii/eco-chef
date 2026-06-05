@@ -76,6 +76,12 @@ export class EcoChef extends LitElement {
     @state() isGeneratingImage = false;
     @state() showWelcomeScreen = true;
 
+    // Neue Features: Suche, Bewertung, Import
+    @state() searchQuery = '';
+    @state() currentRating = 0;
+    @state() showImportModal = false;
+    @state() importFileContent = '';
+
 
     static override styles = ecoChefStyles;
 
@@ -623,7 +629,7 @@ export class EcoChef extends LitElement {
 
                     ${this.capturedImage ? html`
                         <div class="image-preview-box">
-                            <img src="data:image/jpeg;base64,${this.capturedImage}" alt="Kühlschrank-Bild" />
+                            <img src="${this.capturedImage}" alt="Kühlschrank-Bild" />
                             <button class="remove-image-btn" @click="${() => this.capturedImage = null}">❌ Entfernen</button>
                         </div>
                     ` : ''}
@@ -757,25 +763,61 @@ export class EcoChef extends LitElement {
                   
                 ${this.showSavedRecipes && !this.recipe ? html`
                     <div class="saved-recipes-container">
-                        <h3 class="recipe-subheading">Deine gespeicherten Rezepte</h3>
+                        <h3 class="recipe-subheading">📚 Deine gespeicherten Rezepte</h3>
+
+                        <!-- Suchfeld -->
+                        <div class="search-box">
+                            <input type="text"
+                                   placeholder="🔍 Rezepte durchsuchen..."
+                                   .value="${this.searchQuery}"
+                                   @input="${(e: Event) => this.searchQuery = (e.target as HTMLInputElement).value}"
+                                   style="margin-bottom: 0;"
+                                   aria-label="Gespeicherte Rezepte durchsuchen" />
+                        </div>
+
+                        <!-- Import-Button -->
+                        <div style="display: flex; gap: 10px; margin-top: 16px; margin-bottom: 16px;">
+                            <input type="file" id="import-file" accept=".json" style="display: none;" @change="${this.handleImportFile}" />
+                            <button class="secondary-btn" @click="${() => (this.shadowRoot?.querySelector('#import-file') as HTMLInputElement)?.click()}" style="border-color: #8b5cf6; color: #7c3aed;" aria-label="Rezepte aus JSON-Datei importieren">
+                                📂 Rezepte importieren (JSON)
+                            </button>
+                        </div>
 
                         ${this.savedRecipesList.length === 0 ? html`
                             <p class="empty-state">Du hast noch keine Rezepte gespeichert. Zaubere dein erstes Gericht!</p>
                         ` : html`
-                            <div class="saved-list">
-                                ${this.savedRecipesList.map((item, index) => html`
-                                    <div class="saved-card" @click="${() => this.openSavedRecipe(item)}">
-                                        <div class="saved-card-content">
-                                            <h4>${item.title}</h4>
-                                            <div class="saved-meta">
-                                                <span>📊 ${item.difficulty || '?'}</span>
-                                                <span>🕒 ${item.prepTime || '?'}</span>
+                            ${(() => {
+                                const filtered = this.getFilteredSavedRecipes();
+                                if (filtered.length === 0) {
+                                    return html`<p class="empty-state">Keine Rezepte gefunden für "${this.searchQuery}"</p>`;
+                                }
+                                return html`
+                                    <p class="subtitle" style="margin-bottom: 12px;">${filtered.length} von ${this.savedRecipesList.length} Rezept(en)</p>
+                                    <div class="saved-list">
+                                        ${filtered.map((item: any, index: number) => html`
+                                            <div class="saved-card" @click="${() => this.openSavedRecipe(item)}">
+                                                <div class="saved-card-content">
+                                                    <h4>${item.title}</h4>
+                                                    <div class="saved-meta">
+                                                        <span>📊 ${item.difficulty || '?'}</span>
+                                                        <span>🕒 ${item.prepTime || '?'}</span>
+                                                        ${item.savedAt ? html`<span>📅 ${new Date(item.savedAt).toLocaleDateString('de-DE')}</span>` : ''}
+                                                    </div>
+                                                    <div class="rating-stars" @click="${(e: Event) => e.stopPropagation()}">
+                                                        ${[1,2,3,4,5].map(star => html`
+                                                            <button class="star-btn ${star <= (item.rating || 0) ? 'filled' : ''}"
+                                                                    @click="${(e: Event) => this.updateSavedRecipeRating(this.savedRecipesList.indexOf(item), star, e)}"
+                                                                    aria-label="${star} Sterne"
+                                                            >${star <= (item.rating || 0) ? '⭐' : '☆'}</button>
+                                                        `)}
+                                                    </div>
+                                                </div>
+                                                <button class="delete-btn" @click="${(e: Event) => this.deleteSavedRecipe(this.savedRecipesList.indexOf(item), e)}">🗑️</button>
                                             </div>
-                                        </div>
-                                        <button class="delete-btn" @click="${(e: Event) => this.deleteSavedRecipe(index, e)}">🗑️</button>
+                                        `)}
                                     </div>
-                                `)}
-                            </div>
+                                `;
+                            })()}
                         `}
                     </div>
                 ` : ''}
@@ -899,11 +941,27 @@ export class EcoChef extends LitElement {
                             `}
                         </div>
 
+                        <!-- Bewertung & Aktionen -->
+                        <div class="recipe-rating-box">
+                            <p class="filter-title" style="margin-bottom: 8px;">⭐ Rezept bewerten:</p>
+                            <div class="rating-stars large">
+                                ${[1,2,3,4,5].map(star => html`
+                                    <button class="star-btn large ${star <= this.currentRating ? 'filled' : ''}"
+                                            @click="${() => this.setRecipeRating(star)}"
+                                            aria-label="${star} Sterne vergeben"
+                                    >${star <= this.currentRating ? '⭐' : '☆'}</button>
+                                `)}
+                            </div>
+                        </div>
+
                         <button class="main-btn" @click="${this.markAsCooked}" style="background-color: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); margin-top: 15px; margin-bottom: 10px;">
                             🍳 Als gekocht markieren
                         </button>
                         <button class="main-btn" @click="${this.startCookingMode}" style="background-color: #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); margin-top: 0; margin-bottom: 10px;">
                             👨‍🍳 Kochmodus starten
+                        </button>
+                        <button class="main-btn" @click="${this.printRecipe}" style="background-color: #3b82f6; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); margin-top: 0; margin-bottom: 10px;">
+                            🖨️ Rezept drucken
                         </button>
                         <button class="main-btn finish-btn" @click="${() => this.showExitDialog = true}">
                             ✅ Rezept schließen
@@ -977,10 +1035,10 @@ export class EcoChef extends LitElement {
                        }}">📤 Teilen
                        </button>
                        <button class="modal-btn save" @click="${() => {
-                           this.saveRecipe();
-                           this.showExitDialog = false;
-                       }}">💾 Speichern
-                       </button>
+                            this.saveRecipeWithRating();
+                            this.showExitDialog = false;
+                        }}">💾 Speichern${this.currentRating ? ` (${this.currentRating}⭐)` : ''}
+                        </button>
                        <button class="modal-btn new" @click="${this.startNewRecipe}">🔄 Neues Rezept laden</button>
                        <button class="modal-btn exit" @click="${this.exitApp}">❌ App verlassen</button>
                        <button class="modal-btn cancel" @click="${() => this.showExitDialog = false}">Zurück zum Rezept</button>
@@ -1224,6 +1282,7 @@ export class EcoChef extends LitElement {
 
     startNewRecipe() {
         this.recipe = null;
+        this.recipeImage = null;
         this.ingredients = '';
         this.ingredientChips = [];
         this.urgentIngredients = {};
@@ -1612,6 +1671,161 @@ export class EcoChef extends LitElement {
     }
 
     // Render Sub-Components
+
+    // --- NEUE FEATURES: Suche, Bewertung, Drucken, Import ---
+
+    getFilteredSavedRecipes() {
+        if (!this.searchQuery.trim()) return this.savedRecipesList;
+        const query = this.searchQuery.toLowerCase();
+        return this.savedRecipesList.filter((r: any) =>
+            r.title?.toLowerCase().includes(query) ||
+            r.ingredientsList?.some((i: any) => i.item?.toLowerCase().includes(query))
+        );
+    }
+
+    setRecipeRating(rating: number) {
+        if (!this.recipe) return;
+        this.currentRating = rating;
+        this.srAnnouncement = `Rezept mit ${rating} von 5 Sternen bewertet.`;
+    }
+
+    saveRecipeWithRating() {
+        if (!this.recipe) return;
+        const saved = JSON.parse(localStorage.getItem('ecoChef_savedRecipes') || '[]');
+        const recipeToSave = {
+            ...this.recipe,
+            image: this.recipeImage || undefined,
+            rating: this.currentRating || 0,
+            savedAt: new Date().toISOString()
+        };
+        saved.push(recipeToSave);
+        localStorage.setItem('ecoChef_savedRecipes', JSON.stringify(saved));
+        alert(`✅ Rezept gespeichert${this.currentRating ? ` mit ${this.currentRating} ⭐` : ''}!`);
+        this.srAnnouncement = `Rezept "${this.recipe.title}" wurde gespeichert.`;
+    }
+
+    updateSavedRecipeRating(index: number, rating: number, event: Event) {
+        event.stopPropagation();
+        if (this.savedRecipesList[index]) {
+            this.savedRecipesList[index].rating = rating;
+            localStorage.setItem('ecoChef_savedRecipes', JSON.stringify(this.savedRecipesList));
+            this.requestUpdate();
+            this.srAnnouncement = `Bewertung auf ${rating} Sterne aktualisiert.`;
+        }
+    }
+
+    printRecipe() {
+        if (!this.recipe) return;
+
+        const printContent = `
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>${this.recipe.title} - EcoChef Rezept</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Georgia, 'Times New Roman', serif; max-width: 700px; margin: 0 auto; padding: 40px 24px; color: #1a1a1a; }
+        h1 { font-size: 28px; margin-bottom: 8px; color: #047857; }
+        .meta { display: flex; gap: 16px; margin-bottom: 24px; font-size: 14px; color: #666; }
+        .section-title { font-size: 18px; font-weight: 700; margin: 24px 0 12px; border-bottom: 2px solid #047857; padding-bottom: 4px; }
+        .ingredients { list-style: disc; padding-left: 24px; }
+        .ingredients li { margin-bottom: 6px; font-size: 15px; }
+        .step { display: flex; gap: 12px; margin-bottom: 12px; }
+        .step-num { background: #ecfdf5; color: #047857; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+        .step-text { font-size: 15px; line-height: 1.6; }
+        .nutrition { display: flex; gap: 20px; margin-top: 12px; font-size: 14px; }
+        .tip { background: #fffbeb; border: 1px solid #fde68a; padding: 12px 16px; border-radius: 8px; margin-top: 20px; font-size: 14px; }
+        .footer { margin-top: 32px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 12px; }
+        @media print { body { padding: 20px; } }
+    </style>
+</head>
+<body>
+    <h1>${this.recipe.title}</h1>
+    <div class="meta">
+        <span>📊 ${this.recipe.difficulty}</span>
+        <span>🕒 ${this.recipe.prepTime}</span>
+        <span>🍽️ ${this.persons} Portionen</span>
+        <span>🌍 Eco-Score: ${this.recipe.ecoScore}</span>
+    </div>
+    <div class="nutrition">
+        <span>🔥 ${this.recipe.nutrition?.calories}</span>
+        <span>🥩 ${this.recipe.nutrition?.protein} Protein</span>
+        <span>🌾 ${this.recipe.nutrition?.carbs} KH</span>
+        <span>🥑 ${this.recipe.nutrition?.fat} Fett</span>
+    </div>
+    <h2 class="section-title">🛒 Zutaten</h2>
+    <ul class="ingredients">
+        ${this.recipe.ingredientsList.map(i => `<li>${i.item}</li>`).join('')}
+    </ul>
+    <h2 class="section-title">🍳 Zubereitung</h2>
+    ${this.recipe.instructions.map((step, i) => `
+        <div class="step">
+            <div class="step-num">${i + 1}</div>
+            <div class="step-text">${step}</div>
+        </div>
+    `).join('')}
+    <div class="tip">💡 <strong>Tipp:</strong> ${this.recipe.tip}</div>
+    <p style="margin-top: 16px; font-size: 14px;">🍷 <strong>Getränke-Empfehlung:</strong> ${this.recipe.beverage}</p>
+    <p style="margin-top: 8px; font-size: 14px;">🧊 <strong>Aufbewahrung:</strong> ${this.recipe.storageTip}</p>
+    <div class="footer">Erstellt mit EcoChef 🧑‍🍳 — Dein KI-Rezept-Zauberer</div>
+</body>
+</html>`;
+
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => printWindow.print(), 300);
+        }
+        this.srAnnouncement = `Rezept "${this.recipe.title}" wird gedruckt.`;
+    }
+
+    handleImportFile(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const content = e.target?.result as string;
+                const imported = JSON.parse(content);
+
+                if (!Array.isArray(imported)) {
+                    alert('❌ Ungültiges Format. Erwartet wird ein JSON-Array von Rezepten.');
+                    return;
+                }
+
+                const existing = JSON.parse(localStorage.getItem('ecoChef_savedRecipes') || '[]');
+                const merged = [...existing, ...imported.map((r: any) => ({
+                    ...r,
+                    ingredientsList: this.normalizeIngredients(r.ingredientsList),
+                    importedAt: new Date().toISOString()
+                }))];
+
+                localStorage.setItem('ecoChef_savedRecipes', JSON.stringify(merged));
+                alert(`✅ ${imported.length} Rezept(e) erfolgreich importiert!`);
+                this.srAnnouncement = `${imported.length} Rezepte importiert.`;
+
+                // Refresh saved list if visible
+                if (this.showSavedRecipes) {
+                    this.savedRecipesList = merged.map((r: any) => ({
+                        ...r,
+                        ingredientsList: this.normalizeIngredients(r.ingredientsList)
+                    }));
+                }
+            } catch (err) {
+                alert('❌ Fehler beim Importieren. Stelle sicher, dass es sich um eine gültige EcoChef-JSON-Datei handelt.');
+                console.error('Import error:', err);
+            }
+        };
+        reader.readAsText(file);
+        // Reset input so same file can be imported again
+        input.value = '';
+    }
+
     renderSettings() {
         return html`
             <div class="settings-container">
@@ -1760,6 +1974,10 @@ export class EcoChef extends LitElement {
                     </button>
                     <button class="secondary-btn" @click="${this.exportRecipes}" style="margin-bottom: 12px; border-color: #3b82f6; color: #1d4ed8;" aria-label="Rezepte exportieren">
                         📥 Gespeicherte Rezepte exportieren (JSON)
+                    </button>
+                    <input type="file" id="import-settings-file" accept=".json" style="display: none;" @change="${this.handleImportFile}" />
+                    <button class="secondary-btn" @click="${() => (this.shadowRoot?.querySelector('#import-settings-file') as HTMLInputElement)?.click()}" style="margin-bottom: 12px; border-color: #8b5cf6; color: #7c3aed;" aria-label="Rezepte aus JSON importieren">
+                        📂 Rezepte importieren (JSON)
                     </button>
                     <button class="secondary-btn" @click="${this.clearAllData}" style="border-color: #ef4444; color: #b91c1c;" aria-label="Alle Anwendungsdaten löschen">
                         🗑️ Alle App-Daten löschen
