@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { GoogleGenAI } from '@google/genai';
 import { GEMINI_API_KEY } from './api-config';
 import { ecoChefStyles } from "./eco-chef.styles";
+import { Recipe, IngredientItem, ShoppingItem, DailyStat } from './eco-chef.models';
 
 
 @customElement('eco-chef')
@@ -31,28 +32,17 @@ export class EcoChef extends LitElement {
     private timerInterval: number | null = null;
 
     @state() showShoppingList = false;
-    @state() shoppingList: { name: string, checked: boolean }[] = [];
+    @state() shoppingList: ShoppingItem[] = [];
 
     @state() manualShoppingItem = '';
     @state() capturedImage: string | null = null;
-    @state() recipe: {
-        title: string;
-        difficulty: string;
-        prepTime: string;
-        ecoScore: string;
-        beverage: string;
-        storageTip: string;
-        nutrition: {
-            calories: string;
-            protein: string;
-            carbs: string;
-            fat: string;
-        };
-        ingredientsList: string[];
-        instructions: string[];
-        tip: string;
-        image?: string;
-    } | null = null;
+    @state() recipe: Recipe | null = null;
+
+    // Fortgeschrittene Features State
+    @state() selectedAllergens: { [key: string]: boolean } = {};
+    @state() ingredientChips: string[] = [];
+    @state() urgentIngredients: { [key: string]: boolean } = {};
+    @state() stats: { [date: string]: DailyStat } = {};
 
     // DSGVO & Einstellungen
     @state() hasConsent = false;
@@ -129,7 +119,38 @@ export class EcoChef extends LitElement {
 
         const savedShopping = localStorage.getItem('ecoChef_shoppingList');
         if (savedShopping) {
-            this.shoppingList = JSON.parse(savedShopping);
+            try {
+                this.shoppingList = JSON.parse(savedShopping).map((item: any) => ({
+                    ...item,
+                    category: item.category || 'Sonstiges'
+                }));
+            } catch (e) {
+                console.error("Error parsing shopping list", e);
+                this.shoppingList = [];
+            }
+        }
+
+        // Allergene laden
+        const savedAllergens = localStorage.getItem('ecoChef_allergens');
+        if (savedAllergens) {
+            try {
+                this.selectedAllergens = JSON.parse(savedAllergens);
+            } catch (e) {
+                console.error("Error parsing allergens", e);
+            }
+        }
+
+        // Chips laden
+        this.loadChips();
+
+        // Statistiken laden
+        const savedStats = localStorage.getItem('ecoChef_stats');
+        if (savedStats) {
+            try {
+                this.stats = JSON.parse(savedStats);
+            } catch (e) {
+                console.error("Error parsing stats", e);
+            }
         }
 
         this.updateFontScaleStyle();
@@ -220,10 +241,17 @@ export class EcoChef extends LitElement {
         }
     }
 
-    addToShoppingList(ingredient: string) {
-        const cleanName = ingredient.replace(/^(\*|\d+\.)\s*/, '').trim();
+    addToShoppingList(ingredient: IngredientItem | string) {
+        let cleanName = '';
+        let category = 'Sonstiges';
+        if (typeof ingredient === 'string') {
+            cleanName = ingredient.replace(/^(\*|\d+\.)\s*/, '').trim();
+        } else {
+            cleanName = ingredient.item.replace(/^(\*|\d+\.)\s*/, '').trim();
+            category = ingredient.category || 'Sonstiges';
+        }
         if (!this.shoppingList.some(item => item.name === cleanName)) {
-            this.shoppingList.push({ name: cleanName, checked: false });
+            this.shoppingList.push({ name: cleanName, checked: false, category });
             this.saveShoppingList();
             alert(`✅ "${cleanName}" wurde zur Einkaufsliste hinzugefügt!`);
             this.requestUpdate();
@@ -234,7 +262,7 @@ export class EcoChef extends LitElement {
 
     addManualShoppingItem() {
         if (this.manualShoppingItem.trim() !== '') {
-            this.shoppingList.push({ name: this.manualShoppingItem.trim(), checked: false });
+            this.shoppingList.push({ name: this.manualShoppingItem.trim(), checked: false, category: 'Sonstiges' });
             this.manualShoppingItem = '';
             this.saveShoppingList();
         }
@@ -259,6 +287,216 @@ export class EcoChef extends LitElement {
 
     saveShoppingList() {
         localStorage.setItem('ecoChef_shoppingList', JSON.stringify(this.shoppingList));
+    }
+
+    // --- CHIP MANAGEMENT & UTILITY METHODS ---
+    
+    handleIngredientsKeypress(e: KeyboardEvent) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this.addIngredientFromInput();
+        }
+    }
+
+    addIngredientFromInput() {
+        const val = this.ingredients.trim();
+        if (val) {
+            const parts = val.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            for (const part of parts) {
+                if (!this.ingredientChips.includes(part)) {
+                    this.ingredientChips = [...this.ingredientChips, part];
+                }
+            }
+            this.ingredients = '';
+            const inputEl = this.shadowRoot?.querySelector('#ingredients-input') as HTMLInputElement;
+            if (inputEl) {
+                inputEl.value = '';
+            }
+            this.saveChips();
+        }
+    }
+
+    removeIngredientChip(chip: string) {
+        this.ingredientChips = this.ingredientChips.filter(c => c !== chip);
+        delete this.urgentIngredients[chip];
+        this.urgentIngredients = { ...this.urgentIngredients };
+        this.saveChips();
+    }
+
+    toggleUrgentIngredient(chip: string) {
+        this.urgentIngredients = {
+            ...this.urgentIngredients,
+            [chip]: !this.urgentIngredients[chip]
+        };
+        this.saveChips();
+        this.srAnnouncement = `${chip} wurde als ${this.urgentIngredients[chip] ? 'dringend zu verbrauchen' : 'normal'} markiert.`;
+    }
+
+    saveChips() {
+        localStorage.setItem('ecoChef_ingredientChips', JSON.stringify(this.ingredientChips));
+        localStorage.setItem('ecoChef_urgentIngredients', JSON.stringify(this.urgentIngredients));
+    }
+
+    loadChips() {
+        const chips = localStorage.getItem('ecoChef_ingredientChips');
+        if (chips) {
+            this.ingredientChips = JSON.parse(chips);
+        }
+        const urgent = localStorage.getItem('ecoChef_urgentIngredients');
+        if (urgent) {
+            this.urgentIngredients = JSON.parse(urgent);
+        }
+    }
+
+    toggleAllergen(allergen: string) {
+        this.selectedAllergens = {
+            ...this.selectedAllergens,
+            [allergen]: !this.selectedAllergens[allergen]
+        };
+        localStorage.setItem('ecoChef_allergens', JSON.stringify(this.selectedAllergens));
+        this.srAnnouncement = `Allergenfilter ${allergen} wurde ${this.selectedAllergens[allergen] ? 'aktiviert' : 'deaktiviert'}.`;
+    }
+
+    normalizeIngredients(ingredients: any[]): IngredientItem[] {
+        if (!ingredients) return [];
+        return ingredients.map(ing => {
+            if (typeof ing === 'string') {
+                return { item: ing, category: 'Sonstiges' };
+            }
+            if (ing && typeof ing === 'object' && 'item' in ing) {
+                return { item: ing.item, category: ing.category || 'Sonstiges' };
+            }
+            return { item: String(ing), category: 'Sonstiges' };
+        });
+    }
+
+    getGroupedShoppingList() {
+        const groups: { [key: string]: { item: ShoppingItem, originalIndex: number }[] } = {};
+        this.shoppingList.forEach((item, index) => {
+            const cat = item.category || 'Sonstiges';
+            if (!groups[cat]) {
+                groups[cat] = [];
+            }
+            groups[cat].push({ item, originalIndex: index });
+        });
+        return groups;
+    }
+
+    async shareShoppingList() {
+        if (this.shoppingList.length === 0) return;
+        
+        const grouped = this.getGroupedShoppingList();
+        let text = `🛒 *Meine EcoChef Einkaufsliste*:\n`;
+        
+        const categoriesOrder = ['Obst & Gemüse', 'Milchprodukte & Eier', 'Fleisch & Fisch', 'Vorrat & Gewürze', 'Bäckerei', 'Sonstiges'];
+        categoriesOrder.forEach(cat => {
+            if (grouped[cat] && grouped[cat].length > 0) {
+                text += `\n*${cat}*:\n`;
+                grouped[cat].forEach(g => {
+                    const prefix = g.item.checked ? '✅ ' : '⬜ ';
+                    text += `${prefix}${g.item.name}\n`;
+                });
+            }
+        });
+        
+        text += `\nGeneriert mit EcoChef 🧑‍🍳`;
+
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Meine Einkaufsliste',
+                    text: text
+                });
+            } catch (err) {
+                console.error("Fehler beim Teilen", err);
+            }
+        } else {
+            await navigator.clipboard.writeText(text);
+            alert("Einkaufsliste als Text in die Zwischenablage kopiert!");
+        }
+    }
+
+    parseVal(val: string | number | undefined): number {
+        if (val === undefined || val === null) return 0;
+        if (typeof val === 'number') return val;
+        const match = val.match(/([\d.,]+)/);
+        if (match) {
+            return parseFloat(match[1].replace(',', '.'));
+        }
+        return 0;
+    }
+
+    markAsCooked() {
+        if (!this.recipe) return;
+        const today = new Date().toISOString().split('T')[0];
+        
+        const cal = this.parseVal(this.recipe.nutrition.calories);
+        const prot = this.parseVal(this.recipe.nutrition.protein);
+        const carb = this.parseVal(this.recipe.nutrition.carbs);
+        const fat = this.parseVal(this.recipe.nutrition.fat);
+        const co2 = this.recipe.co2SavedKg || 0;
+
+        const currentStat: DailyStat = this.stats[today] || {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            co2Saved: 0,
+            count: 0
+        };
+
+        this.stats = {
+            ...this.stats,
+            [today]: {
+                calories: currentStat.calories + cal,
+                protein: currentStat.protein + prot,
+                carbs: currentStat.carbs + carb,
+                fat: currentStat.fat + fat,
+                co2Saved: currentStat.co2Saved + co2,
+                count: currentStat.count + 1
+            }
+        };
+
+        localStorage.setItem('ecoChef_stats', JSON.stringify(this.stats));
+        this.srAnnouncement = `Rezept "${this.recipe.title}" als gekocht markiert. Kalorien und CO2-Ersparnis wurden getrackt.`;
+        alert("🎉 Rezept als gekocht markiert! Deine Ernährungs- und CO2-Statistiken wurden aktualisiert.");
+    }
+
+    getWeeklyStats() {
+        let totalCalories = 0;
+        let totalProtein = 0;
+        let totalCarbs = 0;
+        let totalFat = 0;
+        let totalCo2Saved = 0;
+        let totalCookedCount = 0;
+
+        const last7Days: string[] = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            last7Days.push(d.toISOString().split('T')[0]);
+        }
+
+        last7Days.forEach(date => {
+            const stat = this.stats[date];
+            if (stat) {
+                totalCalories += stat.calories || 0;
+                totalProtein += stat.protein || 0;
+                totalCarbs += stat.carbs || 0;
+                totalFat += stat.fat || 0;
+                totalCo2Saved += stat.co2Saved || 0;
+                totalCookedCount += stat.count || 0;
+            }
+        });
+
+        return {
+            calories: Math.round(totalCalories),
+            protein: Math.round(totalProtein),
+            carbs: Math.round(totalCarbs),
+            fat: Math.round(totalFat),
+            co2Saved: parseFloat(totalCo2Saved.toFixed(2)),
+            count: totalCookedCount
+        };
     }
 
 
@@ -363,10 +601,24 @@ export class EcoChef extends LitElement {
                  ${!this.recipe && !this.showSavedRecipes && !this.showShoppingList && !this.showSettings ? html`
 
                      <div class="input-with-camera">
-                         <input type="text" id="ingredients-input" placeholder="Zutaten (z.B. Tomaten, Eier) oder Foto 📷" .value="${this.ingredients}" @input="${this._handleInput}" style="margin-bottom: 0;" aria-label="Zutaten eingeben" />
+                          <input type="text" id="ingredients-input" placeholder="Zutat eingeben & Enter drücken oder Foto 📷" .value="${this.ingredients}" @input="${this._handleInput}" @keypress="${this.handleIngredientsKeypress}" style="margin-bottom: 0;" aria-label="Zutaten eingeben" />
                          <input type="file" id="file-upload" accept="image/*" style="display: none;" @change="${this.handleFileUpload}" />
-                         <button class="camera-btn" @click="${this.openCamera}" title="Kühlschrank scannen" aria-label="Kühlschrank scannen oder Foto hochladen">📸</button>
-                     </div>
+                          <button class="camera-btn" @click="${this.openCamera}" title="Kühlschrank scannen" aria-label="Kühlschrank scannen oder Foto hochladen">📸</button>
+                      </div>
+
+                      ${this.ingredientChips.length > 0 ? html`
+                          <div class="ingredient-chips-container">
+                              ${this.ingredientChips.map(chip => html`
+                                  <div class="ingredient-chip ${this.urgentIngredients[chip] ? 'urgent' : ''}">
+                                      <button class="urgent-btn" @click="${() => this.toggleUrgentIngredient(chip)}" title="${this.urgentIngredients[chip] ? 'Dringend verbrauchen deaktivieren' : 'Als dringend markieren'}">
+                                          ${this.urgentIngredients[chip] ? '🚨' : '⚠️'}
+                                      </button>
+                                      <span>${chip}</span>
+                                      <button class="remove-chip-btn" @click="${() => this.removeIngredientChip(chip)}" aria-label="${chip} entfernen">❌</button>
+                                  </div>
+                              `)}
+                          </div>
+                      ` : ''}
                      
 
                     ${this.capturedImage ? html`
@@ -461,18 +713,36 @@ export class EcoChef extends LitElement {
                           ${this.shoppingList.length === 0 ? html`
                               <p class="empty-state">Deine Liste ist leer. Füge Zutaten aus einem Rezept hinzu!</p>
                           ` : html`
+                              <!-- Button zum Teilen der Einkaufsliste -->
+                              <button class="secondary-btn" @click="${this.shareShoppingList}" style="margin-bottom: 20px; border-color: #10b981; color: #059669;">
+                                  📤 Einkaufsliste teilen
+                              </button>
+
                               <div class="saved-list">
-                                  ${this.shoppingList.map((item, index) => html`
-                                      <div class="shopping-item ${item.checked ? 'checked' : ''}">
-                                          <input type="checkbox"
-                                                 class="shopping-checkbox"
-                                                 .checked="${item.checked}"
-                                                 @change="${() => this.toggleShoppingItem(index)}"
-                                                 aria-label="${item.name} abchecken" />
-                                          <span class="shopping-text">${item.name}</span>
-                                          <button class="delete-btn" @click="${() => this.removeShoppingItem(index)}" style="width: 32px; height: 32px; font-size: 14px;" aria-label="${item.name} löschen">❌</button>
-                                      </div>
-                                  `)}
+                                  ${(() => {
+                                      const grouped = this.getGroupedShoppingList();
+                                      const categoriesOrder = ['Obst & Gemüse', 'Milchprodukte & Eier', 'Fleisch & Fisch', 'Vorrat & Gewürze', 'Bäckerei', 'Sonstiges'];
+                                      
+                                      return categoriesOrder.map(cat => {
+                                          const items = grouped[cat];
+                                          if (!items || items.length === 0) return '';
+                                          
+                                          return html`
+                                              <div class="shopping-category-header">${cat}</div>
+                                              ${items.map(g => html`
+                                                  <div class="shopping-item ${g.item.checked ? 'checked' : ''}">
+                                                      <input type="checkbox"
+                                                             class="shopping-checkbox"
+                                                             .checked="${g.item.checked}"
+                                                             @change="${() => this.toggleShoppingItem(g.originalIndex)}"
+                                                             aria-label="${g.item.name} abchecken" />
+                                                      <span class="shopping-text">${g.item.name}</span>
+                                                      <button class="delete-btn" @click="${() => this.removeShoppingItem(g.originalIndex)}" style="width: 32px; height: 32px; font-size: 14px;" aria-label="${g.item.name} löschen">❌</button>
+                                                  </div>
+                                              `)}
+                                          `;
+                                      });
+                                  })()}
                               </div>
 
                               ${this.shoppingList.some(item => item.checked) ? html`
@@ -540,7 +810,23 @@ export class EcoChef extends LitElement {
                             <span class="eco-badge">
                                 🌍 Eco-Score: ${this.recipe.ecoScore || '🍃🍃🍃'}
                             </span>
+                            ${this.recipe.co2Footprint ? html`
+                                <span class="eco-badge" style="background: #f0fdfa; color: #0f766e; border-color: #ccfbf1;">
+                                    👣 CO₂: ${this.recipe.co2Footprint}
+                                </span>
+                            ` : ''}
+                            ${this.recipe.co2SavedKg !== undefined && this.recipe.co2SavedKg > 0 ? html`
+                                <span class="eco-badge" style="background: #e0f2fe; color: #0369a1; border-color: #bae6fd;">
+                                    🌳 CO₂-Ersparnis: ${this.recipe.co2SavedKg} kg
+                                </span>
+                            ` : ''}
                         </div>
+
+                        ${this.recipe.ecoScoreDetails ? html`
+                            <div class="extras-box" style="background-color: #ecfdf5; border-color: #a7f3d0; color: #065f46; margin-top: 0; margin-bottom: 24px;">
+                                <p><strong>🌍 Saison & CO₂-Fakten:</strong> ${this.recipe.ecoScoreDetails}</p>
+                            </div>
+                        ` : ''}
 
                         <div class="macros-box">
                             <span class="macro-item"><strong>🔥 ${this.recipe.nutrition?.calories || '? kcal'}</strong></span>
@@ -553,7 +839,7 @@ export class EcoChef extends LitElement {
                         ${this.isEditing ? html`
                             <div class="edit-mode-box">
                                 <h3 class="recipe-subheading">🖊️ Zutaten bearbeiten:</h3>
-                                <textarea id="edit-ingredients" class="edit-area" rows="6">${this.recipe.ingredientsList.join('\n')}</textarea>
+                                <textarea id="edit-ingredients" class="edit-area" rows="6">${this.recipe.ingredientsList.map(i => i.item).join('\n')}</textarea>
                                 <h3 class="recipe-subheading">🖊️ Zubereitung bearbeiten:</h3>
                                 <textarea id="edit-instructions" class="edit-area" rows="8">${this.recipe.instructions.join('\n')}</textarea>
                                 <button class="main-btn save-edit-btn" @click="${this.saveEdits}">💾 Änderungen übernehmen</button>
@@ -567,7 +853,7 @@ export class EcoChef extends LitElement {
                             <ul class="ingredients-list">
                                 ${this.recipe.ingredientsList.map(item => html`
                                     <li>
-                                        <span>${item}</span>
+                                        <span>${item.item}</span>
                                         <button class="add-to-list-btn" @click="${() => this.addToShoppingList(item)}" title="Zur Einkaufsliste hinzufügen">
                                             + 🛒
                                         </button>
@@ -613,7 +899,10 @@ export class EcoChef extends LitElement {
                             `}
                         </div>
 
-                        <button class="main-btn" @click="${this.startCookingMode}" style="background-color: #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); margin-top: 15px; margin-bottom: 10px;">
+                        <button class="main-btn" @click="${this.markAsCooked}" style="background-color: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); margin-top: 15px; margin-bottom: 10px;">
+                            🍳 Als gekocht markieren
+                        </button>
+                        <button class="main-btn" @click="${this.startCookingMode}" style="background-color: #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); margin-top: 0; margin-bottom: 10px;">
                             👨‍🍳 Kochmodus starten
                         </button>
                         <button class="main-btn finish-btn" @click="${() => this.showExitDialog = true}">
@@ -777,7 +1066,10 @@ export class EcoChef extends LitElement {
     }
 
     async askGoogle() {
-        if (!this.ingredients && !this.capturedImage) {
+        // Ensure current typed text is added as a chip
+        this.addIngredientFromInput();
+
+        if (this.ingredientChips.length === 0 && !this.capturedImage) {
             alert("Bitte gib zuerst ein paar Zutaten ein oder mache ein Foto von deinem Kühlschrank!");
             return;
         }
@@ -802,10 +1094,17 @@ export class EcoChef extends LitElement {
         }
 
         const portions = this.persons || 2;
-        const textIngredients = this.ingredients || "Keine Text-Eingabe, siehe Bild.";
+        const textIngredients = this.ingredientChips.join(', ');
         const pantryKeys = Object.keys(this.selectedPantry).filter(key => this.selectedPantry[key]);
         const pantryText = pantryKeys.length > 0 ? `\nGrundzutaten in der Vorratskammer (bereits vorhanden und nutzbar): ${pantryKeys.join(', ')}` : '';
-        const combinedIngredients = textIngredients + pantryText;
+        
+        const urgentList = Object.keys(this.urgentIngredients).filter(k => this.urgentIngredients[k] && this.ingredientChips.includes(k));
+        const urgentText = urgentList.length > 0 ? `\n🚨 DRINGEND ZU VERBRAUCHEN (diese Zutaten MÜSSEN zwingend im Rezept verwendet werden, um Lebensmittelverschwendung zu vermeiden): ${urgentList.join(', ')}` : '';
+        
+        const activeAllergens = Object.keys(this.selectedAllergens).filter(k => this.selectedAllergens[k]);
+        const allergenText = activeAllergens.length > 0 ? `\n⚠️ ALLERGIE- & UNVERTRÄGLICHKEITS-EINSCHRÄNKUNGEN: Das Rezept MUSS absolut frei von folgenden Allergenen sein (entsprechende Zutaten ausschließen oder durch sichere Alternativen ersetzen): ${activeAllergens.join(', ')}` : '';
+        
+        const combinedIngredients = textIngredients + pantryText + urgentText + allergenText;
 
         const strictIngredientRule = this.allowExtraIngredients
             ? "- Zutaten: Du darfst das Rezept mit passenden, zusätzlichen Zutaten aufwerten (z.B. Gemüse, Beilagen, Saucen), damit es perfekt wird."
@@ -817,7 +1116,7 @@ export class EcoChef extends LitElement {
         const promptText = `
             Du bist ein professioneller Sternekoch und Ernährungsexperte. Der Nutzer schickt dir Zutaten als Text und/oder ein Foto seines Kühlschranks/seiner Zutaten.
             
-            Text-Eingabe des Nutzers (inklusive eventueller Vorratskammer-Grundzutaten): ${combinedIngredients}
+            Text-Eingabe des Nutzers (inklusive eventueller Vorratskammer-Grundzutaten, Resteverwerter-Modus und Allergenen): ${combinedIngredients}
             
             Falls ein Bild beigefügt ist: Analysiere das Bild GANZ GENAU und erkenne alle essbaren Zutaten darauf. Kombiniere sie mit der Text-Eingabe.
             
@@ -836,10 +1135,15 @@ export class EcoChef extends LitElement {
               "difficulty": "Leicht, Mittel oder Schwer",
               "prepTime": "z.B. 25 Min.",
               "ecoScore": "Bewerte die Nachhaltigkeit/Regionalität des Gerichts von 1 bis 5 Blättern (Gib NUR diese Emojis zurück: z.B. '🍃🍃🍃🍃')",
+              "ecoScoreDetails": "Ausführliche, ansprechende Begründung des Eco-Scores (z.B. Saisonalität, CO2-Einsparung, regionale Zutaten)",
+              "co2Footprint": "Niedrig, Mittel oder Hoch (Einschätzung des CO2-Fußabdrucks)",
+              "co2SavedKg": 1.2, // geschätzte CO2-Ersparnis in kg gegenüber einem fleischbasierten Vergleichsgericht (als Zahl!)
               "beverage": "Kurze Empfehlung für ein passendes Getränk (Wein, Bier oder was Alkoholfreies)",
               "storageTip": "Kurzer Tipp zur Aufbewahrung oder Resteverwertung",
               "nutrition": { "calories": "z.B. 450 kcal", "protein": "z.B. 25g", "carbs": "z.B. 40g", "fat": "z.B. 15g" },
-              "ingredientsList": ["1. Zutat", "2. Zutat"],
+              "ingredientsList": [
+                { "item": "Menge und Zutat, z.B. 250g Kirschtomaten", "category": "Kategorie aus: 'Obst & Gemüse', 'Milchprodukte & Eier', 'Fleisch & Fisch', 'Vorrat & Gewürze', 'Bäckerei', 'Sonstiges'" }
+              ],
               "instructions": ["Schritt 1...", "Schritt 2..."],
               "tip": "Tipp..."
             }
@@ -886,10 +1190,15 @@ export class EcoChef extends LitElement {
                     difficulty: parsedData.difficulty || "Unbekannt",
                     prepTime: parsedData.prepTime || "Unbekannt",
                     ecoScore: parsedData.ecoScore || "🍃🍃🍃",
+                    ecoScoreDetails: parsedData.ecoScoreDetails || "",
+                    co2Footprint: parsedData.co2Footprint || "Mittel",
+                    co2SavedKg: typeof parsedData.co2SavedKg === 'number' ? parsedData.co2SavedKg : parseFloat(parsedData.co2SavedKg) || 0,
                     beverage: parsedData.beverage || "Ein frisches Glas Wasser passt wunderbar.",
                     storageTip: parsedData.storageTip || "Am besten sofort genießen!",
                     nutrition: parsedData.nutrition || fallbackNutrition,
-                    ingredientsList: Array.isArray(parsedData.ingredientsList) ? parsedData.ingredientsList : ["Zutaten konnten nicht geladen werden."],
+                    ingredientsList: Array.isArray(parsedData.ingredientsList) 
+                        ? this.normalizeIngredients(parsedData.ingredientsList) 
+                        : [{ item: "Zutaten konnten nicht geladen werden.", category: "Sonstiges" }],
                     instructions: Array.isArray(parsedData.instructions) ? parsedData.instructions : ["Zubereitung fehlt."],
                     tip: parsedData.tip || "Lass es dir schmecken!"
                 };
@@ -916,6 +1225,9 @@ export class EcoChef extends LitElement {
     startNewRecipe() {
         this.recipe = null;
         this.ingredients = '';
+        this.ingredientChips = [];
+        this.urgentIngredients = {};
+        this.saveChips();
         this.capturedImage = null;
         this.showExitDialog = false;
         this.showSavedRecipes = false;
@@ -967,14 +1279,22 @@ export class EcoChef extends LitElement {
         this.showSavedRecipes = !this.showSavedRecipes;
         if (this.showSavedRecipes) {
             this.showShoppingList = false;
+            this.showSettings = false;
             const saved = localStorage.getItem('ecoChef_savedRecipes');
-            this.savedRecipesList = saved ? JSON.parse(saved) : [];
+            const parsed = saved ? JSON.parse(saved) : [];
+            this.savedRecipesList = parsed.map((r: any) => ({
+                ...r,
+                ingredientsList: this.normalizeIngredients(r.ingredientsList)
+            }));
             this.recipe = null;
         }
     }
 
     openSavedRecipe(savedRecipe: any) {
-        this.recipe = savedRecipe;
+        this.recipe = {
+            ...savedRecipe,
+            ingredientsList: this.normalizeIngredients(savedRecipe.ingredientsList)
+        };
         this.recipeImage = savedRecipe.image || null;
         this.showSavedRecipes = false;
         window.scrollTo({top: 0, behavior: 'smooth'});
@@ -993,9 +1313,20 @@ export class EcoChef extends LitElement {
         const instArea = this.shadowRoot?.querySelector('#edit-instructions') as HTMLTextAreaElement;
 
         if (ingArea && instArea) {
+            const editedList = ingArea.value.split('\n')
+                .filter(line => line.trim() !== '')
+                .map(line => {
+                    const trimmed = line.trim();
+                    const existing = this.recipe!.ingredientsList.find(i => i.item === trimmed);
+                    return {
+                        item: trimmed,
+                        category: existing ? existing.category : 'Sonstiges'
+                    };
+                });
+
             this.recipe = {
                 ...this.recipe,
-                ingredientsList: ingArea.value.split('\n').filter(line => line.trim() !== ''),
+                ingredientsList: editedList,
                 instructions: instArea.value.split('\n').filter(line => line.trim() !== '')
             };
         }
@@ -1286,6 +1617,62 @@ export class EcoChef extends LitElement {
             <div class="settings-container">
                 <h3 class="recipe-subheading">⚙️ Einstellungen & Vorrat</h3>
 
+                <!-- Statistik & Tracker Section -->
+                <div class="settings-section">
+                    <h4 class="settings-title">📊 Wochen-Statistik & Tracker</h4>
+                    <p class="subtitle" style="margin-bottom: 16px;">
+                        Statistiken der letzten 7 Tage über gekochte Gerichte.
+                    </p>
+                    
+                    ${(() => {
+                        const weekly = this.getWeeklyStats();
+                        const calPercent = Math.min(100, (weekly.calories / 14000) * 100);
+                        const protPercent = Math.min(100, (weekly.protein / 350) * 100);
+                        
+                        return html`
+                            <div class="stats-grid">
+                                <div class="stat-card full-width">
+                                    <div class="stat-value">🌳 ${weekly.co2Saved} kg</div>
+                                    <div class="stat-label">CO₂-Einsparung (vs. Fleisch)</div>
+                                    <div class="stat-bar-container">
+                                        <div class="stat-bar-fill co2" style="width: ${Math.min(100, (weekly.co2Saved / 10) * 100)}%;"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-value">🔥 ${weekly.calories} kcal</div>
+                                    <div class="stat-label">Kalorien</div>
+                                    <div class="stat-bar-container">
+                                        <div class="stat-bar-fill calories" style="width: ${calPercent}%;"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-value">🥩 ${weekly.protein} g</div>
+                                    <div class="stat-label">Protein</div>
+                                    <div class="stat-bar-container">
+                                        <div class="stat-bar-fill protein" style="width: ${protPercent}%;"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-value">🌾 ${weekly.carbs} g</div>
+                                    <div class="stat-label">Kohlenhydrate</div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-value">🥑 ${weekly.fat} g</div>
+                                    <div class="stat-label">Fett</div>
+                                </div>
+                                
+                                <div class="stat-card full-width" style="background: var(--bg-color); border-color: var(--border); color: var(--text-dark);">
+                                    <div class="stat-value" style="font-size: 16px;">🍳 Gekochte Rezepte: ${weekly.count}</div>
+                                </div>
+                            </div>
+                        `;
+                    })()}
+                </div>
+
                 <!-- Vorratskammer Section -->
                 <div class="settings-section">
                     <h4 class="settings-title">🥦 Vorratskammer (Standard-Zutaten)</h4>
@@ -1300,6 +1687,25 @@ export class EcoChef extends LitElement {
                                 aria-pressed="${!!this.selectedPantry[item]}"
                             >
                                 ${this.selectedPantry[item] ? '✅' : '➕'} ${item}
+                            </button>
+                        `)}
+                    </div>
+                </div>
+
+                <!-- Allergene & Unverträglichkeiten Section -->
+                <div class="settings-section">
+                    <h4 class="settings-title">⚠️ Allergien & Unverträglichkeiten</h4>
+                    <p class="subtitle" style="margin-bottom: 16px;">
+                        Wähle deine Unverträglichkeiten aus. Rezepte werden von der KI passend abgewandelt.
+                    </p>
+                    <div class="allergens-grid">
+                        ${['Gluten', 'Laktose', 'Nüsse', 'Soja', 'Histamin'].map(allergen => html`
+                            <button 
+                                class="allergen-item ${this.selectedAllergens[allergen] ? 'active' : ''}" 
+                                @click="${() => this.toggleAllergen(allergen)}"
+                                aria-pressed="${!!this.selectedAllergens[allergen]}"
+                            >
+                                ${this.selectedAllergens[allergen] ? '❌' : '➕'} ${allergen}
                             </button>
                         `)}
                     </div>

@@ -577,4 +577,167 @@ export const ecoChefStyles = css`
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
+
+    /* --- ERWEITERTE FUNKTIONEN STILE --- */
+
+    /* Resteverwerter Chips */
+    .ingredient-chips-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+        margin-bottom: 24px;
+    }
+    .ingredient-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--bg-color);
+        border: 1px solid var(--border);
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-dark);
+        animation: fadeIn 0.2s ease;
+    }
+    .ingredient-chip.urgent {
+        background: #fef2f2;
+        border-color: #fca5a5;
+        color: #b91c1c;
+    }
+    .dark-theme .ingredient-chip.urgent {
+        background: #450a0a;
+        border-color: #991b1b;
+        color: #fca5a5;
+    }
+    .urgent-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+    }
+    .remove-chip-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0 0 0 4px;
+        font-size: 12px;
+        color: var(--text-muted);
+        font-weight: bold;
+    }
+    
+    /* Einkaufslisten-Kategorien */
+    .shopping-category-header {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--primary-dark);
+        margin: 24px 0 12px 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--border);
+        padding-bottom: 4px;
+    }
+    .dark-theme .shopping-category-header {
+        color: var(--primary);
+    }
+
+    /* Allergene Grid */
+    .allergens-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .allergen-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--bg-color);
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        user-select: none;
+        justify-content: center;
+        text-align: center;
+    }
+    .allergen-item.active {
+        background: #fee2e2;
+        border-color: #fca5a5;
+        color: #b91c1c;
+    }
+    .dark-theme .allergen-item.active {
+        background: #450a0a;
+        border-color: #991b1b;
+        color: #fca5a5;
+    }
+
+    /* Statistik Dashboard */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .stat-card {
+        background: var(--bg-color);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 16px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.01);
+    }
+    .stat-card.full-width {
+        grid-column: span 2;
+        background: #ecfdf5;
+        border-color: #a7f3d0;
+        color: #065f46;
+    }
+    .dark-theme .stat-card.full-width {
+        background: #064e3b;
+        border-color: #047857;
+        color: #34d399;
+    }
+    .stat-value {
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--text-dark);
+        margin-bottom: 4px;
+    }
+    .stat-card.full-width .stat-value {
+        color: inherit;
+    }
+    .stat-label {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .stat-card.full-width .stat-label {
+        color: inherit;
+    }
+    .stat-bar-container {
+        width: 100%;
+        height: 8px;
+        background: var(--border);
+        border-radius: 4px;
+        margin-top: 8px;
+        overflow: hidden;
+    }
+    .stat-bar-fill {
+        height: 100%;
+        background: var(--primary);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+    .stat-bar-fill.calories { background: #f59e0b; }
+    .stat-bar-fill.protein { background: #10b981; }
+    .stat-bar-fill.co2 { background: #3b82f6; }
 `;
