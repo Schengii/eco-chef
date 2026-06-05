@@ -5,14 +5,15 @@ export const ecoChefStyles = css`
         display: block;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
-        /* Standard Light Palette */
-        --primary: #10b981;
-        --primary-dark: #059669;
+        /* Standard Light Palette (Kontrast-optimiert für WCAG AA) */
+        --primary: #047857;
+        --primary-dark: #065f46;
         --bg-color: #f8fafc;
         --surface: #ffffff;
         --text-dark: #0f172a;
-        --text-muted: #64748b;
+        --text-muted: #475569;
         --border: #e2e8f0;
+        --font-scale: 1.0;
     }
 
     .app-wrapper {
@@ -20,6 +21,7 @@ export const ecoChefStyles = css`
         background-color: var(--bg-color);
         transition: background-color 0.3s ease;
         color: var(--text-dark);
+        font-size: calc(16px * var(--font-scale, 1.0));
     }
 
     .app-wrapper.dark-theme {
@@ -28,7 +30,7 @@ export const ecoChefStyles = css`
         --bg-color: #0f172a;
         --surface: #1e293b;
         --text-dark: #f8fafc;
-        --text-muted: #94a3b8;
+        --text-muted: #cbd5e1;
         --border: #334155;
     }
 
@@ -65,25 +67,25 @@ export const ecoChefStyles = css`
     .theme-toggle-btn:active { transform: scale(0.9); }
 
     .header { text-align: center; margin-bottom: 32px; padding-top: 12px; }
-    h2 { color: var(--text-dark); margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
-    .subtitle { color: var(--text-muted); margin-top: 8px; font-size: 15px; font-weight: 500; }
+    h2 { color: var(--text-dark); margin: 0; font-size: calc(32px * var(--font-scale, 1.0)); font-weight: 800; letter-spacing: -0.5px; }
+    .subtitle { color: var(--text-muted); margin-top: 8px; font-size: calc(15px * var(--font-scale, 1.0)); font-weight: 500; }
     .header-actions { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
 
     input {
         width: 100%; padding: 18px 20px; margin-bottom: 32px; box-sizing: border-box;
-        border: 2px solid var(--border); border-radius: 16px; font-size: 16px; transition: all 0.3s ease;
+        border: 2px solid var(--border); border-radius: 16px; font-size: calc(16px * var(--font-scale, 1.0)); transition: all 0.3s ease;
         background-color: var(--bg-color); color: var(--text-dark); box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
     }
-    input:focus { outline: none; border-color: var(--primary); background-color: var(--surface); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
+    input:focus { outline: none; border-color: var(--primary); background-color: var(--surface); box-shadow: 0 0 0 4px rgba(4, 120, 87, 0.1); }
     input::placeholder { color: #94a3b8; }
 
     .filter-section { display: flex; flex-direction: column; gap: 24px; }
-    .filter-title { font-size: 15px; font-weight: 700; color: var(--text-dark); margin: 0 0 12px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .filter-title { font-size: calc(15px * var(--font-scale, 1.0)); font-weight: 700; color: var(--text-dark); margin: 0 0 12px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
     .chip-group { display: flex; flex-wrap: wrap; gap: 10px; }
     .chip {
         padding: 12px 20px; border-radius: 100px; border: 2px solid var(--border); background: var(--surface);
-        color: var(--text-muted); font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        color: var(--text-muted); font-size: calc(15px * var(--font-scale, 1.0)); font-weight: 600; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         flex-grow: 1; text-align: center;
     }
     .chip.active { background: #ecfdf5; border-color: var(--primary); color: var(--primary-dark); }
@@ -96,7 +98,7 @@ export const ecoChefStyles = css`
         box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: 0.1s;
     }
     .step-btn:active { transform: scale(0.92); background: var(--border); }
-    .step-value { font-size: 18px; font-weight: 700; color: var(--text-dark); text-align: center; }
+    .step-value { font-size: calc(18px * var(--font-scale, 1.0)); font-weight: 700; color: var(--text-dark); text-align: center; }
 
     .action-area {
         position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px;
@@ -105,9 +107,9 @@ export const ecoChefStyles = css`
     }
     .main-btn {
         width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 16px;
-        cursor: pointer; font-weight: 800; font-size: 18px; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3); transition: all 0.2s;
+        cursor: pointer; font-weight: 800; font-size: calc(18px * var(--font-scale, 1.0)); box-shadow: 0 8px 20px rgba(4, 120, 87, 0.3); transition: all 0.2s;
     }
-    .main-btn:active { transform: translateY(2px); box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); }
+    .main-btn:active { transform: translateY(2px); box-shadow: 0 4px 10px rgba(4, 120, 87, 0.2); }
     .finish-btn { margin-top: 32px; background: var(--text-dark); box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2); }
 
     .loader { border: 4px solid var(--border); border-top: 4px solid var(--primary); border-radius: 50%; width: 48px; height: 48px; animation: spin 1s linear infinite; }
@@ -115,8 +117,8 @@ export const ecoChefStyles = css`
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     .recipe-paper { animation: fadeIn 0.4s ease-out; }
-    .recipe-title { color: var(--text-dark); margin-top: 0; font-size: 28px; font-weight: 800; line-height: 1.2; margin-bottom: 32px; }
-    .recipe-subheading { color: var(--text-dark); font-size: 20px; font-weight: 700; margin: 32px 0 16px 0; display: flex; align-items: center; gap: 8px; }
+    .recipe-title { color: var(--text-dark); margin-top: 0; font-size: calc(28px * var(--font-scale, 1.0)); font-weight: 800; line-height: 1.2; margin-bottom: 32px; }
+    .recipe-subheading { color: var(--text-dark); font-size: calc(20px * var(--font-scale, 1.0)); font-weight: 700; margin: 32px 0 16px 0; display: flex; align-items: center; gap: 8px; }
 
     .ingredients-list { padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
     .ingredients-list li { background: var(--bg-color); padding: 16px; border-radius: 12px; color: var(--text-dark); font-weight: 500; border: 1px solid var(--border); display: flex; align-items: center; }
@@ -128,14 +130,14 @@ export const ecoChefStyles = css`
     .instructions-box { display: flex; flex-direction: column; gap: 16px; }
     .step-item { display: flex; background: var(--surface); border: 1px solid var(--border); padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
     .step-number { background: #ecfdf5; color: var(--primary-dark); width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; margin-right: 16px; flex-shrink: 0; }
-    .step-text { color: var(--text-dark); line-height: 1.6; font-size: 16px; }
+    .step-text { color: var(--text-dark); line-height: 1.6; font-size: calc(16px * var(--font-scale, 1.0)); }
 
-    .tip-box { margin-top: 32px; padding: 20px; background-color: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 16px; font-size: 15px; line-height: 1.6; }
-    .extras-box { margin-top: 24px; padding: 20px; background-color: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 16px; color: #0f766e; font-size: 15px; line-height: 1.6; display: flex; flex-direction: column; gap: 12px; }
+    .tip-box { margin-top: 32px; padding: 20px; background-color: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 16px; font-size: calc(15px * var(--font-scale, 1.0)); line-height: 1.6; }
+    .extras-box { margin-top: 24px; padding: 20px; background-color: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 16px; color: #0f766e; font-size: calc(15px * var(--font-scale, 1.0)); line-height: 1.6; display: flex; flex-direction: column; gap: 12px; }
     .extras-box p { margin: 0; }
 
     .macros-box { display: flex; gap: 12px; margin-top: 20px; margin-bottom: 20px; background: var(--bg-color); padding: 12px; border-radius: 12px; justify-content: center; flex-wrap: wrap; border: 1px solid var(--border); }
-    .macro-item { color: var(--text-muted); font-size: 14px; }
+    .macro-item { color: var(--text-muted); font-size: calc(14px * var(--font-scale, 1.0)); }
     .macro-item strong { color: var(--text-dark); }
 
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); display: flex; align-items: flex-end; justify-content: center; z-index: 1000; animation: fadeIn 0.2s ease-out; }
@@ -145,7 +147,7 @@ export const ecoChefStyles = css`
     .modal-btn { width: 100%; padding: 18px; margin-bottom: 12px; border: none; border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
 
     .recipe-meta { display: flex; justify-content: center; gap: 12px; margin-top: -16px; margin-bottom: 32px; flex-wrap: wrap; }
-    .difficulty-badge, .time-badge, .eco-badge { padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 6px; }
+    .difficulty-badge, .time-badge, .eco-badge { padding: 8px 16px; border-radius: 20px; font-size: calc(14px * var(--font-scale, 1.0)); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 6px; }
     .time-badge { background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; }
     .eco-badge { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
     .difficulty-badge.leicht { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
@@ -161,15 +163,15 @@ export const ecoChefStyles = css`
     .saved-list { display: flex; flex-direction: column; gap: 16px; }
     .saved-card { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border: 1px solid var(--border); padding: 16px; border-radius: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: transform 0.2s, box-shadow 0.2s; }
     .saved-card:active { transform: scale(0.98); background: var(--bg-color); }
-    .saved-card h4 { margin: 0 0 8px 0; color: var(--text-dark); font-size: 16px; }
-    .saved-meta { display: flex; gap: 12px; font-size: 12px; color: var(--text-muted); font-weight: 600; }
+    .saved-card h4 { margin: 0 0 8px 0; color: var(--text-dark); font-size: calc(16px * var(--font-scale, 1.0)); }
+    .saved-meta { display: flex; gap: 12px; font-size: calc(12px * var(--font-scale, 1.0)); color: var(--text-muted); font-weight: 600; }
     .delete-btn { background: #fef2f2; border: none; width: 40px; height: 40px; border-radius: 12px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
     .delete-btn:active { background: #fecaca; transform: scale(0.9); }
 
     .shopping-item { display: flex; align-items: center; background: var(--surface); padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 10px; }
     .shopping-item.checked span { text-decoration: line-through; color: var(--text-muted); }
     .shopping-checkbox { width: 24px; height: 24px; margin-right: 16px; cursor: pointer; accent-color: var(--primary); }
-    .shopping-text { flex-grow: 1; font-size: 16px; font-weight: 500; }
+    .shopping-text { flex-grow: 1; font-size: calc(16px * var(--font-scale, 1.0)); font-weight: 500; }
     .add-item-box { display: flex; gap: 10px; margin-bottom: 24px; }
 
     .icon-btn { background: none; border: none; font-size: 18px; cursor: pointer; margin-left: auto; padding: 8px; border-radius: 50%; transition: background 0.2s; }
@@ -177,7 +179,7 @@ export const ecoChefStyles = css`
 
     .edit-mode-box { background: #f8fafc; padding: 16px; border-radius: 16px; border: 2px dashed #cbd5e1; margin-bottom: 24px; animation: fadeIn 0.3s; }
     .edit-hint { font-size: 12px; color: var(--text-muted); margin: -12px 0 8px 0; }
-    .edit-area { width: 100%; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text-dark); font-family: inherit; font-size: 15px; line-height: 1.6; box-sizing: border-box; resize: vertical; margin-bottom: 24px; }
+    .edit-area { width: 100%; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text-dark); font-family: inherit; font-size: calc(15px * var(--font-scale, 1.0)); line-height: 1.6; box-sizing: border-box; resize: vertical; margin-bottom: 24px; }
     .edit-area:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
     .save-edit-btn { background: var(--text-dark); margin-top: 0; }
 
@@ -234,23 +236,6 @@ export const ecoChefStyles = css`
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-    /* DARK MODE OVERRIDES */
-    .dark-theme .action-area { background: linear-gradient(to top, rgba(30,41,59,1) 70%, rgba(30,41,59,0)); }
-    .dark-theme .chip.active { background: #064e3b; color: #34d399; }
-    .dark-theme .step-number { background: #064e3b; color: #34d399; }
-    .dark-theme .tip-box { background-color: #451a03; border-color: #78350f; color: #fde68a; }
-    .dark-theme .extras-box { background-color: #134e4a; border-color: #115e59; color: #5eead4; }
-    .dark-theme .difficulty-badge.leicht { background: #064e3b; color: #6ee7b7; border-color: #047857; }
-    .dark-theme .difficulty-badge.mittel { background: #422006; color: #fde047; border-color: #854d0e; }
-    .dark-theme .difficulty-badge.schwer { background: #450a0a; color: #fca5a5; border-color: #991b1b; }
-    .dark-theme .difficulty-badge.unbekannt { background: #334155; color: #cbd5e1; border-color: #475569; }
-    .dark-theme .eco-badge { background: #064e3b; color: #6ee7b7; border-color: #047857; }
-    .dark-theme .time-badge { background: #334155; color: #cbd5e1; border-color: #475569; }
-    .dark-theme .modal-btn.share { background: #0c4a6e; color: #7dd3fc; }
-    .dark-theme .modal-btn.new { background: #064e3b; color: #6ee7b7; }
-    .dark-theme .modal-btn.exit { background: #450a0a; color: #fca5a5; }
-    .dark-theme .delete-btn { background: #450a0a; }
-    .dark-theme .delete-btn:active { background: #7f1d1d; }
     .dark-theme .add-to-list-btn { background: #0c4a6e; color: #38bdf8; }
     .dark-theme .cooking-mode-overlay { background: rgba(2, 6, 23, 0.98) !important; }
     /* Dark Mode Timer Override */
@@ -258,4 +243,201 @@ export const ecoChefStyles = css`
     .dark-theme .start-timer-btn { background: #d97706; }
     .dark-theme .timer-countdown { color: #fde68a; }
     .dark-theme .stop-timer-btn { background: #7f1d1d; color: #fca5a5; }
+
+    /* --- ERWEITERTE BARRIEREFREIHEIT, LRS & FUNKTIONEN --- */
+    
+    /* Universeller Fokusring für Tastaturbedienung */
+    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .chip:focus-visible {
+        outline: 3px solid #3b82f6 !important;
+        outline-offset: 2px !important;
+    }
+
+    /* Screen Reader Only Klasse */
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    /* LRS / Dyslexia Theme */
+    .app-wrapper.lrs-theme {
+        font-family: 'OpenDyslexic', 'Comic Sans MS', 'Verdana', sans-serif !important;
+        --line-height: 1.8 !important;
+        --letter-spacing: 0.12em !important;
+        --word-spacing: 0.16em !important;
+    }
+
+    .app-wrapper.lrs-theme .step-text,
+    .app-wrapper.lrs-theme .recipe-title,
+    .app-wrapper.lrs-theme p,
+    .app-wrapper.lrs-theme li,
+    .app-wrapper.lrs-theme span,
+    .app-wrapper.lrs-theme button,
+    .app-wrapper.lrs-theme input,
+    .app-wrapper.lrs-theme textarea {
+        line-height: var(--line-height) !important;
+        letter-spacing: var(--letter-spacing) !important;
+        word-spacing: var(--word-spacing) !important;
+    }
+
+    /* Leselineal (Reading Ruler) */
+    .reading-ruler {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 32px;
+        background-color: rgba(254, 240, 138, 0.35);
+        border-top: 2px solid rgba(234, 179, 8, 0.6);
+        border-bottom: 2px solid rgba(234, 179, 8, 0.6);
+        pointer-events: none;
+        z-index: 10;
+        transition: top 0.1s ease-out;
+    }
+    .dark-theme .reading-ruler {
+        background-color: rgba(251, 191, 36, 0.15);
+        border-top-color: rgba(251, 191, 36, 0.4);
+        border-bottom-color: rgba(251, 191, 36, 0.4);
+    }
+    
+    .reading-ruler-handle {
+        position: absolute;
+        right: 12px;
+        top: -12px;
+        background: #f59e0b;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        cursor: ns-resize;
+        pointer-events: auto;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    /* Sprachsteuerung Statusbar */
+    .voice-status-bar {
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        border-radius: 12px;
+        padding: 10px 14px;
+        margin: 12px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        color: #065f46;
+        font-weight: 600;
+        animation: fadeIn 0.3s ease;
+    }
+    .dark-theme .voice-status-bar {
+        background: #064e3b;
+        border-color: #047857;
+        color: #34d399;
+    }
+    .voice-status-bar .mic-pulse {
+        width: 10px;
+        height: 10px;
+        background: #ef4444;
+        border-radius: 50%;
+        animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse {
+        from { transform: scale(0.8); opacity: 0.5; }
+        to { transform: scale(1.2); opacity: 1; }
+    }
+
+    /* Vorratskammer & Settings Styling */
+    .pantry-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .pantry-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--bg-color);
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        user-select: none;
+    }
+    .pantry-item.active {
+        background: #ecfdf5;
+        border-color: var(--primary);
+        color: var(--primary-dark);
+    }
+    .dark-theme .pantry-item.active {
+        background: #064e3b;
+        color: #34d399;
+    }
+
+    .settings-section {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    }
+    .settings-title {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0 0 16px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-dark);
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 8px;
+    }
+    
+    .font-size-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    /* Privacy Banner / Modal */
+    .gdpr-banner {
+        position: fixed;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 600px;
+        background: var(--surface);
+        box-shadow: 0 -10px 30px rgba(0,0,0,0.15);
+        border-radius: 24px 24px 0 0;
+        padding: 24px 20px 32px 20px;
+        box-sizing: border-box;
+        z-index: 2000;
+        border: 1px solid var(--border);
+        animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1);
+    }
+    .gdpr-text {
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text-dark);
+        margin-bottom: 20px;
+    }
+    .gdpr-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
 `;

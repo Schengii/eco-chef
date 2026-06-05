@@ -53,6 +53,33 @@ export class EcoChef extends LitElement {
         tip: string;
     } | null = null;
 
+    // DSGVO & Einstellungen
+    @state() hasConsent = false;
+    @state() showPrivacyDetails = false;
+    @state() showSettings = false;
+    @state() srAnnouncement = '';
+
+    // LRS & Barrierefreiheit
+    @state() isLrsMode = false;
+    @state() fontScale = 1.0;
+    @state() showReadingRuler = false;
+    @state() rulerY = 250;
+
+    // Vorratskammer (Pantry)
+    @state() selectedPantry: { [key: string]: boolean } = {};
+    pantryItems = ['Salz', 'Pfeffer', 'Olivenöl', 'Wasser', 'Zucker', 'Mehl', 'Milch', 'Butter', 'Eier', 'Knoblauch', 'Zwiebeln'];
+
+    // Sprachsteuerung
+    @state() isVoiceControlActive = false;
+    @state() voiceStatusText = '';
+    private recognition: any = null;
+
+    // Timer & Audio
+    @state() showTimerExpiredModal = false;
+    private audioCtx: AudioContext | null = null;
+    private alarmActive = false;
+    private isDraggingRuler = false;
+
 
     static override styles = ecoChefStyles;
 
@@ -60,6 +87,13 @@ export class EcoChef extends LitElement {
         super.connectedCallback();
         document.addEventListener('backbutton', this.handleBackButton, false);
 
+        // DSGVO Consent prüfen
+        const savedConsent = localStorage.getItem('ecoChef_gdprConsent');
+        if (savedConsent === 'true') {
+            this.hasConsent = true;
+        }
+
+        // Theme laden
         const savedTheme = localStorage.getItem('ecoChef_theme');
         if (savedTheme === 'dark') {
             this.isDarkMode = true;
@@ -69,23 +103,49 @@ export class EcoChef extends LitElement {
             this.isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         }
 
+        // LRS & FontScale laden
+        const savedLrs = localStorage.getItem('ecoChef_lrsMode');
+        this.isLrsMode = savedLrs === 'true';
+
+        const savedScale = localStorage.getItem('ecoChef_fontScale');
+        if (savedScale) {
+            this.fontScale = parseFloat(savedScale);
+        }
+
+        const savedRuler = localStorage.getItem('ecoChef_showRuler');
+        this.showReadingRuler = savedRuler === 'true';
+
+        // Pantry laden
+        const savedPantry = localStorage.getItem('ecoChef_pantry');
+        if (savedPantry) {
+            this.selectedPantry = JSON.parse(savedPantry);
+        }
+
         const savedShopping = localStorage.getItem('ecoChef_shoppingList');
         if (savedShopping) {
             this.shoppingList = JSON.parse(savedShopping);
         }
+
+        this.updateFontScaleStyle();
     }
 
     override disconnectedCallback() {
         document.removeEventListener('backbutton', this.handleBackButton, false);
         if ('speechSynthesis' in window)  window.speechSynthesis.cancel();
         this.stopTimer();
+        this.stopAlarmSound();
+        this.stopVoiceRecognition();
         super.disconnectedCallback();
     }
 
     handleBackButton = (e: Event) => {
         e.preventDefault();
-        if (this.isCookingMode) {
+        if (this.showTimerExpiredModal) {
+            this.closeTimerExpiredModal();
+        } else if (this.isCookingMode) {
             this.exitCookingMode();
+        } else if (this.showSettings) {
+            this.toggleSettings();
         } else if (this.showShoppingList) {
             this.toggleShoppingList();
         } else if (this.showSavedRecipes) {
@@ -202,8 +262,10 @@ export class EcoChef extends LitElement {
         let totalMinutes = 0;
         if (hrMatch) totalMinutes += parseInt(hrMatch[1], 10) * 60;
         if (minMatch) totalMinutes += parseInt(minMatch[1], 10);
+
         this.currentStepTimeMinutes = totalMinutes > 0 ? totalMinutes : null;
     }
+
 
     startTimer() {
         if (!this.currentStepTimeMinutes) return;
@@ -235,18 +297,23 @@ export class EcoChef extends LitElement {
     }
 
     playAlarm() {
-        if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
-        alert("⏰ Die Zeit ist abgelaufen! Dein Essen braucht Aufmerksamkeit!");
+        if (navigator.vibrate) {
+            navigator.vibrate([500, 200, 500, 200, 500, 200, 500]);
+        }
+        this.showTimerExpiredModal = true;
+        this.alarmActive = true;
+        this.srAnnouncement = "Achtung! Die Koch-Zeit ist abgelaufen!";
+        this.playAlarmSound();
     }
 
 
     override render() {
         return html`
-           <div class="app-wrapper ${this.isDarkMode ? 'dark-theme' : ''}">
+           <div class="app-wrapper ${this.isDarkMode ? 'dark-theme' : ''} ${this.isLrsMode ? 'lrs-theme' : ''}">
               <div class="card">
                 
                  <div class="header">
-                    <button class="theme-toggle-btn" @click="${this.toggleDarkMode}" title="Dark Mode wechseln">
+                    <button class="theme-toggle-btn" @click="${this.toggleDarkMode}" title="Dark Mode wechseln" aria-label="Dunkelmodus umschalten" aria-pressed="${this.isDarkMode}">
                         ${this.isDarkMode ? '☀️' : '🌙'}
                     </button>
                     
@@ -254,22 +321,27 @@ export class EcoChef extends LitElement {
                     <p class="subtitle">Dein KI-Rezept-Zauberer 🧑‍🍳</p>
                     
                     <div class="header-actions">
-                        <button class="saved-btn" @click="${this.toggleSavedView}">
+                        <button class="saved-btn" @click="${this.toggleSavedView}" aria-label="${this.showSavedRecipes ? 'Zurück zum Rezept-Generator' : 'Gespeicherte Rezepte anzeigen'}">
                             ${this.showSavedRecipes ? '🔙 Zurück zum Generator' : '📚 Meine Rezepte'}
                         </button>
-                        <button class="saved-btn" @click="${this.toggleShoppingList}">
+                        <button class="saved-btn" @click="${this.toggleShoppingList}" aria-label="${this.showShoppingList ? 'Zurück zum Rezept-Generator' : 'Einkaufsliste anzeigen'}">
                             ${this.showShoppingList ? '🔙 Zurück' : '🛒 Einkaufsliste '}
+                        </button>
+                        <button class="saved-btn" @click="${this.toggleSettings}" aria-label="${this.showSettings ? 'Zurück zum Rezept-Generator' : 'Einstellungen und Vorratskammer'}">
+                            ${this.showSettings ? '🔙 Zurück' : '⚙️ Einstellungen'}
                         </button>
                     </div>
                  </div>
               
                   
-                 ${!this.recipe && !this.showSavedRecipes && !this.showShoppingList ? html`
+                 ${this.showSettings ? this.renderSettings() : ''}
+
+                 ${!this.recipe && !this.showSavedRecipes && !this.showShoppingList && !this.showSettings ? html`
 
                      <div class="input-with-camera">
-                         <input type="text" placeholder="Zutaten (z.B. Tomaten, Eier) oder Foto 📷" .value="${this.ingredients}" @input="${this._handleInput}" style="margin-bottom: 0;" />
+                         <input type="text" id="ingredients-input" placeholder="Zutaten (z.B. Tomaten, Eier) oder Foto 📷" .value="${this.ingredients}" @input="${this._handleInput}" style="margin-bottom: 0;" aria-label="Zutaten eingeben" />
                          <input type="file" id="file-upload" accept="image/*" style="display: none;" @change="${this.handleFileUpload}" />
-                         <button class="camera-btn" @click="${this.openCamera}" title="Kühlschrank scannen">📸</button>
+                         <button class="camera-btn" @click="${this.openCamera}" title="Kühlschrank scannen" aria-label="Kühlschrank scannen oder Foto hochladen">📸</button>
                      </div>
                      
 
@@ -285,8 +357,10 @@ export class EcoChef extends LitElement {
                         <div class="toggle-container">
                             <label class="toggle-switch">
                                 <input type="checkbox"
+                                       id="extra-ingredients-checkbox"
                                        .checked="${this.allowExtraIngredients}"
-                                       @change="${(e: Event) => this.allowExtraIngredients = (e.target as HTMLInputElement).checked}">
+                                       @change="${(e: Event) => this.allowExtraIngredients = (e.target as HTMLInputElement).checked}"
+                                       aria-label="KI darf Zutaten ergänzen">
                                 <span class="slider"></span>
                             </label>
                             <span class="toggle-label" style="color: ${this.allowExtraIngredients ? '#4CAF50' : '#f59e0b'};">
@@ -296,34 +370,40 @@ export class EcoChef extends LitElement {
 
                         <p class="filter-title">Portionen:</p>
                         <div class="stepper-group">
-                            <button class="step-btn" @click="${() => this.persons > 1 ? this.persons-- : null}">-</button>
+                            <button class="step-btn" @click="${() => this.persons > 1 ? this.persons-- : null}" aria-label="Portionen verringern">-</button>
                             <span class="step-value">🍽️ ${this.persons} ${this.persons === 1 ? 'Person' : 'Personen'}</span>
-                            <button class="step-btn" @click="${() => this.persons < 12 ? this.persons++ : null}">+</button>
+                            <button class="step-btn" @click="${() => this.persons < 12 ? this.persons++ : null}" aria-label="Portionen erhöhen">+</button>
                         </div>
 
                         <p class="filter-title">Ernährung:</p>
                         <div class="chip-group">
                             <button class="chip ${this.selectedDiet === 'egal' ? 'active' : ''}"
-                                    @click="${() => this.selectedDiet = 'egal'}">Alles
+                                    @click="${() => this.selectedDiet = 'egal'}"
+                                    aria-pressed="${this.selectedDiet === 'egal'}">Alles
                             </button>
                             <button class="chip ${this.selectedDiet === 'vegetarisch' ? 'active' : ''}"
-                                    @click="${() => this.selectedDiet = 'vegetarisch'}">Vegetarisch 🥦
+                                    @click="${() => this.selectedDiet = 'vegetarisch'}"
+                                    aria-pressed="${this.selectedDiet === 'vegetarisch'}">Vegetarisch 🥦
                             </button>
                             <button class="chip ${this.selectedDiet === 'vegan' ? 'active' : ''}"
-                                    @click="${() => this.selectedDiet = 'vegan'}">Vegan 🌱
+                                    @click="${() => this.selectedDiet = 'vegan'}"
+                                    aria-pressed="${this.selectedDiet === 'vegan'}">Vegan 🌱
                             </button>
                         </div>
 
                         <p class="filter-title">Zeitaufwand:</p>
                         <div class="chip-group">
                             <button class="chip ${this.selectedEffort === 'egal' ? 'active' : ''}"
-                                    @click="${() => this.selectedEffort = 'egal'}">Egal
+                                    @click="${() => this.selectedEffort = 'egal'}"
+                                    aria-pressed="${this.selectedEffort === 'egal'}">Egal
                             </button>
                             <button class="chip ${this.selectedEffort === 'schnell' ? 'active' : ''}"
-                                    @click="${() => this.selectedEffort = 'schnell'}">Schnell ⚡
+                                    @click="${() => this.selectedEffort = 'schnell'}"
+                                    aria-pressed="${this.selectedEffort === 'schnell'}">Schnell ⚡
                             </button>
                             <button class="chip ${this.selectedEffort === 'aufwendig' ? 'active' : ''}"
-                                    @click="${() => this.selectedEffort = 'aufwendig'}">Aufwendig 👨‍🍳
+                                    @click="${() => this.selectedEffort = 'aufwendig'}"
+                                    aria-pressed="${this.selectedEffort === 'aufwendig'}">Aufwendig 👨‍🍳
                             </button>
                         </div>
                     </div>
@@ -334,7 +414,7 @@ export class EcoChef extends LitElement {
                                 <div class="loader"></div>
                                 <p class="loader-text">KI kreiert dein Rezept...</p>`
                             : html`
-                                <button class="main-btn" @click="${this.askGoogle}">✨ Rezept Zaubern</button>`
+                                <button class="main-btn" @click="${this.askGoogle}" aria-label="Rezept mit künstlicher Intelligenz generieren">✨ Rezept Zaubern</button>`
                         }
                     </div>
                 ` : ''}
@@ -349,8 +429,9 @@ export class EcoChef extends LitElement {
                                      .value="${this.manualShoppingItem}"
                                      @input="${(e: Event) => this.manualShoppingItem = (e.target as HTMLInputElement).value}"
                                      @keypress="${(e: KeyboardEvent) => e.key === 'Enter' && this.addManualShoppingItem()}"
-                                     style="margin-bottom: 0;" />
-                              <button class="camera-btn" @click="${this.addManualShoppingItem}" style="width: auto; padding: 0 20px; font-size: 20px;">+</button>
+                                     style="margin-bottom: 0;"
+                                     aria-label="Manuelle Zutat eingeben" />
+                              <button class="camera-btn" @click="${this.addManualShoppingItem}" style="width: auto; padding: 0 20px; font-size: 20px;" aria-label="Zutat hinzufügen">+</button>
                           </div>
 
                           ${this.shoppingList.length === 0 ? html`
@@ -360,12 +441,12 @@ export class EcoChef extends LitElement {
                                   ${this.shoppingList.map((item, index) => html`
                                       <div class="shopping-item ${item.checked ? 'checked' : ''}">
                                           <input type="checkbox"
-                                                 class="shopping-c
-                                                 heckbox"
+                                                 class="shopping-checkbox"
                                                  .checked="${item.checked}"
-                                                 @change="${() => this.toggleShoppingItem(index)}" />
+                                                 @change="${() => this.toggleShoppingItem(index)}"
+                                                 aria-label="${item.name} abchecken" />
                                           <span class="shopping-text">${item.name}</span>
-                                          <button class="delete-btn" @click="${() => this.removeShoppingItem(index)}" style="width: 32px; height: 32px; font-size: 14px;">❌</button>
+                                          <button class="delete-btn" @click="${() => this.removeShoppingItem(index)}" style="width: 32px; height: 32px; font-size: 14px;" aria-label="${item.name} löschen">❌</button>
                                       </div>
                                   `)}
                               </div>
@@ -505,35 +586,50 @@ export class EcoChef extends LitElement {
                
              ${this.isCookingMode && this.recipe ? html`
                 <div class="modal-overlay cooking-mode-overlay">
-                    <div class="modal-content cooking-content">
+                    <div class="modal-content cooking-content" style="position: relative;">
 
                         <div class="cooking-header">
                             <span class="step-counter">Schritt ${this.currentCookingStep + 1} von ${this.recipe.instructions.length}</span>
-                            <button class="close-cooking-btn" @click="${this.exitCookingMode}">❌ Beenden</button>
+                            <button class="close-cooking-btn" @click="${this.exitCookingMode}" aria-label="Kochmodus beenden">❌ Beenden</button>
                         </div>
 
-                        <div class="step-display">
+                        <div class="step-display" style="position: relative;">
                             <p>${this.recipe.instructions[this.currentCookingStep]}</p>
                         </div>
 
                         ${this.timerSecondsRemaining > 0 ? html`
                             <div class="timer-display">
                                 <span class="timer-countdown">⏳ ${this.formatTime(this.timerSecondsRemaining)}</span>
-                                <button class="stop-timer-btn" @click="${this.stopTimer}">⏹️ Abbrechen</button>
+                                <button class="stop-timer-btn" @click="${this.stopTimer}" aria-label="Timer abbrechen">⏹️ Abbrechen</button>
                             </div>
                             
                         `: this.currentStepTimeMinutes ? html`
                             <div class="timer-display">
-                                <button class="start-timer-btn" @click="${this.startTimer}">
+                                <button class="start-timer-btn" @click="${this.startTimer}" aria-label="Timer über ${this.currentStepTimeMinutes} Minuten starten">
                                     ⏳ ${this.currentStepTimeMinutes} Min. Timer starten
                                 </button>
                             </div>
                         ` : ''}
 
+                        <!-- Sprachsteuerung Status-Bar -->
+                        ${this.isVoiceControlActive ? html`
+                            <div class="voice-status-bar" role="status" aria-live="polite">
+                                <div class="mic-pulse"></div>
+                                <span>Sprachsteuerung aktiv: <em>${this.voiceStatusText || 'Hört zu... (Befehle: weiter, zurück, vorlesen, stoppen)'}</em></span>
+                            </div>
+                        ` : ''}
+
                         <div class="cooking-controls">
-                            <button class="control-btn" @click="${this.prevStep}" ?disabled="${this.currentCookingStep === 0}">⬅️ Zurück</button>
-                            <button class="main-btn voice-btn" @click="${this.readCurrentStep}">🔊 Vorlesen</button>
-                            <button class="control-btn" @click="${this.nextStep}" ?disabled="${this.currentCookingStep === this.recipe.instructions.length - 1}">Weiter ➡️</button>
+                            <button class="control-btn" @click="${this.prevStep}" ?disabled="${this.currentCookingStep === 0}" aria-label="Vorheriger Schritt">⬅️ Zurück</button>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 8px; flex: 1.5;">
+                                <button class="main-btn voice-btn" @click="${this.readCurrentStep}" aria-label="Aktuellen Schritt vorlesen">🔊 Vorlesen</button>
+                                <button class="secondary-btn" @click="${this.toggleVoiceControl}" style="padding: 8px 12px; font-size: 13px; font-weight: bold; border-color: ${this.isVoiceControlActive ? '#ef4444' : 'var(--border)'}; color: ${this.isVoiceControlActive ? '#ef4444' : 'var(--text-dark)'};" aria-label="${this.isVoiceControlActive ? 'Sprachsteuerung deaktivieren' : 'Freihändige Sprachsteuerung aktivieren'}">
+                                    ${this.isVoiceControlActive ? '🎙️ Stumm schalten' : '🎙️ Sprachsteuerung start'}
+                                </button>
+                            </div>
+
+                            <button class="control-btn" @click="${this.nextStep}" ?disabled="${this.currentCookingStep === this.recipe.instructions.length - 1}" aria-label="Nächster Schritt">Weiter ➡️</button>
                         </div>
 
                     </div>
@@ -562,6 +658,32 @@ export class EcoChef extends LitElement {
                     </div>
                 </div>
             ` : ''}
+            <!-- Leselineal -->
+            ${this.showReadingRuler && (this.recipe || this.isCookingMode) ? html`
+                <div class="reading-ruler" style="top: ${this.rulerY}px;">
+                    <div class="reading-ruler-handle" 
+                         @touchstart="${this.handleRulerTouch}" 
+                         @touchmove="${this.handleRulerTouch}"
+                         @mousedown="${this.handleRulerMouseDown}"
+                         aria-label="Leselineal verschieben"
+                         title="Leselineal verschieben">↔️</div>
+                </div>
+            ` : ''}
+
+            <!-- DSGVO Banner -->
+            ${this.renderGdprBanner()}
+
+            <!-- Datenschutz Modal -->
+            ${this.renderPrivacyDetailsModal()}
+
+            <!-- Timer Abgelaufen Modal -->
+            ${this.renderTimerExpiredModal()}
+
+            <!-- Screen Reader Live Announcements -->
+            <div class="sr-only" aria-live="polite" id="sr-announcements">
+                ${this.srAnnouncement}
+            </div>
+
           </div>
        `;
     }
@@ -621,27 +743,33 @@ export class EcoChef extends LitElement {
         }
         this.isLoading = true;
         this.recipe = null;
+        this.srAnnouncement = "Rezept wird von der Künstlichen Intelligenz generiert. Bitte warten Sie einen moment.";
 
         const portions = this.persons || 2;
         const textIngredients = this.ingredients || "Keine Text-Eingabe, siehe Bild.";
+        const pantryKeys = Object.keys(this.selectedPantry).filter(key => this.selectedPantry[key]);
+        const pantryText = pantryKeys.length > 0 ? `\nGrundzutaten in der Vorratskammer (bereits vorhanden und nutzbar): ${pantryKeys.join(', ')}` : '';
+        const combinedIngredients = textIngredients + pantryText;
 
         const strictIngredientRule = this.allowExtraIngredients
             ? "- Zutaten: Du darfst das Rezept mit passenden, zusätzlichen Zutaten aufwerten (z.B. Gemüse, Beilagen, Saucen), damit es perfekt wird."
             : `- Zutaten-Regel (EXTREM WICHTIG): Du darfst AUSSCHLIESSLICH die exakt vom Nutzer angegebenen Zutaten oder auf dem Bild erkennbaren Zutaten verwenden.
+               
                Füge KEINE EINZIGE weitere Hauptzutat zur Zutatenliste hinzu. Basis-Gewürze (Salz, Pfeffer) sowie Öl und Wasser sind okay.
                Sei kreativ und erfinde ein neues Gericht, das wirklich NUR aus diesen vorhandenen Zutaten besteht!`;
 
         const promptText = `
             Du bist ein professioneller Sternekoch und Ernährungsexperte. Der Nutzer schickt dir Zutaten als Text und/oder ein Foto seines Kühlschranks/seiner Zutaten.
             
-            Text-Eingabe des Nutzers: ${textIngredients}
+            Text-Eingabe des Nutzers (inklusive eventueller Vorratskammer-Grundzutaten): ${combinedIngredients}
             
             Falls ein Bild beigefügt ist: Analysiere das Bild GANZ GENAU und erkenne alle essbaren Zutaten darauf. Kombiniere sie mit der Text-Eingabe.
             
             VORGABEN:
             - Ernährungsweise: ${this.selectedDiet && this.selectedDiet !== 'egal' ? this.selectedDiet : 'Keine'}
             - Zeitaufwand: ${this.selectedEffort && this.selectedEffort !== 'egal' ? this.selectedEffort : 'Normal'}
-            - Portionen: Berechne die Zutatenmengen für exakt ${portions} Person(en).
+            - Portionen: 
+            Berechne die Zutatenmengen für exakt ${portions} Person(en).
             ${strictIngredientRule}
             
             ${this.additionalPrompt ? `🚨 ÄNDERUNGSWUNSCH: "${this.additionalPrompt}". Bitte anpassen!` : ''}
@@ -654,12 +782,7 @@ export class EcoChef extends LitElement {
               "ecoScore": "Bewerte die Nachhaltigkeit/Regionalität des Gerichts von 1 bis 5 Blättern (Gib NUR diese Emojis zurück: z.B. '🍃🍃🍃🍃')",
               "beverage": "Kurze Empfehlung für ein passendes Getränk (Wein, Bier oder was Alkoholfreies)",
               "storageTip": "Kurzer Tipp zur Aufbewahrung oder Resteverwertung",
-              "nutrition": {
-                "calories": "z.B. 450 kcal",
-                "protein": "z.B. 25g",
-                "carbs": "z.B. 40g",
-                "fat": "z.B. 15g"
-              },
+              "nutrition": { "calories": "z.B. 450 kcal", "protein": "z.B. 25g", "carbs": "z.B. 40g", "fat": "z.B. 15g" },
               "ingredientsList": ["1. Zutat", "2. Zutat"],
               "instructions": ["Schritt 1...", "Schritt 2..."],
               "tip": "Tipp..."
@@ -669,9 +792,7 @@ export class EcoChef extends LitElement {
 
         try {
             const ai = new GoogleGenAI({apiKey: GEMINI_API_KEY});
-
             const requestContents: any[] = [];
-
             if (this.capturedImage) {
                 requestContents.push({
                     inlineData: {
@@ -681,9 +802,8 @@ export class EcoChef extends LitElement {
                 });
             }
             requestContents.push(promptText);
-
             const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: "gemini-flash-latest",
                 contents: requestContents,
             });
 
@@ -718,6 +838,7 @@ export class EcoChef extends LitElement {
                     tip: parsedData.tip || "Lass es dir schmecken!"
                 };
 
+                this.srAnnouncement = `Rezept erfolgreich geladen: ${this.recipe.title}. Es besteht aus ${this.recipe.ingredientsList.length} Zutaten und ${this.recipe.instructions.length} Zubereitungsschritten.`;
                 window.scrollTo({top: 0, behavior: 'smooth'});
 
             }   catch (parseError) {
@@ -815,5 +936,423 @@ export class EcoChef extends LitElement {
             };
         }
         this.isEditing = false;
+    }
+
+    // --- NEUE HILFSMETHODEN ---
+
+    updateFontScaleStyle() {
+        this.style.setProperty('--font-scale', this.fontScale.toString());
+    }
+
+    toggleSettings() {
+        this.showSettings = !this.showSettings;
+        if (this.showSettings) {
+            this.showSavedRecipes = false;
+            this.showShoppingList = false;
+            this.recipe = null;
+        }
+    }
+
+    togglePantryItem(item: string) {
+        this.selectedPantry = {
+            ...this.selectedPantry,
+            [item]: !this.selectedPantry[item]
+        };
+        localStorage.setItem('ecoChef_pantry', JSON.stringify(this.selectedPantry));
+        this.srAnnouncement = `${item} wurde in der Vorratskammer ${this.selectedPantry[item] ? 'aktiviert' : 'deaktiviert'}.`;
+    }
+
+    clearAllData() {
+        if (confirm("Möchtest du wirklich alle lokalen Daten (gespeicherte Rezepte, Einkaufsliste, Einstellungen) löschen? Diese Aktion kann nicht rückgängig gemacht werden.")) {
+            localStorage.clear();
+            this.srAnnouncement = "Alle Anwendungsdaten wurden gelöscht. Die App wird neu geladen.";
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        }
+    }
+
+    exportRecipes() {
+        const saved = localStorage.getItem('ecoChef_savedRecipes');
+        if (!saved || JSON.parse(saved).length === 0) {
+            alert("Du hast noch keine Rezepte gespeichert, die exportiert werden können.");
+            return;
+        }
+        
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(saved);
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", "ecoChef_rezepte.json");
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        this.srAnnouncement = "Deine Rezepte wurden als Datei heruntergeladen.";
+    }
+
+    toggleLrsMode() {
+        this.isLrsMode = !this.isLrsMode;
+        localStorage.setItem('ecoChef_lrsMode', this.isLrsMode ? 'true' : 'false');
+        this.srAnnouncement = `Lese-Rechtschreib-Hilfe wurde ${this.isLrsMode ? 'eingeschaltet' : 'ausgeschaltet'}.`;
+    }
+
+    changeFontScale(delta: number) {
+        this.fontScale = Math.min(2.0, Math.max(0.8, this.fontScale + delta));
+        localStorage.setItem('ecoChef_fontScale', this.fontScale.toFixed(1));
+        this.updateFontScaleStyle();
+        this.srAnnouncement = `Schriftgröße geändert auf ${Math.round(this.fontScale * 100)} Prozent.`;
+    }
+
+    toggleReadingRuler() {
+        this.showReadingRuler = !this.showReadingRuler;
+        localStorage.setItem('ecoChef_showRuler', this.showReadingRuler ? 'true' : 'false');
+        this.srAnnouncement = `Leselineal wurde ${this.showReadingRuler ? 'eingeschaltet' : 'ausgeschaltet'}.`;
+    }
+
+    acceptConsent() {
+        localStorage.setItem('ecoChef_gdprConsent', 'true');
+        this.hasConsent = true;
+        this.srAnnouncement = "Datenschutzerklärung akzeptiert. Willkommen bei EcoChef!";
+    }
+
+    togglePrivacyDetails() {
+        this.showPrivacyDetails = !this.showPrivacyDetails;
+    }
+
+    // Web Audio API
+    playAlarmSound() {
+        try {
+            if (!this.audioCtx) {
+                this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            }
+            if (this.audioCtx.state === 'suspended') {
+                this.audioCtx.resume();
+            }
+
+            const playPulse = () => {
+                if (!this.audioCtx || !this.alarmActive) return;
+                const osc = this.audioCtx.createOscillator();
+                const gain = this.audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, this.audioCtx.currentTime);
+
+                gain.gain.setValueAtTime(0.3, this.audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.4);
+
+                osc.connect(gain);
+                gain.connect(this.audioCtx.destination);
+                osc.start();
+                osc.stop(this.audioCtx.currentTime + 0.5);
+
+                setTimeout(playPulse, 800);
+            };
+
+            playPulse();
+        } catch (e) {
+            console.error("Audio Context Error", e);
+        }
+    }
+
+    stopAlarmSound() {
+        this.alarmActive = false;
+    }
+
+    closeTimerExpiredModal() {
+        this.showTimerExpiredModal = false;
+        this.stopAlarmSound();
+        this.srAnnouncement = "Timer-Alarm beendet.";
+    }
+
+    // Sprachsteuerung
+    initVoiceRecognition() {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            return;
+        }
+
+        this.recognition = new SpeechRecognition();
+        this.recognition.continuous = true;
+        this.recognition.interimResults = false;
+        this.recognition.lang = 'de-DE';
+
+        this.recognition.onresult = (event: any) => {
+            const last = event.results.length - 1;
+            const command = event.results[last][0].transcript.trim().toLowerCase();
+            this.voiceStatusText = `Befehl erkannt: "${command}"`;
+            this.handleVoiceCommand(command);
+        };
+
+        this.recognition.onerror = (event: any) => {
+            console.error("Speech recognition error", event.error);
+            if (event.error === 'not-allowed') {
+                this.isVoiceControlActive = false;
+                this.voiceStatusText = 'Zugriff verweigert';
+            }
+        };
+
+        this.recognition.onend = () => {
+            if (this.isVoiceControlActive && this.isCookingMode) {
+                try {
+                    this.recognition.start();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        };
+    }
+
+    toggleVoiceControl() {
+        if (!this.recognition) {
+            this.initVoiceRecognition();
+        }
+
+        if (!this.recognition) {
+            alert("Sprachsteuerung wird in diesem Browser leider nicht unterstützt.");
+            return;
+        }
+
+        this.isVoiceControlActive = !this.isVoiceControlActive;
+        if (this.isVoiceControlActive) {
+            this.voiceStatusText = 'Hört zu...';
+            try {
+                this.recognition.start();
+            } catch (e) {
+                console.error(e);
+            }
+            this.speakText("Sprachsteuerung aktiv. Sag 'weiter' oder 'zurück', um durch die Schritte zu navigieren.");
+            this.srAnnouncement = "Sprachsteuerung aktiviert. Das Mikrofon hört zu.";
+        } else {
+            this.voiceStatusText = '';
+            try {
+                this.recognition.stop();
+            } catch (e) {
+                console.error(e);
+            }
+            this.srAnnouncement = "Sprachsteuerung deaktiviert.";
+        }
+    }
+
+    stopVoiceRecognition() {
+        this.isVoiceControlActive = false;
+        if (this.recognition) {
+            try {
+                this.recognition.stop();
+            } catch (e) {
+                // Ignore error
+            }
+        }
+    }
+
+    speakText(text: string) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'de-DE';
+        utterance.rate = 0.95;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    handleVoiceCommand(command: string) {
+        console.log("Voice Command:", command);
+        if (command.includes('weiter') || command.includes('nächst') || command.includes('weiterer')) {
+            this.nextStep();
+            this.speakCurrentStep();
+            this.srAnnouncement = "Nächster Schritt vorgelesen.";
+        } else if (command.includes('zurück') || command.includes('vorherig') || command.includes('letzter')) {
+            this.prevStep();
+            this.speakCurrentStep();
+            this.srAnnouncement = "Vorheriger Schritt vorgelesen.";
+        } else if (command.includes('vorlesen') || command.includes('lies vor') || command.includes('sprechen')) {
+            this.readCurrentStep();
+            this.srAnnouncement = "Schritt wird vorgelesen.";
+        } else if (command.includes('stopp') || command.includes('halt') || command.includes('anhalten')) {
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            this.stopTimer();
+            if (this.showTimerExpiredModal) {
+                this.closeTimerExpiredModal();
+            }
+            this.srAnnouncement = "Sprachausgabe und Timer gestoppt.";
+        } else if (command.includes('hilfe') || command.includes('befehle')) {
+            this.speakText("Mögliche Befehle sind: weiter, zurück, vorlesen, stoppen und hilfe.");
+        }
+    }
+
+    speakCurrentStep() {
+        if (this.recipe) {
+            this.speakText(`Schritt ${this.currentCookingStep + 1}: ${this.recipe.instructions[this.currentCookingStep]}`);
+        }
+    }
+
+    // Leselineal Drag Handlers
+    handleRulerTouch(e: TouchEvent) {
+        if (e.touches && e.touches[0]) {
+            const cardElement = this.shadowRoot?.querySelector('.card');
+            if (cardElement) {
+                const rect = cardElement.getBoundingClientRect();
+                const relativeY = e.touches[0].clientY - rect.top;
+                this.rulerY = Math.max(0, Math.min(rect.height - 32, relativeY));
+            }
+        }
+    }
+
+    handleRulerMouseDown() {
+        this.isDraggingRuler = true;
+        const onMouseMove = (moveEvent: MouseEvent) => {
+            if (!this.isDraggingRuler) return;
+            const cardElement = this.shadowRoot?.querySelector('.card');
+            if (cardElement) {
+                const rect = cardElement.getBoundingClientRect();
+                const relativeY = moveEvent.clientY - rect.top;
+                this.rulerY = Math.max(0, Math.min(rect.height - 32, relativeY));
+            }
+        };
+
+        const onMouseUp = () => {
+            this.isDraggingRuler = false;
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+    }
+
+    // Render Sub-Components
+    renderSettings() {
+        return html`
+            <div class="settings-container">
+                <h3 class="recipe-subheading">⚙️ Einstellungen & Vorrat</h3>
+
+                <!-- Vorratskammer Section -->
+                <div class="settings-section">
+                    <h4 class="settings-title">🥦 Vorratskammer (Standard-Zutaten)</h4>
+                    <p class="subtitle" style="margin-bottom: 16px;">
+                        Zutaten, die du immer daheim hast. Die KI wird sie automatisch für Rezepte verwenden.
+                    </p>
+                    <div class="pantry-grid">
+                        ${this.pantryItems.map(item => html`
+                            <button 
+                                class="pantry-item ${this.selectedPantry[item] ? 'active' : ''}" 
+                                @click="${() => this.togglePantryItem(item)}"
+                                aria-pressed="${!!this.selectedPantry[item]}"
+                            >
+                                ${this.selectedPantry[item] ? '✅' : '➕'} ${item}
+                            </button>
+                        `)}
+                    </div>
+                </div>
+
+                <!-- Barrierefreiheit Section -->
+                <div class="settings-section">
+                    <h4 class="settings-title">👁️ Barrierefreiheit & Lesehilfe</h4>
+                    
+                    <p class="filter-title" style="margin-top: 10px;">Schriftgröße:</p>
+                    <div class="font-size-controls">
+                        <button class="step-btn" @click="${() => this.changeFontScale(-0.1)}" aria-label="Schriftgröße verkleinern">A-</button>
+                        <span class="step-value" style="flex-grow: 1;">${Math.round(this.fontScale * 100)}%</span>
+                        <button class="step-btn" @click="${() => this.changeFontScale(0.1)}" aria-label="Schriftgröße vergrößern">A+</button>
+                    </div>
+
+                    <div class="toggle-container" style="margin-top: 20px;">
+                        <label class="toggle-switch">
+                            <input type="checkbox"
+                                   .checked="${this.isLrsMode}"
+                                   @change="${this.toggleLrsMode}"
+                                   aria-label="LRS-Lesehilfe aktivieren">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="toggle-label" style="color: ${this.isLrsMode ? '#4CAF50' : 'var(--text-dark)'};">
+                            LRS-Modus (Optimierter Zeilenabstand & Schrift)
+                        </span>
+                    </div>
+
+                    <div class="toggle-container" style="margin-top: 10px;">
+                        <label class="toggle-switch">
+                            <input type="checkbox"
+                                   .checked="${this.showReadingRuler}"
+                                   @change="${this.toggleReadingRuler}"
+                                   aria-label="Leselineal aktivieren">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="toggle-label" style="color: ${this.showReadingRuler ? '#4CAF50' : 'var(--text-dark)'};">
+                            Leselineal einblenden (Verschiebbar)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- DSGVO & Datenschutz Section -->
+                <div class="settings-section">
+                    <h4 class="settings-title">🛡️ Datenschutz & DSGVO</h4>
+                    <p class="subtitle" style="margin-bottom: 16px;">
+                        Ihre Daten gehören Ihnen. Alle Rezepte und Einstellungen werden lokal auf Ihrem Gerät gespeichert.
+                    </p>
+                    <button class="secondary-btn" @click="${this.togglePrivacyDetails}" style="margin-bottom: 12px;" aria-label="Datenschutzerklärung anzeigen">
+                        📜 Datenschutzerklärung lesen
+                    </button>
+                    <button class="secondary-btn" @click="${this.exportRecipes}" style="margin-bottom: 12px; border-color: #3b82f6; color: #1d4ed8;" aria-label="Rezepte exportieren">
+                        📥 Gespeicherte Rezepte exportieren (JSON)
+                    </button>
+                    <button class="secondary-btn" @click="${this.clearAllData}" style="border-color: #ef4444; color: #b91c1c;" aria-label="Alle Anwendungsdaten löschen">
+                        🗑️ Alle App-Daten löschen
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    renderGdprBanner() {
+        if (this.hasConsent) return '';
+        return html`
+            <div class="gdpr-banner" role="dialog" aria-labelledby="gdpr-title" aria-describedby="gdpr-desc">
+                <h3 id="gdpr-title" style="margin-top: 0; font-size: 20px; font-weight: 800; color: var(--text-dark);">🛡️ Datenschutzeinwilligung</h3>
+                <p id="gdpr-desc" class="gdpr-text">
+                    Um personalisierte Rezepte mit Künstlicher Intelligenz zu erstellen, sendet diese App Ihre Zutatenliste und ggf. Fotos an die <strong>Google Gemini API</strong>. 
+                    Ihre Einstellungen, die Einkaufsliste und Rezepte werden <strong>ausschließlich lokal auf Ihrem Gerät gespeichert</strong>. Es werden keine sonstigen Tracker oder Analysedienste verwendet.
+                </p>
+                <div class="gdpr-buttons">
+                    <button class="main-btn" @click="${this.acceptConsent}" aria-label="Einwilligen und fortfahren">Zustimmen & Fortfahren</button>
+                    <button class="secondary-btn" @click="${this.togglePrivacyDetails}" aria-label="Datenschutzerklärung anzeigen">Datenschutzerklärung anzeigen</button>
+                </div>
+            </div>
+        `;
+    }
+
+    renderPrivacyDetailsModal() {
+        if (!this.showPrivacyDetails) return '';
+        return html`
+            <div class="modal-overlay" style="z-index: 3000;">
+                <div class="modal-content" style="max-height: 80vh; overflow-y: auto; border-radius: 24px;">
+                    <h3 style="margin-top: 0; font-size: 22px; color: var(--text-dark);">Datenschutzerklärung EcoChef</h3>
+                    <div style="font-size: 14px; line-height: 1.6; text-align: left; color: var(--text-dark);">
+                        <p><strong>1. Lokale Speicherung</strong><br>
+                        Alle von Ihnen erstellten Rezepte, die Einkaufsliste und Ihre Einstellungen werden ausschließlich lokal in der <code>localStorage</code> Ihres Browsers bzw. Geräts gespeichert. Diese Daten verlassen Ihr Gerät nicht, es sei denn, Sie nutzen die Teilen-Funktion.</p>
+                        
+                        <p><strong>2. Nutzung der Google Gemini API</strong><br>
+                        Wenn Sie die Funktion "Rezept Zaubern" nutzen, werden die eingegebenen Zutaten, Portionsgrößen sowie das Kühlschrankfoto an Server von Google (Gemini API) übertragen, um das Rezept zu generieren. Google verarbeitet diese Daten gemäß seinen API-Datenschutzbestimmungen. Es werden keine Identifikatoren Ihres Geräts an Google übermittelt.</p>
+                        
+                        <p><strong>3. Ihre Rechte (DSGVO)</strong><br>
+                        Da alle Daten lokal gespeichert werden, haben Sie die volle Kontrolle: Sie können alle Daten über die App-Einstellungen ("Alle App-Daten löschen") oder durch das Löschen der Browserdaten Ihres Geräts unwiderruflich entfernen. Damit wird Ihr Recht auf Löschung (Art. 17 DSGVO) vollständig gewahrt.</p>
+                        
+                        <p><strong>4. Kontakt</strong><br>
+                        EcoChef App - Lokale Cordova App ohne externe Server-Datenbank.</p>
+                    </div>
+                    <button class="main-btn" @click="${this.togglePrivacyDetails}" style="margin-top: 24px;" aria-label="Schließen">Schließen</button>
+                </div>
+            </div>
+        `;
+    }
+
+    renderTimerExpiredModal() {
+        if (!this.showTimerExpiredModal) return '';
+        return html`
+            <div class="modal-overlay" style="z-index: 2500;">
+                <div class="modal-content" style="text-align: center; border-radius: 24px; padding: 32px 24px;">
+                    <h3 style="color: #ef4444; font-size: 28px; margin-top: 0;">⏰ Timer abgelaufen!</h3>
+                    <p style="font-size: 18px; margin-bottom: 32px; color: var(--text-dark);">Dein Essen braucht jetzt deine Aufmerksamkeit!</p>
+                    <button class="main-btn" @click="${this.closeTimerExpiredModal}" style="background-color: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);" aria-label="Alarm stoppen">
+                        Alarm stoppen ⏹️
+                    </button>
+                </div>
+            </div>
+        `;
     }
 }
