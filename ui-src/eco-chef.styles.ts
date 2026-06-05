@@ -440,4 +440,141 @@ export const ecoChefStyles = css`
         flex-direction: column;
         gap: 10px;
     }
+
+    /* Startseite / Welcome Screen Styles */
+    .welcome-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 32px 24px;
+        box-sizing: border-box;
+        text-align: center;
+        background: linear-gradient(135deg, var(--bg-color) 0%, rgba(4, 120, 87, 0.05) 100%);
+        animation: fadeIn 0.5s ease-out;
+    }
+    .dark-theme .welcome-container {
+        background: linear-gradient(135deg, var(--bg-color) 0%, rgba(52, 211, 153, 0.05) 100%);
+    }
+
+    .welcome-logo-area {
+        margin-bottom: 32px;
+        position: relative;
+    }
+    .welcome-logo {
+        font-size: 72px;
+        filter: drop-shadow(0 10px 15px rgba(4, 120, 87, 0.15));
+        animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    .welcome-title {
+        font-size: calc(36px * var(--font-scale, 1.0));
+        font-weight: 900;
+        margin: 0 0 12px 0;
+        letter-spacing: -1px;
+        background: linear-gradient(45deg, var(--primary-dark), var(--primary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .dark-theme .welcome-title {
+        background: linear-gradient(45deg, var(--primary), #a7f3d0);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .welcome-desc {
+        font-size: calc(16px * var(--font-scale, 1.0));
+        line-height: 1.6;
+        color: var(--text-muted);
+        margin: 0 0 40px 0;
+        max-width: 440px;
+    }
+
+    .welcome-quick-settings {
+        width: 100%;
+        max-width: 440px;
+        margin-bottom: 40px;
+        padding: 24px;
+        background: var(--surface);
+        border: 2px solid var(--border);
+        border-radius: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+    }
+    
+    .welcome-quick-settings h4 {
+        margin: 0 0 16px 0;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-dark);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .welcome-enter-btn {
+        width: 100%;
+        max-width: 440px;
+        padding: 20px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 20px;
+        font-size: calc(20px * var(--font-scale, 1.0));
+        font-weight: 800;
+        cursor: pointer;
+        box-shadow: 0 10px 25px rgba(4, 120, 87, 0.3);
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+    }
+    .welcome-enter-btn:active {
+        transform: scale(0.97) translateY(2px);
+        box-shadow: 0 5px 10px rgba(4, 120, 87, 0.2);
+    }
+
+    /* Rezept-Bild Styles */
+    .recipe-image-box {
+        width: 100%;
+        height: 250px;
+        border-radius: 20px;
+        overflow: hidden;
+        margin-bottom: 24px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        border: 1px solid var(--border);
+        background-color: var(--bg-color);
+        position: relative;
+    }
+    .recipe-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+    .recipe-image-box:hover .recipe-image {
+        transform: scale(1.03);
+    }
+    .recipe-image-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        gap: 8px;
+    }
+    .recipe-image-placeholder .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid var(--border);
+        border-top: 3px solid var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
 `;

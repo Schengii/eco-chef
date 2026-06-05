@@ -51,6 +51,7 @@ export class EcoChef extends LitElement {
         ingredientsList: string[];
         instructions: string[];
         tip: string;
+        image?: string;
     } | null = null;
 
     // DSGVO & Einstellungen
@@ -79,6 +80,11 @@ export class EcoChef extends LitElement {
     private audioCtx: AudioContext | null = null;
     private alarmActive = false;
     private isDraggingRuler = false;
+
+    // Rezept-Bild & Startseite
+    @state() recipeImage: string | null = null;
+    @state() isGeneratingImage = false;
+    @state() showWelcomeScreen = true;
 
 
     static override styles = ecoChefStyles;
@@ -127,6 +133,7 @@ export class EcoChef extends LitElement {
         }
 
         this.updateFontScaleStyle();
+        this.updateBodyBackground();
     }
 
     override disconnectedCallback() {
@@ -177,7 +184,9 @@ export class EcoChef extends LitElement {
         };
 
         (navigator as any).camera.getPicture(
-            (imageData: string) => { this.capturedImage = imageData; },
+            (imageData: string) => { 
+                this.capturedImage = 'data:image/jpeg;base64,' + imageData; 
+            },
             (error: any) => { console.error(error); },
             options
         );
@@ -191,7 +200,7 @@ export class EcoChef extends LitElement {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const result = e.target?.result as string;
-                this.capturedImage = result.includes(',') ? result.split(',')[1] : result;
+                this.capturedImage = result;
             };
             reader.readAsDataURL(file);
         }
@@ -200,6 +209,7 @@ export class EcoChef extends LitElement {
     toggleDarkMode() {
         this.isDarkMode = !this.isDarkMode;
         localStorage.setItem('ecoChef_theme', this.isDarkMode ? 'dark' : 'light');
+        this.updateBodyBackground();
     }
 
     toggleShoppingList() {
@@ -308,6 +318,20 @@ export class EcoChef extends LitElement {
 
 
     override render() {
+        if (this.showWelcomeScreen) {
+            return html`
+                <div class="app-wrapper ${this.isDarkMode ? 'dark-theme' : ''} ${this.isLrsMode ? 'lrs-theme' : ''}">
+                    <div class="card" style="padding: 0;">
+                        ${this.renderWelcomeScreen()}
+                        
+                        <!-- Datenschutzeinwilligung auf Startseite anzeigen -->
+                        ${this.renderGdprBanner()}
+                        ${this.renderPrivacyDetailsModal()}
+                    </div>
+                </div>
+            `;
+        }
+
         return html`
            <div class="app-wrapper ${this.isDarkMode ? 'dark-theme' : ''} ${this.isLrsMode ? 'lrs-theme' : ''}">
               <div class="card">
@@ -490,6 +514,22 @@ export class EcoChef extends LitElement {
                 ${this.recipe ? html`
                     <div class="recipe-paper">
                         <h2 class="recipe-title">${this.recipe.title}</h2>
+                        
+                        <!-- Rezept-Bild -->
+                        <div class="recipe-image-box">
+                            ${this.isGeneratingImage ? html`
+                                <div class="recipe-image-placeholder">
+                                    <div class="spinner"></div>
+                                    <span>Gerichtsbild wird von der KI generiert...</span>
+                                </div>
+                            ` : this.recipeImage ? html`
+                                <img src="${this.recipeImage}" alt="Foto von ${this.recipe.title}" class="recipe-image" />
+                            ` : html`
+                                <div class="recipe-image-placeholder">
+                                    <span>Kein Bild verfügbar</span>
+                                </div>
+                            `}
+                        </div>
                         <div class="recipe-meta">
                             <span class="difficulty-badge ${this.recipe.difficulty?.toLowerCase()}">
                                 📊 ${this.recipe.difficulty}
@@ -743,7 +783,23 @@ export class EcoChef extends LitElement {
         }
         this.isLoading = true;
         this.recipe = null;
+        this.recipeImage = null;
         this.srAnnouncement = "Rezept wird von der Künstlichen Intelligenz generiert. Bitte warten Sie einen moment.";
+
+        let base64Data = '';
+        let mimeType = 'image/jpeg';
+        if (this.capturedImage) {
+            if (this.capturedImage.includes(',')) {
+                const parts = this.capturedImage.split(',');
+                base64Data = parts[1];
+                const mimeMatch = parts[0].match(/data:(.*?);/);
+                if (mimeMatch) {
+                    mimeType = mimeMatch[1];
+                }
+            } else {
+                base64Data = this.capturedImage;
+            }
+        }
 
         const portions = this.persons || 2;
         const textIngredients = this.ingredients || "Keine Text-Eingabe, siehe Bild.";
@@ -796,8 +852,8 @@ export class EcoChef extends LitElement {
             if (this.capturedImage) {
                 requestContents.push({
                     inlineData: {
-                        data: this.capturedImage,
-                        mimeType: "image/jpeg"
+                        data: base64Data,
+                        mimeType: mimeType
                     }
                 });
             }
@@ -838,8 +894,11 @@ export class EcoChef extends LitElement {
                     tip: parsedData.tip || "Lass es dir schmecken!"
                 };
 
-                this.srAnnouncement = `Rezept erfolgreich geladen: ${this.recipe.title}. Es besteht aus ${this.recipe.ingredientsList.length} Zutaten und ${this.recipe.instructions.length} Zubereitungsschritten.`;
+                this.srAnnouncement = `Rezept erfolgreich geladen: ${this.recipe.title}. Es besteht aus ${this.recipe.ingredientsList.length} Zutaten und ${this.recipe.instructions.length} Zubereitungsschritten. Bild wird generiert.`;
                 window.scrollTo({top: 0, behavior: 'smooth'});
+
+                // Trigger background recipe image generation
+                this.generateRecipeImage(this.recipe.title);
 
             }   catch (parseError) {
                 console.error("Fehler beim Auswerten der KI-Antwort:", parseError);
@@ -895,7 +954,11 @@ export class EcoChef extends LitElement {
     saveRecipe() {
         if (!this.recipe) return;
         const saved = JSON.parse(localStorage.getItem('ecoChef_savedRecipes') || '[]');
-        saved.push(this.recipe);
+        const recipeToSave = {
+            ...this.recipe,
+            image: this.recipeImage || undefined
+        };
+        saved.push(recipeToSave);
         localStorage.setItem('ecoChef_savedRecipes', JSON.stringify(saved));
         alert("✅ Rezept lokal gespeichert!");
     }
@@ -912,6 +975,7 @@ export class EcoChef extends LitElement {
 
     openSavedRecipe(savedRecipe: any) {
         this.recipe = savedRecipe;
+        this.recipeImage = savedRecipe.image || null;
         this.showSavedRecipes = false;
         window.scrollTo({top: 0, behavior: 'smooth'});
     }
@@ -1352,6 +1416,104 @@ export class EcoChef extends LitElement {
                         Alarm stoppen ⏹️
                     </button>
                 </div>
+            </div>
+        `;
+    }
+
+    updateBodyBackground() {
+        document.body.style.backgroundColor = this.isDarkMode ? '#0f172a' : '#96C7E8';
+    }
+
+    enterApp() {
+        this.showWelcomeScreen = false;
+        this.srAnnouncement = "Willkommen in der Küche von EcoChef. Du kannst jetzt Zutaten eingeben.";
+    }
+
+    async generateRecipeImage(title: string) {
+        this.isGeneratingImage = true;
+        this.recipeImage = null;
+        
+        try {
+            const ai = new GoogleGenAI({apiKey: GEMINI_API_KEY});
+            const response = await ai.models.generateImages({
+                model: 'imagen-3.0-generate-002',
+                prompt: `A beautiful, clean studio food photography of ${title}, professional plating, high quality food shot, soft lighting, 4k`,
+                config: {
+                    numberOfImages: 1,
+                    outputMimeType: 'image/jpeg',
+                    aspectRatio: '4:3',
+                }
+            });
+            
+            if (response && response.generatedImages && response.generatedImages[0] && response.generatedImages[0].image) {
+                const base64Bytes = response.generatedImages[0].image.imageBytes;
+                this.recipeImage = `data:image/jpeg;base64,${base64Bytes}`;
+                console.log("Successfully generated image via Imagen!");
+            } else {
+                throw new Error("No image returned by Imagen.");
+            }
+        } catch (e) {
+            console.warn("Imagen generation failed, falling back to loremflickr:", e);
+            const cleanTitle = title.replace(/[^a-zA-Z ]/g, '').split(' ').slice(0, 2).join(',');
+            this.recipeImage = `https://loremflickr.com/600/400/food,${encodeURIComponent(cleanTitle)}/all`;
+        } finally {
+            this.isGeneratingImage = false;
+            if (this.recipe) {
+                this.recipe = {
+                    ...this.recipe,
+                    image: this.recipeImage || undefined
+                };
+            }
+            this.requestUpdate();
+        }
+    }
+
+    renderWelcomeScreen() {
+        return html`
+            <div class="welcome-container">
+                <div class="welcome-logo-area">
+                    <span class="welcome-logo" role="img" aria-label="EcoChef Logo">🍳</span>
+                </div>
+                
+                <h1 class="welcome-title">EcoChef</h1>
+                <p class="welcome-desc">
+                    Dein intelligenter KI-Rezept-Zauberer. Koche kreativ mit deinen Kühlschrankzutaten, schütze die Umwelt und genieße maximale Barrierefreiheit.
+                </p>
+
+                <!-- Schnell-Einstellungen vor dem Start -->
+                <div class="welcome-quick-settings">
+                    <h4>⚙️ Barrierefreiheit & Design</h4>
+                    
+                    <div class="toggle-container" style="background: transparent; border: none; margin-bottom: 12px; padding: 0; display: flex; align-items: center; gap: 12px; justify-content: center;">
+                        <label class="toggle-switch">
+                            <input type="checkbox"
+                                   .checked="${this.isDarkMode}"
+                                   @change="${this.toggleDarkMode}"
+                                   aria-label="Dunkelmodus umschalten">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="toggle-label" style="font-weight: 700; color: var(--text-dark);">
+                            Dunkelmodus: ${this.isDarkMode ? 'Ein 🌙' : 'Aus ☀️'}
+                        </span>
+                    </div>
+
+                    <div class="toggle-container" style="background: transparent; border: none; margin-bottom: 0; padding: 0; display: flex; align-items: center; gap: 12px; justify-content: center;">
+                        <label class="toggle-switch">
+                            <input type="checkbox"
+                                   .checked="${this.isLrsMode}"
+                                   @change="${this.toggleLrsMode}"
+                                   aria-label="LRS-Lesehilfe aktivieren">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="toggle-label" style="font-weight: 700; color: var(--text-dark);">
+                            LRS-Modus (Lesehilfe): ${this.isLrsMode ? 'Ein 👁️' : 'Aus'}
+                        </span>
+                    </div>
+                </div>
+
+                <button class="welcome-enter-btn" @click="${this.enterApp}" aria-label="Küche betreten und App starten">
+                    Küche betreten 🧑‍🍳
+                </button>
             </div>
         `;
     }
