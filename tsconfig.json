@@ -28,5 +28,7 @@
       {
         "name": "typescript-lit-html-plugin"
       }]
-  }
+  },
+  "include": ["ui-src/**/*"],
+  "exclude": ["node_modules", "platforms", "www", "dist"]
 }

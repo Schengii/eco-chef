@@ -1,2 +1,2 @@
 import "./eco-chef";
-import "./eco-chef.styles.ts";
+import "./styles/eco-chef.styles";

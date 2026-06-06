@@ -16,12 +16,18 @@
   "cordova": {
     "platforms": [
       "android"
-    ]
+    ],
+    "plugins": {
+      "cordova-plugin-camera": {
+        "ANDROIDX_CORE_VERSION": "1.6.+"
+      }
+    }
   },
   "devDependencies": {
     "@types/node": "^25.3.5",
     "baseline-browser-mapping": "^2.10.0",
     "cordova-android": "^15.0.0",
+    "cordova-plugin-camera": "^8.0.0",
     "css-loader": "7.1.2",
     "html-webpack-plugin": "5.6.3",
     "kill-port": "2.0.1",

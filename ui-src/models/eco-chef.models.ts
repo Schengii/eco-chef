@@ -25,6 +25,8 @@ export interface Recipe {
     instructions: string[];
     tip: string;
     image?: string;
+    rating?: number;
+    savedAt?: string;
 }
 
 export interface ShoppingItem {
