@@ -81,6 +81,7 @@ export class EcoChef extends LitElement {
 
     @state() calorieGoal = 2000;
     @state() proteinGoal = 80;
+    @state() geminiApiKey = '';
 
     override connectedCallback() {
         super.connectedCallback();
@@ -106,6 +107,7 @@ export class EcoChef extends LitElement {
         this.stats = StorageService.getStats();
         this.calorieGoal = StorageService.getCalorieGoal();
         this.proteinGoal = StorageService.getProteinGoal();
+        this.geminiApiKey = StorageService.getGeminiApiKey();
         
         this.loadChips();
 
@@ -586,11 +588,13 @@ export class EcoChef extends LitElement {
                           .stats="${this.stats}"
                           .calorieGoal="${this.calorieGoal}"
                           .proteinGoal="${this.proteinGoal}"
+                          .geminiApiKey="${this.geminiApiKey}"
                           @toggle-pantry-item="${(e: CustomEvent) => this.togglePantryItem(e.detail.item)}"
                           @toggle-allergen="${(e: CustomEvent) => this.toggleAllergen(e.detail.allergen)}"
                           @change-font-scale="${(e: CustomEvent) => this.changeFontScale(e.detail.delta)}"
                           @change-calorie-goal="${(e: CustomEvent) => this.changeCalorieGoal(e.detail.goal)}"
                           @change-protein-goal="${(e: CustomEvent) => this.changeProteinGoal(e.detail.goal)}"
+                          @change-gemini-api-key="${(e: CustomEvent) => this.changeGeminiApiKey(e.detail.key)}"
                           @toggle-lrs-mode="${this.toggleLrsMode}"
                           @toggle-reading-ruler="${this.toggleReadingRuler}"
                           @toggle-privacy="${this.togglePrivacyDetails}"
@@ -1342,6 +1346,11 @@ export class EcoChef extends LitElement {
     changeProteinGoal(goal: number) {
         this.proteinGoal = goal;
         StorageService.setProteinGoal(goal);
+    }
+
+    changeGeminiApiKey(key: string) {
+        this.geminiApiKey = key.trim();
+        StorageService.setGeminiApiKey(this.geminiApiKey);
     }
 
     acceptConsent() {

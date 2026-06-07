@@ -1,9 +1,12 @@
 import { GoogleGenAI } from '@google/genai';
 import { GEMINI_API_KEY } from '../api-config';
+import { StorageService } from './storage.service';
 
 export const GeminiService = {
     async generateRecipe(capturedImage: string | null, promptText: string): Promise<string> {
-        const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+        const userKey = StorageService.getGeminiApiKey();
+        const apiKey = userKey || GEMINI_API_KEY;
+        const ai = new GoogleGenAI({ apiKey });
         const requestContents: any[] = [];
         
         if (capturedImage) {
@@ -38,7 +41,9 @@ export const GeminiService = {
     },
 
     async generateRecipeImage(title: string): Promise<string> {
-        const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+        const userKey = StorageService.getGeminiApiKey();
+        const apiKey = userKey || GEMINI_API_KEY;
+        const ai = new GoogleGenAI({ apiKey });
         try {
             const response = await ai.models.generateImages({
                 model: 'imagen-4.0-generate-001',
@@ -57,28 +62,36 @@ export const GeminiService = {
                 throw new Error("No image returned by Imagen.");
             }
         } catch (e) {
-            console.warn("Imagen generation failed, using smart Gemini fallback keywords for loremflickr:", e);
+            console.warn("Imagen failed, using smart Gemini fallback keywords for loremflickr:", e);
             
+            // Generate a deterministic lock number based on the recipe title
+            let hash = 0;
+            for (let i = 0; i < title.length; i++) {
+                hash = title.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const lock = Math.abs(hash) % 1000;
+
             try {
-                // Get 1-3 English keywords matching the food from the German title
-                const prompt = `Translate this dish title "${title}" to English and return exactly 1 to 3 relevant food keywords (comma-separated). Example: "Käse-Spätzle" -> "pasta,cheese". Respond ONLY with the comma-separated keywords in lowercase, no other text.`;
+                // Classify the title into a single English food tag for Flickr
+                const prompt = `Analysiere das Gericht "${title}". Wähle das am besten passende EINZELNE englische Substantiv aus, das diese Art von Essen beschreibt (z.B. pasta, salad, soup, curry, rice, burger, sandwich, steak, chicken, fish, sushi, tacos, vegetables, potatoes, pancake, cake, dessert, bread, cheese, wrap, casserole, stew, omelette).
+Antworte AUSSCHLIESSLICH mit diesem einen englischen Wort in Kleinbuchstaben, ohne Satzzeichen, ohne Anführungszeichen, ohne Zusatztext.`;
+                
                 const response = await ai.models.generateContent({
                     model: "gemini-flash-latest",
                     contents: [prompt],
                 });
                 
-                const keywords = (response.text || "").trim().toLowerCase().replace(/[^a-z,]/g, "");
-                if (keywords && keywords.length > 2) {
-                    console.log("Smart image keywords generated:", keywords);
-                    return `https://loremflickr.com/600/400/food,${encodeURIComponent(keywords)}/all`;
+                const keyword = (response.text || "").trim().toLowerCase().replace(/[^a-z]/g, "");
+                if (keyword && keyword.length > 2) {
+                    console.log("Smart image category classified:", keyword, "with lock:", lock);
+                    return `https://loremflickr.com/600/400/food,${encodeURIComponent(keyword)}/all?lock=${lock}`;
                 }
             } catch (err) {
-                console.error("Gemini keyword translation failed:", err);
+                console.error("Gemini keyword classification failed:", err);
             }
             
             // Ultimate fallback
-            const cleanTitle = title.replace(/[^a-zA-Z ]/g, '').split(' ').slice(0, 2).join(',');
-            return `https://loremflickr.com/600/400/food,${encodeURIComponent(cleanTitle)}/all`;
+            return `https://loremflickr.com/600/400/food?lock=${lock}`;
         }
     }
 };

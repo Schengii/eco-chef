@@ -1,11 +1,22 @@
 <?xml version='1.0' encoding='utf-8'?>
 <widget id="com.schenk.ecochef" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
-    <name>Eco Chef</name>
-    <description>Eco Chef App</description>
-    <author email="maximilian.schenk.ext@dfg.de">
+    <name>EcoChef</name>
+    <description>Dein intelligenter KI-Rezept-Zauberer. Koche nachhaltig mit deinen Kühlschrankzutaten.</description>
+    <author email="maximilian.schenk.ext@dfg.de" href="https://github.com/DFG-DEV/eco-chef">
         Max Schenk
     </author>
     <content src="index.html" />
+    <access origin="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
+    
+    <platform name="android">
+        <preference name="android-minSdkVersion" value="22" />
+        <preference name="android-targetSdkVersion" value="34" />
+        <allow-intent href="market:*" />
+    </platform>
+    
+    <plugin name="cordova-plugin-camera" spec="^8.0.0">
+        <variable name="ANDROIDX_CORE_VERSION" value="1.6.+" />
+    </plugin>
 </widget>

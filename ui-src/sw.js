@@ -2,7 +2,11 @@ const CACHE_NAME = 'eco-chef-v1';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
-    '/manifest.json'
+    '/manifest.json',
+    '/bundle.js',
+    '/favicon.ico',
+    '/icon-192.png',
+    '/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {

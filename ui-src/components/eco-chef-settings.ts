@@ -16,6 +16,7 @@ export class EcoChefSettings extends LitElement {
     @property({ type: Object }) stats: { [date: string]: DailyStat } = {};
     @property({ type: Number }) calorieGoal = 2000;
     @property({ type: Number }) proteinGoal = 80;
+    @property({ type: String }) geminiApiKey = '';
 
     private _getWeeklyStats() {
         let totalCalories = 0;
@@ -111,6 +112,15 @@ export class EcoChefSettings extends LitElement {
         const goal = parseInt((e.target as HTMLInputElement).value, 10) || 80;
         this.dispatchEvent(new CustomEvent('change-protein-goal', {
             detail: { goal },
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    private _onGeminiApiKeyChange(e: Event) {
+        const key = (e.target as HTMLInputElement).value || '';
+        this.dispatchEvent(new CustomEvent('change-gemini-api-key', {
+            detail: { key },
             bubbles: true,
             composed: true
         }));
@@ -315,6 +325,23 @@ export class EcoChefSettings extends LitElement {
                         <span class="toggle-label" style="color: ${this.showReadingRuler ? '#15803d' : 'var(--text-dark)'};">
                             Leselineal einblenden (Verschiebbar)
                         </span>
+                    </div>
+                </div>
+
+                <!-- API-Key & Security Section -->
+                <div class="settings-section">
+                    <h4 class="settings-title">🔑 API-Schlüssel (Optional)</h4>
+                    <p class="subtitle" style="margin-bottom: 16px;">
+                        Gib hier deinen eigenen Gemini API-Key ein, um die App eigenständig zu betreiben. Falls leer, wird der integrierte Entwicklerschlüssel verwendet.
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <input type="password" 
+                               id="settings-api-key-input" 
+                               .value="${this.geminiApiKey}" 
+                               @change="${this._onGeminiApiKeyChange}" 
+                               placeholder="Z.B. AIzaSy..." 
+                               style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-dark); box-sizing: border-box;"
+                               aria-label="Gemini API Key" />
                     </div>
                 </div>
 

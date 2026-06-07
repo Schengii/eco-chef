@@ -164,6 +164,13 @@ export const StorageService = {
         localStorage.setItem('ecoChef_proteinGoal', String(goal));
     },
 
+    getGeminiApiKey(): string {
+        return localStorage.getItem('ecoChef_geminiApiKey') || '';
+    },
+    setGeminiApiKey(key: string): void {
+        localStorage.setItem('ecoChef_geminiApiKey', key);
+    },
+
     clearAll(): void {
         localStorage.clear();
     }
