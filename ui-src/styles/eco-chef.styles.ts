@@ -1200,8 +1200,9 @@ export const ecoChefStyles = css`
     /* Circular Progress Rings */
     .circular-progress-container {
         position: relative;
-        width: 120px;
-        height: 120px;
+        width: 100%;
+        max-width: 120px;
+        aspect-ratio: 1;
         margin: 20px auto;
         display: flex;
         align-items: center;
@@ -1257,5 +1258,37 @@ export const ecoChefStyles = css`
         font-weight: 700;
         margin-top: 10px;
         text-align: center;
+    }
+
+    @media (max-width: 480px) {
+        .settings-section {
+            padding: 16px;
+        }
+        .goals-input-group {
+            flex-direction: column;
+            gap: 12px;
+        }
+        .stat-card {
+            padding: 12px 6px;
+        }
+        .stat-value {
+            font-size: 20px;
+        }
+        .stat-label {
+            font-size: 10px;
+        }
+        .circular-progress-container {
+            margin: 12px auto;
+        }
+        .circular-progress-text .value {
+            font-size: 14px;
+        }
+        .circular-progress-text .target {
+            font-size: 9px;
+        }
+        .stat-subtext {
+            font-size: 10px;
+            margin-top: 6px;
+        }
     }
 `;

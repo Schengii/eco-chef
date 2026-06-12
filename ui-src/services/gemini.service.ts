@@ -46,7 +46,7 @@ export const GeminiService = {
         const ai = new GoogleGenAI({ apiKey });
         try {
             const response = await ai.models.generateImages({
-                model: 'imagen-4.0-generate-001',
+                model: 'imagen-3.0-generate-002',
                 prompt: `A beautiful, clean studio food photography of ${title}, professional plating, high quality food shot, soft lighting, 4k`,
                 config: {
                     numberOfImages: 1,
@@ -72,19 +72,19 @@ export const GeminiService = {
             const lock = Math.abs(hash) % 1000;
 
             try {
-                // Classify the title into a single English food tag for Flickr
-                const prompt = `Analysiere das Gericht "${title}". Wähle das am besten passende EINZELNE englische Substantiv aus, das diese Art von Essen beschreibt (z.B. pasta, salad, soup, curry, rice, burger, sandwich, steak, chicken, fish, sushi, tacos, vegetables, potatoes, pancake, cake, dessert, bread, cheese, wrap, casserole, stew, omelette).
-Antworte AUSSCHLIESSLICH mit diesem einen englischen Wort in Kleinbuchstaben, ohne Satzzeichen, ohne Anführungszeichen, ohne Zusatztext.`;
+                // Classify the title into descriptive English food tags for Flickr
+                const prompt = `Translate the German food dish "${title}" to English and extract 2 to 3 descriptive comma-separated keywords (nouns/adjectives) that represent this dish for an image search (e.g. for "Spaghetti mit Tomatensoße" output "pasta,spaghetti,tomato").
+Antworte AUSSCHLIESSLICH mit diesen kommagetrennten englischen Wörtern in Kleinbuchstaben, ohne Satzzeichen, ohne Anführungszeichen, ohne Zusatztext.`;
                 
                 const response = await ai.models.generateContent({
                     model: "gemini-flash-latest",
                     contents: [prompt],
                 });
                 
-                const keyword = (response.text || "").trim().toLowerCase().replace(/[^a-z]/g, "");
-                if (keyword && keyword.length > 2) {
-                    console.log("Smart image category classified:", keyword, "with lock:", lock);
-                    return `https://loremflickr.com/600/400/food,${encodeURIComponent(keyword)}/all?lock=${lock}`;
+                const keywords = (response.text || "").trim().toLowerCase().replace(/[^a-z,]/g, "");
+                if (keywords && keywords.length > 2) {
+                    console.log("Smart image category classified:", keywords, "with lock:", lock);
+                    return `https://loremflickr.com/600/400/food,${encodeURIComponent(keywords)}/all?lock=${lock}`;
                 }
             } catch (err) {
                 console.error("Gemini keyword classification failed:", err);
