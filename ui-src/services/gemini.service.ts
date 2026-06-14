@@ -93,5 +93,96 @@ Antworte AUSSCHLIESSLICH mit diesen kommagetrennten englischen Wörtern in Klein
             // Ultimate fallback
             return `https://loremflickr.com/600/400/food?lock=${lock}`;
         }
+    },
+
+    async scanReceipt(capturedImage: string): Promise<string[]> {
+        const userKey = StorageService.getGeminiApiKey();
+        const apiKey = userKey || GEMINI_API_KEY;
+        const ai = new GoogleGenAI({ apiKey });
+        
+        let base64Data = '';
+        let mimeType = 'image/jpeg';
+        if (capturedImage.includes(',')) {
+            const parts = capturedImage.split(',');
+            base64Data = parts[1];
+            const mimeMatch = parts[0].match(/data:(.*?);/);
+            if (mimeMatch) {
+                mimeType = mimeMatch[1];
+            }
+        } else {
+            base64Data = capturedImage;
+        }
+
+        const prompt = `Du bist ein intelligenter Kassenzettel-Scanner für Lebensmittel. Analysiere das hochgeladene Bild eines Einkaufszettels/Kassenzettels und extrahiere alle essbaren Produkte, Lebensmittel und Kochzutaten. Ignoriere Non-Food Artikel wie Zahnpasta, Tragetaschen, Zeitschriften etc. Bereinige die Namen der Produkte von Marken, Grammangaben, Preisen und Abkürzungen (z.B. aus 'JA! VOLLMILCH 1,5% 1L' wird 'Milch', aus 'BIO DR. OETKER PUDDING' wird 'Puddingpulver').
+Antworte AUSSCHLIESSLICH mit einem validen JSON-Array aus Strings in deutscher Sprache, z.B. ["Milch", "Butter", "Tomaten", "Nudeln"]. Gib keine Markdown-Formatierung wie \`\`\`json zurück, sondern NUR das reine Array.`;
+
+        const response = await ai.models.generateContent({
+            model: "gemini-flash-latest",
+            contents: [
+                {
+                    inlineData: {
+                        data: base64Data,
+                        mimeType: mimeType
+                    }
+                },
+                prompt
+            ],
+        });
+
+        const text = (response.text || '').trim();
+        const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+            return JSON.parse(cleaned);
+        } catch (e) {
+            console.error("Failed to parse scanned receipt response:", cleaned, e);
+            // Fallback parsing: look for lines or extract quotes
+            const matches = cleaned.match(/"([^"]+)"/g);
+            if (matches) {
+                return matches.map(m => m.replace(/"/g, ''));
+            }
+            return [];
+        }
+    },
+
+    async generateWeeklyPlan(pantry: string[], diet: string, effort: string, persons: number): Promise<any> {
+        const userKey = StorageService.getGeminiApiKey();
+        const apiKey = userKey || GEMINI_API_KEY;
+        const ai = new GoogleGenAI({ apiKey });
+
+        const prompt = `Generiere einen wöchentlichen Speiseplan (Montag bis Sonntag) für ${persons} Personen.
+Berücksichtige folgende vorhandene Vorräte: ${pantry.join(', ') || 'keine angegeben'}.
+Ernährungsweise: ${diet}. Zubereitungsaufwand: ${effort}.
+Der Speiseplan soll als JSON-Objekt zurückgegeben werden. Jeder Wochentag (Montag, Dienstag, Mittwoch, Donnerstag, Freitag, Samstag, Sonntag) soll ein eigenes Feld mit folgenden Eigenschaften sein:
+- "title": Name des Gerichts (auf Deutsch)
+- "prepTime": Zubereitungszeit (z.B. "25 Min.")
+- "co2SavedKg": Schätzung der CO2-Ersparnis in kg gegenüber einem fleischlastigen Standardgericht (Dezimalzahl)
+- "notes": Kurze Erklärung, warum dieses Gericht gewählt wurde oder wie die angegebenen Vorräte genutzt werden.
+
+Beispiel-Ausgabeformat:
+{
+  "Montag": {
+    "title": "Kichererbsencurry",
+    "prepTime": "30 Min.",
+    "co2SavedKg": 1.2,
+    "notes": "Nutzt die Kichererbsen und Zwiebeln aus deinen Vorräten."
+  },
+  ...
+}
+
+Gib AUSSCHLIESSLICH dieses JSON-Objekt zurück, ohne zusätzlichen Text und ohne \`\`\`json Formatierung.`;
+
+        const response = await ai.models.generateContent({
+            model: "gemini-flash-latest",
+            contents: [prompt],
+        });
+
+        const text = (response.text || '').trim();
+        const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+            return JSON.parse(cleaned);
+        } catch (e) {
+            console.error("Failed to parse weekly plan:", cleaned, e);
+            throw e;
+        }
     }
 };

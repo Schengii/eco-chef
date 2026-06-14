@@ -1,4 +1,4 @@
-import { Recipe, ShoppingItem, DailyStat } from '../models/eco-chef.models';
+import { Recipe, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan } from '../models/eco-chef.models';
 
 export const StorageService = {
     getGdprConsent(): boolean {
@@ -169,6 +169,51 @@ export const StorageService = {
     },
     setGeminiApiKey(key: string): void {
         localStorage.setItem('ecoChef_geminiApiKey', key);
+    },
+
+    getPantryAdvanced(): PantryItemAdvanced[] {
+        const saved = localStorage.getItem('ecoChef_pantry_advanced');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                console.error("Error parsing advanced pantry", e);
+            }
+        }
+        return [];
+    },
+    setPantryAdvanced(pantry: PantryItemAdvanced[]): void {
+        localStorage.setItem('ecoChef_pantry_advanced', JSON.stringify(pantry));
+    },
+
+    getAchievements(): Achievement[] {
+        const saved = localStorage.getItem('ecoChef_achievements');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                console.error("Error parsing achievements", e);
+            }
+        }
+        return [];
+    },
+    setAchievements(achievements: Achievement[]): void {
+        localStorage.setItem('ecoChef_achievements', JSON.stringify(achievements));
+    },
+
+    getMealPlan(): MealPlan {
+        const saved = localStorage.getItem('ecoChef_mealplan');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                console.error("Error parsing meal plan", e);
+            }
+        }
+        return {};
+    },
+    setMealPlan(plan: MealPlan): void {
+        localStorage.setItem('ecoChef_mealplan', JSON.stringify(plan));
     },
 
     clearAll(): void {

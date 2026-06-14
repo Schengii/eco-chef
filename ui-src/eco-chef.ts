@@ -1,7 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-import { Recipe, IngredientItem, ShoppingItem, DailyStat } from './models/eco-chef.models';
+import { Recipe, IngredientItem, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan } from './models/eco-chef.models';
 import { ecoChefStyles } from './styles/eco-chef.styles';
 
 import { StorageService } from './services/storage.service';
@@ -18,6 +18,9 @@ import './components/eco-chef-settings';
 import './components/eco-chef-shopping-list';
 import './components/eco-chef-recipe-view';
 import './components/eco-chef-cooking-mode';
+import './components/eco-chef-pantry';
+import './components/eco-chef-meal-planner';
+import './components/eco-chef-achievements';
 
 @customElement('eco-chef')
 export class EcoChef extends LitElement {
@@ -83,6 +86,22 @@ export class EcoChef extends LitElement {
     @state() proteinGoal = 80;
     @state() geminiApiKey = '';
 
+    @state() currentTab = 'zauberer';
+    @state() pantryItemsAdvanced: PantryItemAdvanced[] = [];
+    @state() achievementsList: Achievement[] = [];
+    @state() mealPlan: MealPlan = {};
+    @state() isGeneratingPlan = false;
+    @state() isScanningReceipt = false;
+    @state() syncCode = '';
+
+    defaultAchievements: Achievement[] = [
+        { id: 'retterKoenig', title: 'Retter-König', description: 'Koche Rezepte mit dringend zu verbrauchenden Zutaten.', icon: '👑', unlocked: false, progress: 0, target: 5 },
+        { id: 'klimaSchuetzer', title: 'Klimaschützer', description: 'Erreiche eine CO₂-Ersparnis von insgesamt 10 kg.', icon: '🌳', unlocked: false, progress: 0, target: 10 },
+        { id: 'sterneChef', title: 'Sterne-Eco-Chef', description: 'Bewerte 3 gekochte Rezepte mit 5 Sternen.', icon: '⭐', unlocked: false, progress: 0, target: 3 },
+        { id: 'scannerProfi', title: 'Scanner-Profi', description: 'Scanne 3 Kassenzettel per Kamera.', icon: '🧾', unlocked: false, progress: 0, target: 3 },
+        { id: 'pflanzenfresser', title: 'Pflanzenfresser', description: 'Koche 5 vegetarische oder vegane Gerichte.', icon: '🌿', unlocked: false, progress: 0, target: 5 }
+    ];
+
     override connectedCallback() {
         super.connectedCallback();
         document.addEventListener('backbutton', this.handleBackButton, false);
@@ -108,6 +127,16 @@ export class EcoChef extends LitElement {
         this.calorieGoal = StorageService.getCalorieGoal();
         this.proteinGoal = StorageService.getProteinGoal();
         this.geminiApiKey = StorageService.getGeminiApiKey();
+
+        this.pantryItemsAdvanced = StorageService.getPantryAdvanced();
+        this.mealPlan = StorageService.getMealPlan();
+        
+        let loadedAchievements = StorageService.getAchievements();
+        if (loadedAchievements.length === 0) {
+            loadedAchievements = [...this.defaultAchievements];
+            StorageService.setAchievements(loadedAchievements);
+        }
+        this.achievementsList = loadedAchievements;
         
         this.loadChips();
 
@@ -468,6 +497,7 @@ export class EcoChef extends LitElement {
         };
 
         StorageService.setStats(this.stats);
+        this.updateAchievements();
         this.srAnnouncement = `Rezept "${this.recipe.title}" als gekocht markiert. Kalorien und CO2-Ersparnis wurden getrackt.`;
         alert("🎉 Rezept als gekocht markiert! Deine Ernährungs- und CO2-Statistiken wurden aktualisiert.");
     }
@@ -565,19 +595,28 @@ export class EcoChef extends LitElement {
                      <p class="subtitle">Dein KI-Rezept-Zauberer 🧑‍🍳</p>
                      
                      <div class="header-actions">
-                         <button class="saved-btn" @click="${this.toggleSavedView}" aria-label="${this.showSavedRecipes ? 'Zurück zum Rezept-Generator' : 'Gespeicherte Rezepte anzeigen'}">
-                             ${this.showSavedRecipes ? '🔙 Zurück zum Generator' : '📚 Meine Rezepte'}
+                         <button class="saved-btn ${this.currentTab === 'zauberer' ? 'active' : ''}" @click="${() => { this.currentTab = 'zauberer'; this.showSavedRecipes = false; }}" aria-label="Rezept-Generator">
+                             ✨ Zauberer
                          </button>
-                         <button class="saved-btn" @click="${this.toggleShoppingList}" aria-label="${this.showShoppingList ? 'Zurück zum Rezept-Generator' : 'Einkaufsliste anzeigen'}">
-                             ${this.showShoppingList ? '🔙 Zurück' : '🛒 Einkaufsliste '}
+                         <button class="saved-btn ${this.currentTab === 'pantry' ? 'active' : ''}" @click="${() => { this.currentTab = 'pantry'; }}" aria-label="Vorratskammer">
+                             🥫 Vorrat
                          </button>
-                         <button class="saved-btn" @click="${this.toggleSettings}" aria-label="${this.showSettings ? 'Zurück zum Rezept-Generator' : 'Einstellungen und Vorratskammer'}">
-                             ${this.showSettings ? '🔙 Zurück' : '⚙️ Einstellungen'}
+                         <button class="saved-btn ${this.currentTab === 'mealplan' ? 'active' : ''}" @click="${() => { this.currentTab = 'mealplan'; }}" aria-label="Wochenplan">
+                             📅 Wochenplan
+                         </button>
+                         <button class="saved-btn ${this.currentTab === 'shopping' ? 'active' : ''}" @click="${() => { this.currentTab = 'shopping'; }}" aria-label="Einkaufsliste">
+                             🛒 Einkäufe
+                         </button>
+                         <button class="saved-btn ${this.currentTab === 'achievements' ? 'active' : ''}" @click="${() => { this.currentTab = 'achievements'; }}" aria-label="Erfolge">
+                             🏆 Erfolge
+                         </button>
+                         <button class="saved-btn ${this.currentTab === 'settings' ? 'active' : ''}" @click="${() => { this.currentTab = 'settings'; }}" aria-label="Einstellungen">
+                             ⚙️ Setup
                          </button>
                      </div>
                   </div>
 
-                  ${this.showSettings ? html`
+                  ${this.currentTab === 'settings' ? html`
                       <eco-chef-settings
                           .isLrsMode="${this.isLrsMode}"
                           .showReadingRuler="${this.showReadingRuler}"
@@ -589,12 +628,15 @@ export class EcoChef extends LitElement {
                           .calorieGoal="${this.calorieGoal}"
                           .proteinGoal="${this.proteinGoal}"
                           .geminiApiKey="${this.geminiApiKey}"
+                          .syncCode="${this.syncCode}"
                           @toggle-pantry-item="${(e: CustomEvent) => this.togglePantryItem(e.detail.item)}"
                           @toggle-allergen="${(e: CustomEvent) => this.toggleAllergen(e.detail.allergen)}"
                           @change-font-scale="${(e: CustomEvent) => this.changeFontScale(e.detail.delta)}"
                           @change-calorie-goal="${(e: CustomEvent) => this.changeCalorieGoal(e.detail.goal)}"
                           @change-protein-goal="${(e: CustomEvent) => this.changeProteinGoal(e.detail.goal)}"
                           @change-gemini-api-key="${(e: CustomEvent) => this.changeGeminiApiKey(e.detail.key)}"
+                          @generate-sync-code="${this.handleGenerateSyncCode}"
+                          @apply-sync-code="${this.handleApplySyncCode}"
                           @toggle-lrs-mode="${this.toggleLrsMode}"
                           @toggle-reading-ruler="${this.toggleReadingRuler}"
                           @toggle-privacy="${this.togglePrivacyDetails}"
@@ -604,7 +646,36 @@ export class EcoChef extends LitElement {
                       </eco-chef-settings>
                   ` : ''}
 
-                  ${!this.recipe && !this.showSavedRecipes && !this.showShoppingList && !this.showSettings ? html`
+                  ${this.currentTab === 'pantry' ? html`
+                      <eco-chef-pantry
+                          .pantryItems="${this.pantryItemsAdvanced}"
+                          .isScanning="${this.isLoading && this.isScanningReceipt}"
+                          @add-pantry-item="${this.handleAddPantryItem}"
+                          @delete-pantry-item="${this.handleDeletePantryItem}"
+                          @use-pantry-item="${this.handleUsePantryItem}"
+                          @add-seasonal-ingredient="${this.handleSeasonalIngredient}"
+                          @trigger-receipt-scan="${this.handleTriggerReceiptScan}">
+                      </eco-chef-pantry>
+                  ` : ''}
+
+                  ${this.currentTab === 'mealplan' ? html`
+                      <eco-chef-meal-planner
+                          .mealPlan="${this.mealPlan}"
+                          .isGeneratingPlan="${this.isGeneratingPlan}"
+                          @generate-weekly-plan="${this.handleGenerateWeeklyPlan}"
+                          @cook-plan-recipe="${this.handleCookPlanRecipe}"
+                          @add-plan-shopping="${this.handleAddPlanShopping}">
+                      </eco-chef-meal-planner>
+                  ` : ''}
+
+                  ${this.currentTab === 'achievements' ? html`
+                      <eco-chef-achievements
+                          .achievements="${this.achievementsList}"
+                          .stats="${this.stats}">
+                      </eco-chef-achievements>
+                  ` : ''}
+
+                  ${this.currentTab === 'zauberer' && !this.recipe && !this.showSavedRecipes ? html`
                       <div class="input-with-camera">
                           <input type="text" id="ingredients-input" placeholder="Zutat eingeben & Enter drücken oder Foto 📷" .value="${this.ingredients}" @input="${this._handleInput}" @keypress="${this.handleIngredientsKeypress}" style="margin-bottom: 0;" aria-label="Zutaten eingeben" />
                           <input type="file" id="file-upload" accept="image/*" style="display: none;" @change="${this.handleFileUpload}" />
@@ -688,6 +759,12 @@ export class EcoChef extends LitElement {
                           </div>
                       </div>
 
+                      <div style="margin-top: 24px; text-align: center;">
+                          <button class="saved-btn" @click="${this.toggleSavedView}" style="width: 100%; max-width: 300px;">
+                              📚 Meine Rezepte anzeigen
+                          </button>
+                      </div>
+
                       <div class="action-area">
                           ${this.isLoading
                               ? html`
@@ -699,7 +776,7 @@ export class EcoChef extends LitElement {
                       </div>
                   ` : ''}
 
-                  ${this.showShoppingList ? html`
+                  ${this.currentTab === 'shopping' ? html`
                       <eco-chef-shopping-list
                           .shoppingList="${this.shoppingList}"
                           @add-item="${(e: CustomEvent) => this.addManualShoppingItem(e.detail.name)}"
@@ -710,7 +787,7 @@ export class EcoChef extends LitElement {
                       </eco-chef-shopping-list>
                   ` : ''}
 
-                  ${this.showSavedRecipes && !this.recipe ? html`
+                  ${this.currentTab === 'zauberer' && this.showSavedRecipes && !this.recipe ? html`
                       <div class="saved-recipes-container">
                           <h3 class="recipe-subheading">📚 Deine gespeicherten Rezepte</h3>
 
@@ -766,10 +843,14 @@ export class EcoChef extends LitElement {
                                   `;
                               })()}
                           `}
+                          
+                          <button class="secondary-btn" @click="${() => this.showSavedRecipes = false}" style="margin-top: 16px;">
+                              🔙 Zurück zum Generator
+                          </button>
                       </div>
                   ` : ''}
 
-                  ${this.recipe ? html`
+                  ${this.currentTab === 'zauberer' && this.recipe ? html`
                       <eco-chef-recipe-view
                           .recipe="${this.recipe}"
                           .recipeImage="${this.recipeImage}"
@@ -787,14 +868,14 @@ export class EcoChef extends LitElement {
                               this.askGoogle();
                           }}"
                           @update-recipe="${(e: CustomEvent) => {
-                              if (this.recipe) {
-                                  this.recipe = {
-                                      ...this.recipe,
-                                      ingredientsList: e.detail.ingredientsList,
-                                      instructions: e.detail.instructions
-                                  };
-                              }
-                          }}"
+                               if (this.recipe) {
+                                   this.recipe = {
+                                       ...this.recipe,
+                                       ingredientsList: e.detail.ingredientsList,
+                                       instructions: e.detail.instructions
+                                   };
+                               }
+                           }}"
                           @close="${() => this.showExitDialog = true}">
                       </eco-chef-recipe-view>
                   ` : ''}
@@ -1148,6 +1229,18 @@ export class EcoChef extends LitElement {
             this.savedRecipesList[index].rating = rating;
             StorageService.setSavedRecipes(this.savedRecipesList);
             this.requestUpdate();
+
+            if (rating === 5) {
+                const list = [...this.achievementsList];
+                const sc = list.find(a => a.id === 'sterneChef');
+                if (sc) {
+                    sc.progress = Math.min(sc.target, sc.progress + 1);
+                    sc.unlocked = sc.progress >= sc.target;
+                    this.achievementsList = list;
+                    StorageService.setAchievements(this.achievementsList);
+                }
+            }
+
             this.srAnnouncement = `Bewertung auf ${rating} Sterne aktualisiert.`;
         }
     }
@@ -1490,5 +1583,260 @@ export class EcoChef extends LitElement {
             }
             this.requestUpdate();
         }
+    }
+
+    override updated(changedProperties: Map<string | number | symbol, unknown>) {
+        super.updated(changedProperties);
+        if (changedProperties.has('capturedImage') && this.capturedImage && this.isScanningReceipt) {
+            this.processReceipt();
+        }
+    }
+
+    handleAddPantryItem(e: CustomEvent) {
+        const { name, expiryDate } = e.detail;
+        const exists = this.pantryItemsAdvanced.some(item => item.name.toLowerCase() === name.toLowerCase());
+        if (exists) {
+            alert("Diese Zutat existiert bereits in deiner Reste-Kammer!");
+            return;
+        }
+        const item: PantryItemAdvanced = {
+            name,
+            active: true,
+            addedDate: new Date().toISOString().split('T')[0],
+            expiryDate
+        };
+        this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, item];
+        StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
+        this.srAnnouncement = `${name} zur Reste-Kammer hinzugefügt.`;
+    }
+
+    handleDeletePantryItem(e: CustomEvent) {
+        const { name } = e.detail;
+        this.pantryItemsAdvanced = this.pantryItemsAdvanced.filter(item => item.name !== name);
+        StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
+        this.srAnnouncement = `${name} aus der Reste-Kammer entfernt.`;
+    }
+
+    handleUsePantryItem(e: CustomEvent) {
+        const { name } = e.detail;
+        if (!this.ingredientChips.includes(name)) {
+            this.ingredientChips = [...this.ingredientChips, name];
+            this.saveChips();
+        }
+        this.currentTab = 'zauberer';
+        this.srAnnouncement = `${name} als Zutat ausgewählt. Wechsel zum Zauberer.`;
+    }
+
+    handleSeasonalIngredient(e: CustomEvent) {
+        const { item } = e.detail;
+        if (!this.ingredientChips.includes(item)) {
+            this.ingredientChips = [...this.ingredientChips, item];
+            this.saveChips();
+        }
+        this.currentTab = 'zauberer';
+        this.srAnnouncement = `${item} als saisonale Zutat ausgewählt. Wechsel zum Zauberer.`;
+    }
+
+    handleTriggerReceiptScan() {
+        this.isScanningReceipt = true;
+        this.openCamera();
+    }
+
+    async processReceipt() {
+        if (!this.capturedImage) return;
+        this.isLoading = true;
+        this.srAnnouncement = "Kassenzettel wird analysiert...";
+        try {
+            const items = await GeminiService.scanReceipt(this.capturedImage);
+            if (items && items.length > 0) {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const newItems = items.map(name => ({
+                    name,
+                    active: true,
+                    addedDate: todayStr
+                }));
+                this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, ...newItems];
+                StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
+
+                // Update achievements progress
+                const list = [...this.achievementsList];
+                const sc = list.find(a => a.id === 'scannerProfi');
+                if (sc) {
+                    sc.progress = Math.min(sc.target, sc.progress + 1);
+                    sc.unlocked = sc.progress >= sc.target;
+                }
+                this.achievementsList = list;
+                StorageService.setAchievements(this.achievementsList);
+
+                alert(`🎉 Kassenzettel erfolgreich gescannt! ${items.length} Zutaten hinzugefügt.`);
+            } else {
+                alert("Es konnten keine Lebensmittel auf dem Foto erkannt werden.");
+            }
+        } catch (e) {
+            console.error("Receipt scan failed", e);
+            alert("Fehler beim Scannen des Kassenzettels.");
+        } finally {
+            this.capturedImage = null;
+            this.isScanningReceipt = false;
+            this.isLoading = false;
+        }
+    }
+
+    async handleGenerateWeeklyPlan() {
+        this.isGeneratingPlan = true;
+        this.srAnnouncement = "Wochenplan wird generiert...";
+        try {
+            const pantryNames = this.pantryItemsAdvanced.map(i => i.name);
+            const plan = await GeminiService.generateWeeklyPlan(
+                pantryNames,
+                this.selectedDiet,
+                this.selectedEffort,
+                this.persons
+            );
+            this.mealPlan = plan;
+            StorageService.setMealPlan(plan);
+            this.srAnnouncement = "Wochenplan erfolgreich generiert.";
+        } catch (e) {
+            console.error("Failed to generate weekly plan", e);
+            alert("Fehler beim Generieren des Wochenplans.");
+        } finally {
+            this.isGeneratingPlan = false;
+        }
+    }
+
+    handleCookPlanRecipe(e: CustomEvent) {
+        const { title } = e.detail;
+        this.ingredientChips = [title];
+        this.saveChips();
+        this.currentTab = 'zauberer';
+        this.askGoogle();
+    }
+
+    handleAddPlanShopping(e: CustomEvent) {
+        const { title } = e.detail;
+        this.addManualShoppingItem(title);
+        alert(`🛒 Gericht "${title}" wurde als Zutat auf die Einkaufsliste gesetzt!`);
+    }
+
+    async handleGenerateSyncCode() {
+        this.srAnnouncement = "Generiere Synchronisations-Code...";
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let code = '';
+        for (let i = 0; i < 6; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
+        const payload = {
+            pantryItemsAdvanced: this.pantryItemsAdvanced,
+            shoppingList: this.shoppingList,
+            achievementsList: this.achievementsList,
+            stats: this.stats,
+            urgentIngredients: this.urgentIngredients,
+            ingredientChips: this.ingredientChips
+        };
+
+        try {
+            const res = await fetch(`https://kvdb.io/ecochefsyncbucket_${code}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                this.syncCode = code;
+                this.srAnnouncement = `Sync-Code generiert: ${code}.`;
+                this.requestUpdate();
+            } else {
+                throw new Error("HTTP Status " + res.status);
+            }
+        } catch (e) {
+            console.error("Generate sync code failed", e);
+            alert("Fehler beim Verbinden mit dem Cloud-Server.");
+        }
+    }
+
+    async handleApplySyncCode(e: CustomEvent) {
+        const { code } = e.detail;
+        this.srAnnouncement = "Verbinde und synchronisiere Daten...";
+        try {
+            const res = await fetch(`https://kvdb.io/ecochefsyncbucket_${code}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data) {
+                    if (data.pantryItemsAdvanced) {
+                        this.pantryItemsAdvanced = data.pantryItemsAdvanced;
+                        StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
+                    }
+                    if (data.shoppingList) {
+                        this.shoppingList = data.shoppingList;
+                        this.saveShoppingList();
+                    }
+                    if (data.achievementsList) {
+                        this.achievementsList = data.achievementsList;
+                        StorageService.setAchievements(this.achievementsList);
+                    }
+                    if (data.stats) {
+                        this.stats = data.stats;
+                        StorageService.setStats(this.stats);
+                    }
+                    if (data.urgentIngredients) {
+                        this.urgentIngredients = data.urgentIngredients;
+                        StorageService.setUrgentIngredients(this.urgentIngredients);
+                    }
+                    if (data.ingredientChips) {
+                        this.ingredientChips = data.ingredientChips;
+                        this.saveChips();
+                    }
+                    alert("🎉 Daten erfolgreich synchronisiert!");
+                    this.srAnnouncement = "Synchronisation abgeschlossen.";
+                    this.requestUpdate();
+                }
+            } else {
+                alert("Ungültiger oder abgelaufener Sync-Schlüssel.");
+            }
+        } catch (err) {
+            console.error("Apply sync code failed", err);
+            alert("Fehler beim Abrufen der Synchronisationsdaten.");
+        }
+    }
+
+    updateAchievements() {
+        let totalCO2 = 0;
+        let cookedCount = 0;
+        for (const date in this.stats) {
+            totalCO2 += this.stats[date].co2Saved || 0;
+            cookedCount += this.stats[date].count || 0;
+        }
+
+        const list = [...this.achievementsList];
+        
+        // 1. Klimaschützer
+        const ks = list.find(a => a.id === 'klimaSchuetzer');
+        if (ks) {
+            ks.progress = Math.round(totalCO2);
+            ks.unlocked = ks.progress >= ks.target;
+        }
+
+        // 2. Pflanzenfresser
+        const pf = list.find(a => a.id === 'pflanzenfresser');
+        if (pf && this.recipe) {
+            const isVeg = this.selectedDiet === 'vegetarisch' || this.selectedDiet === 'vegan';
+            if (isVeg) {
+                pf.progress = Math.min(pf.target, pf.progress + 1);
+                pf.unlocked = pf.progress >= pf.target;
+            }
+        }
+
+        // 3. Retter-König
+        const rk = list.find(a => a.id === 'retterKoenig');
+        if (rk && this.recipe) {
+            const hasUrgent = Object.keys(this.urgentIngredients).some(k => this.urgentIngredients[k] && this.recipe?.ingredientsList.some(i => i.item.toLowerCase().includes(k.toLowerCase())));
+            if (hasUrgent) {
+                rk.progress = Math.min(rk.target, rk.progress + 1);
+                rk.unlocked = rk.progress >= rk.target;
+            }
+        }
+
+        this.achievementsList = list;
+        StorageService.setAchievements(this.achievementsList);
     }
 }

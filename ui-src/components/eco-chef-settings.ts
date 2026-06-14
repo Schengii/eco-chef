@@ -17,6 +17,7 @@ export class EcoChefSettings extends LitElement {
     @property({ type: Number }) calorieGoal = 2000;
     @property({ type: Number }) proteinGoal = 80;
     @property({ type: String }) geminiApiKey = '';
+    @property({ type: String }) syncCode = '';
 
     private _getWeeklyStats() {
         let totalCalories = 0;
@@ -124,6 +125,19 @@ export class EcoChefSettings extends LitElement {
             bubbles: true,
             composed: true
         }));
+    }
+
+    private _applySyncCode() {
+        const input = this.shadowRoot?.querySelector('#sync-code-input') as HTMLInputElement;
+        const code = input ? input.value.trim().toUpperCase() : '';
+        if (code) {
+            this.dispatchEvent(new CustomEvent('apply-sync-code', {
+                detail: { code },
+                bubbles: true,
+                composed: true
+            }));
+            if (input) input.value = '';
+        }
     }
 
     private _handleImportFile(event: Event) {
@@ -342,6 +356,37 @@ export class EcoChefSettings extends LitElement {
                                placeholder="Z.B. AIzaSy..." 
                                style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-dark); box-sizing: border-box;"
                                aria-label="Gemini API Key" />
+                    </div>
+                </div>
+
+                <!-- Haushalt-Synchronisation Section -->
+                <div class="settings-section">
+                    <h4 class="settings-title">👥 Haushalts-Synchronisation (Cloud)</h4>
+                    <p class="subtitle" style="margin-bottom: 16px;">
+                        Teile deine Vorratskammer, Einkaufsliste und Erfolge mit anderen Geräten in deinem Haushalt.
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <button class="secondary-btn" @click="${() => this.dispatchEvent(new CustomEvent('generate-sync-code', { bubbles: true, composed: true }))}" style="margin: 0;">
+                            🔄 Sync-Schlüssel generieren
+                        </button>
+                        ${this.syncCode ? html`
+                            <div style="background: var(--bg-color); padding: 12px; border-radius: 12px; text-align: center; border: 2px solid var(--primary); margin-top: 8px;">
+                                <span style="font-size: 13px; font-weight: 700; color: var(--text-muted);">Dein Sync-Schlüssel (24 Std. gültig):</span>
+                                <div style="font-size: 22px; font-weight: 900; color: var(--primary-dark); margin-top: 4px; letter-spacing: 2px;">${this.syncCode}</div>
+                            </div>
+                        ` : ''}
+                        
+                        <div style="border-top: 1px solid var(--border); margin: 12px 0;"></div>
+                        
+                        <label for="sync-code-input" style="font-size: 13px; font-weight: 700; color: var(--text-dark);">Mit vorhandenem Schlüssel verbinden:</label>
+                        <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                            <input type="text" 
+                                   id="sync-code-input" 
+                                   placeholder="Z.B. A1B2C3" 
+                                   style="flex-grow: 1; margin-bottom: 0; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-dark);"
+                                   aria-label="Sync Code eingeben" />
+                            <button class="main-btn" @click="${this._applySyncCode}" style="margin: 0; padding: 10px 16px; width: auto; font-size: 13px; border-radius: 8px;">Verbinden</button>
+                        </div>
                     </div>
                 </div>
 
