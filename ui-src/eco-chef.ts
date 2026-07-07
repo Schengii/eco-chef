@@ -1,7 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-import { Recipe, IngredientItem, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan } from './models/eco-chef.models';
+import { Recipe, IngredientItem, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan, ActiveTimer } from './models/eco-chef.models';
 import { ecoChefStyles } from './styles/eco-chef.styles';
 
 import { StorageService } from './services/storage.service';
@@ -45,6 +45,8 @@ export class EcoChef extends LitElement {
 
     @state() currentStepTimeMinutes: number | null = null;
     @state() timerSecondsRemaining = 0;
+    @state() activeTimers: ActiveTimer[] = [];
+    @state() expiredTimerLabel = '';
     private timerInterval: number | null = null;
 
     @state() showShoppingList = false;
@@ -516,40 +518,103 @@ export class EcoChef extends LitElement {
         this.currentStepTimeMinutes = totalMinutes > 0 ? totalMinutes : null;
     }
 
-    startTimer() {
-        if (!this.currentStepTimeMinutes) return;
-        this.timerSecondsRemaining = this.currentStepTimeMinutes * 60;
+    startTimer(minutes?: number, label?: string) {
+        const mins = minutes !== undefined ? minutes : this.currentStepTimeMinutes;
+        if (!mins) return;
 
-        if (this.timerInterval) clearInterval(this.timerInterval);
+        const defaultLabel = this.recipe ? `Schritt ${this.currentCookingStep + 1}: ${this.recipe.instructions[this.currentCookingStep].substring(0, 30)}...` : `Timer ${this.activeTimers.length + 1}`;
+        const stepLabel = label || defaultLabel;
+
+        const existingIndex = this.activeTimers.findIndex(t => t.label === stepLabel);
+        if (existingIndex !== -1) {
+            const updated = [...this.activeTimers];
+            updated[existingIndex] = {
+                ...updated[existingIndex],
+                secondsRemaining: mins * 60,
+                totalSeconds: mins * 60
+            };
+            this.activeTimers = updated;
+        } else {
+            const newTimer: ActiveTimer = {
+                id: Math.random().toString(36).substring(2, 9),
+                label: stepLabel,
+                totalSeconds: mins * 60,
+                secondsRemaining: mins * 60,
+                stepIndex: this.currentCookingStep
+            };
+            this.activeTimers = [...this.activeTimers, newTimer];
+        }
+
+        this.startTimerTicker();
+        SpeechService.speak(`Timer gestartet für ${mins} Minuten.`);
+    }
+
+    startTimerTicker() {
+        if (this.timerInterval) return;
         this.timerInterval = window.setInterval(() => {
-            if (this.timerSecondsRemaining > 0) {
-                this.timerSecondsRemaining--;
-            } else {
-                this.playAlarm();
-                this.stopTimer();
+            if (this.activeTimers.length === 0) {
+                this.stopTimerTicker();
+                return;
             }
+
+            this.activeTimers = this.activeTimers.map(timer => {
+                if (timer.secondsRemaining > 0) {
+                    return { ...timer, secondsRemaining: timer.secondsRemaining - 1 };
+                } else {
+                    return { ...timer, secondsRemaining: 0 };
+                }
+            });
+
+            // Find expired timer
+            const expired = this.activeTimers.find(t => t.secondsRemaining === 0);
+            if (expired) {
+                this.playAlarm(expired.label);
+                this.activeTimers = this.activeTimers.filter(t => t.id !== expired.id);
+            }
+
+            // Keep timerSecondsRemaining updated with the current step's timer (if it exists)
+            const currentStepTimer = this.activeTimers.find(t => t.stepIndex === this.currentCookingStep);
+            this.timerSecondsRemaining = currentStepTimer ? currentStepTimer.secondsRemaining : 0;
+            
         }, 1000) as unknown as number;
     }
 
-    stopTimer() {
+    stopTimerTicker() {
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
             this.timerInterval = null;
         }
-        this.timerSecondsRemaining = 0;
     }
 
-    playAlarm() {
+    stopTimer(id?: string) {
+        if (typeof id === 'string') {
+            this.activeTimers = this.activeTimers.filter(t => t.id !== id);
+        } else {
+            // If no ID is passed (e.g. from legacy components), stop the current step's timer
+            this.activeTimers = this.activeTimers.filter(t => t.stepIndex !== this.currentCookingStep);
+        }
+        
+        if (this.activeTimers.length === 0) {
+            this.stopTimerTicker();
+        }
+        
+        const currentStepTimer = this.activeTimers.find(t => t.stepIndex === this.currentCookingStep);
+        this.timerSecondsRemaining = currentStepTimer ? currentStepTimer.secondsRemaining : 0;
+    }
+
+    playAlarm(label: string = '') {
+        this.expiredTimerLabel = label;
         if (navigator.vibrate) {
             navigator.vibrate([500, 200, 500, 200, 500, 200, 500]);
         }
         this.showTimerExpiredModal = true;
-        this.srAnnouncement = "Achtung! Die Koch-Zeit ist abgelaufen!";
+        this.srAnnouncement = `Achtung! Die Zeit für ${label || 'den Schritt'} ist abgelaufen!`;
         AudioService.playAlarm();
     }
 
     closeTimerExpiredModal() {
         this.showTimerExpiredModal = false;
+        this.expiredTimerLabel = '';
         AudioService.stopAlarm();
         this.srAnnouncement = "Timer-Alarm beendet.";
     }
@@ -889,13 +954,14 @@ export class EcoChef extends LitElement {
                        .currentStepTimeMinutes="${this.currentStepTimeMinutes}"
                        .isVoiceControlActive="${this.isVoiceControlActive}"
                        .voiceStatusText="${this.voiceStatusText}"
+                       .activeTimers="${this.activeTimers}"
                        @close="${this.exitCookingMode}"
                        @prev-step="${this.prevStep}"
                        @next-step="${this.nextStep}"
                        @read-step="${this.readCurrentStep}"
                        @toggle-voice="${this.toggleVoiceControl}"
                        @start-timer="${this.startTimer}"
-                       @stop-timer="${this.stopTimer}">
+                       @stop-timer="${(e: CustomEvent) => this.stopTimer(e.detail?.id)}">
                    </eco-chef-cooking-mode>
                ` : ''}
 
@@ -947,6 +1013,7 @@ export class EcoChef extends LitElement {
 
                 <eco-chef-timer-expired-modal 
                     .showTimerExpiredModal="${this.showTimerExpiredModal}"
+                    .timerLabel="${this.expiredTimerLabel}"
                     @close="${this.closeTimerExpiredModal}">
                 </eco-chef-timer-expired-modal>
 
@@ -1493,6 +1560,26 @@ export class EcoChef extends LitElement {
         } else if (command.includes('vorlesen') || command.includes('lies vor') || command.includes('sprechen')) {
             this.readCurrentStep();
             this.srAnnouncement = "Schritt wird vorgelesen.";
+        } else if (command.includes('timer starten') || command.includes('timer start') || command.includes('starten')) {
+            if (this.currentStepTimeMinutes) {
+                this.startTimer();
+            } else {
+                SpeechService.speak("Für diesen Schritt ist keine Kochzeit angegeben.");
+            }
+            this.srAnnouncement = "Timer per Sprachbefehl gestartet.";
+        } else if (command.includes('wie viel zeit') || command.includes('restzeit') || command.includes('zeit übrig') || command.includes('dauer')) {
+            if (this.activeTimers.length === 0) {
+                SpeechService.speak("Es laufen aktuell keine aktiven Timer.");
+            } else {
+                const textList = this.activeTimers.map(t => {
+                    const m = Math.floor(t.secondsRemaining / 60);
+                    const s = t.secondsRemaining % 60;
+                    const timeText = m > 0 ? `${m} Minuten und ${s} Sekunden` : `${s} Sekunden`;
+                    return `Timer für ${t.label.split(':')[0]} hat noch ${timeText} übrig.`;
+                });
+                SpeechService.speak(`Es laufen ${this.activeTimers.length} Timer. ${textList.join(' ')}`);
+            }
+            this.srAnnouncement = "Timer-Restlaufzeit per Sprachbefehl angesagt.";
         } else if (command.includes('stopp') || command.includes('halt') || command.includes('anhalten')) {
             SpeechService.cancelSpeak();
             this.stopTimer();
@@ -1501,7 +1588,7 @@ export class EcoChef extends LitElement {
             }
             this.srAnnouncement = "Sprachausgabe und Timer gestoppt.";
         } else if (command.includes('hilfe') || command.includes('befehle')) {
-            SpeechService.speak("Mögliche Befehle sind: weiter, zurück, vorlesen, stoppen und hilfe.");
+            SpeechService.speak("Mögliche Befehle sind: weiter, zurück, vorlesen, timer starten, restzeit abfragen, stoppen und hilfe.");
         }
     }
 

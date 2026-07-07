@@ -72,3 +72,12 @@ export interface MealPlanDay {
 export interface MealPlan {
     [day: string]: MealPlanDay;
 }
+
+export interface ActiveTimer {
+    id: string;
+    label: string;
+    totalSeconds: number;
+    secondsRemaining: number;
+    stepIndex: number;
+}
+
