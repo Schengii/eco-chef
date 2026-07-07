@@ -1,7 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ecoChefStyles } from '../styles/eco-chef.styles';
-import { Recipe, IngredientItem } from '../models/eco-chef.models';
+import { Recipe, IngredientItem, PantryItemAdvanced } from '../models/eco-chef.models';
 
 @customElement('eco-chef-recipe-view')
 export class EcoChefRecipeView extends LitElement {
@@ -13,6 +13,7 @@ export class EcoChefRecipeView extends LitElement {
     @property({ type: Number }) persons = 2;
     @property({ type: Number }) currentRating = 0;
     @property({ type: Boolean }) isLoading = false;
+    @property({ type: Array }) pantryItems: PantryItemAdvanced[] = [];
 
     @state() private isEditing = false;
     @state() private additionalPrompt = '';
@@ -83,6 +84,50 @@ export class EcoChefRecipeView extends LitElement {
 
     private _closeRecipe() {
         this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
+    }
+
+    private _isIngredientInPantry(itemName: string): boolean {
+        const cleanName = itemName.toLowerCase().replace(/[\d\s\.,]+(g|ml|l|stk\.|pkg\.|kg|dose|dosen|zehen|zehe|prise|prisen|el|tl|etwas|paar)\b/g, '').trim();
+        if (cleanName.length < 2) return false;
+        return this.pantryItems.some(p => {
+            const pClean = p.name.toLowerCase().trim();
+            return cleanName.includes(pClean) || pClean.includes(cleanName);
+        });
+    }
+
+    private _addAllMissingToShoppingList() {
+        if (!this.recipe) return;
+        let count = 0;
+        this.recipe.ingredientsList.forEach(item => {
+            if (!this._isIngredientInPantry(item.item)) {
+                this._addToShoppingList(item);
+                count++;
+            }
+        });
+        alert(`🎉 ${count} fehlende Zutaten wurden der Einkaufsliste hinzugefügt!`);
+    }
+
+    private _shareRecipe() {
+        if (!this.recipe) return;
+        const text = `EcoChef Rezept: ${this.recipe.title}\n\n` +
+            `Schwierigkeit: ${this.recipe.difficulty}\n` +
+            `Dauer: ${this.recipe.prepTime}\n\n` +
+            `Zutaten:\n${this.recipe.ingredientsList.map(i => `- ${i.item}`).join('\n')}\n\n` +
+            `Zubereitung:\n${this.recipe.instructions.map((step, idx) => `${idx + 1}. ${step}`).join('\n')}\n\n` +
+            `Tipp: ${this.recipe.tip}\n\nGuten Appetit! 🧑‍🍳`;
+            
+        if (navigator.share) {
+            navigator.share({
+                title: this.recipe.title,
+                text: text
+            }).catch(err => console.error("Error sharing:", err));
+        } else {
+            navigator.clipboard.writeText(text).then(() => {
+                alert("Rezept wurde in die Zwischenablage kopiert! 📋");
+            }).catch(err => {
+                console.error("Clipboard copy failed:", err);
+            });
+        }
     }
 
     override render() {
@@ -157,15 +202,26 @@ export class EcoChefRecipeView extends LitElement {
                         <button class="icon-btn" @click="${() => this.isEditing = true}" aria-label="Zutaten bearbeiten">🖊️</button>
                     </h3>
                     <ul class="ingredients-list">
-                        ${this.recipe.ingredientsList.map(item => html`
-                            <li>
-                                <span>${item.item}</span>
-                                <button class="add-to-list-btn" @click="${() => this._addToShoppingList(item)}" title="Zur Einkaufsliste hinzufügen">
-                                    + 🛒
-                                </button>
-                            </li>
-                        `)}
+                        ${this.recipe.ingredientsList.map(item => {
+                            const exists = this._isIngredientInPantry(item.item);
+                            return html`
+                                <li style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>
+                                        ${item.item}
+                                        <span style="font-size: 11px; margin-left: 8px; font-weight: bold; color: ${exists ? '#10b981' : '#ef4444'};">
+                                            (${exists ? '🟢 Vorhanden' : '🔴 Fehlt'})
+                                        </span>
+                                    </span>
+                                    <button class="add-to-list-btn" @click="${() => this._addToShoppingList(item)}" title="Zur Einkaufsliste hinzufügen">
+                                        + 🛒
+                                    </button>
+                                </li>
+                            `;
+                        })}
                     </ul>
+                    <button class="main-btn" @click="${this._addAllMissingToShoppingList}" style="background-color: #4b5563; border-color: #374151; color: white; margin-top: 8px; margin-bottom: 24px;" aria-label="Fehlende Zutaten einkaufen">
+                        🛒 Nur fehlende Zutaten auf Einkaufsliste
+                    </button>
 
                     <h3 class="recipe-subheading">
                         🍳 Zubereitung:
@@ -223,6 +279,9 @@ export class EcoChefRecipeView extends LitElement {
                 </button>
                 <button class="main-btn" @click="${this._startCooking}" style="background-color: #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); margin-top: 0; margin-bottom: 10px; border: 2px solid #d97706; color: white;">
                     👨‍🍳 Kochmodus starten
+                </button>
+                <button class="main-btn" @click="${this._shareRecipe}" style="background-color: #8b5cf6; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); margin-top: 0; margin-bottom: 10px; border: 2px solid #7c3aed; color: white;">
+                    📤 Rezept teilen
                 </button>
                 <button class="main-btn" @click="${this._printRecipe}" style="background-color: #3b82f6; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); margin-top: 0; margin-bottom: 10px; border: 2px solid #2563eb; color: white;">
                     🖨️ Rezept drucken

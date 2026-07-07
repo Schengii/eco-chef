@@ -923,6 +923,7 @@ export class EcoChef extends LitElement {
                           .persons="${this.persons}"
                           .currentRating="${this.currentRating}"
                           .isLoading="${this.isLoading}"
+                          .pantryItems="${this.pantryItemsAdvanced}"
                           @add-to-shopping-list="${(e: CustomEvent) => this.addToShoppingList(e.detail.item)}"
                           @set-recipe-rating="${(e: CustomEvent) => this.setRecipeRating(e.detail.rating)}"
                           @mark-cooked="${this.markAsCooked}"
@@ -1680,7 +1681,7 @@ export class EcoChef extends LitElement {
     }
 
     handleAddPantryItem(e: CustomEvent) {
-        const { name, expiryDate } = e.detail;
+        const { name, expiryDate, quantity, unit, location } = e.detail;
         const exists = this.pantryItemsAdvanced.some(item => item.name.toLowerCase() === name.toLowerCase());
         if (exists) {
             alert("Diese Zutat existiert bereits in deiner Reste-Kammer!");
@@ -1690,7 +1691,10 @@ export class EcoChef extends LitElement {
             name,
             active: true,
             addedDate: new Date().toISOString().split('T')[0],
-            expiryDate
+            expiryDate,
+            quantity: quantity !== undefined ? quantity : 1,
+            unit: unit !== undefined ? unit : 'Stk.',
+            location: location !== undefined ? location : 'Kühlschrank'
         };
         this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, item];
         StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
@@ -1737,11 +1741,20 @@ export class EcoChef extends LitElement {
             const items = await GeminiService.scanReceipt(this.capturedImage);
             if (items && items.length > 0) {
                 const todayStr = new Date().toISOString().split('T')[0];
-                const newItems = items.map(name => ({
-                    name,
-                    active: true,
-                    addedDate: todayStr
-                }));
+                const newItems = items.map(item => {
+                    const expiry = new Date();
+                    expiry.setDate(expiry.getDate() + (item.expiryDays || 7));
+                    const expiryDateStr = expiry.toISOString().split('T')[0];
+                    return {
+                        name: item.name || "Zutat",
+                        active: true,
+                        addedDate: todayStr,
+                        expiryDate: expiryDateStr,
+                        quantity: item.quantity || 1,
+                        unit: item.unit || 'Stk.',
+                        location: item.location || 'Kühlschrank'
+                    };
+                });
                 this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, ...newItems];
                 StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
 

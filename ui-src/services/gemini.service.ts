@@ -95,7 +95,7 @@ Antworte AUSSCHLIESSLICH mit diesen kommagetrennten englischen Wörtern in Klein
         }
     },
 
-    async scanReceipt(capturedImage: string): Promise<string[]> {
+    async scanReceipt(capturedImage: string): Promise<any[]> {
         const userKey = StorageService.getGeminiApiKey();
         const apiKey = userKey || GEMINI_API_KEY;
         const ai = new GoogleGenAI({ apiKey });
@@ -113,8 +113,32 @@ Antworte AUSSCHLIESSLICH mit diesen kommagetrennten englischen Wörtern in Klein
             base64Data = capturedImage;
         }
 
-        const prompt = `Du bist ein intelligenter Kassenzettel-Scanner für Lebensmittel. Analysiere das hochgeladene Bild eines Einkaufszettels/Kassenzettels und extrahiere alle essbaren Produkte, Lebensmittel und Kochzutaten. Ignoriere Non-Food Artikel wie Zahnpasta, Tragetaschen, Zeitschriften etc. Bereinige die Namen der Produkte von Marken, Grammangaben, Preisen und Abkürzungen (z.B. aus 'JA! VOLLMILCH 1,5% 1L' wird 'Milch', aus 'BIO DR. OETKER PUDDING' wird 'Puddingpulver').
-Antworte AUSSCHLIESSLICH mit einem validen JSON-Array aus Strings in deutscher Sprache, z.B. ["Milch", "Butter", "Tomaten", "Nudeln"]. Gib keine Markdown-Formatierung wie \`\`\`json zurück, sondern NUR das reine Array.`;
+        const prompt = `Du bist ein intelligenter Kassenzettel-Scanner für Lebensmittel. Analysiere das hochgeladene Bild eines Einkaufszettels/Kassenzettels und extrahiere alle essbaren Produkte, Lebensmittel und Kochzutaten. Ignoriere Non-Food Artikel wie Zahnpasta, Tragetaschen, Zeitschriften etc. 
+Bereinige die Namen der Produkte von Marken, Preisen und Abkürzungen (z.B. aus 'JA! VOLLMILCH 1,5% 1L' wird 'Milch', aus 'BIO DR. OETKER PUDDING' wird 'Puddingpulver').
+
+Bestimme für jedes extrahierte Lebensmittel zusätzlich:
+1. Eine geschätzte Menge (quantity, als Zahl, z.B. 1, 500, 2) und die passende Einheit (unit, z.B. "Stk.", "g", "ml", "L", "Pkg.").
+2. Den am besten geeigneten Lagerort (location, MUSS einer der folgenden Werte sein: "Kühlschrank", "Vorratskammer", "Gefrierfach", "Sonstiges").
+3. Die geschätzte typische Haltbarkeit in Tagen ab dem Kaufdatum (expiryDays, als Zahl, z.B. 7 für Frischmilch, 3 für Hackfleisch, 14 für Käse, 365 für Nudeln/Reis).
+
+Antworte AUSSCHLIESSLICH mit einem validen JSON-Array aus Objekten in deutscher Sprache, z.B.:
+[
+  {
+    "name": "Milch",
+    "quantity": 1,
+    "unit": "L",
+    "expiryDays": 7,
+    "location": "Kühlschrank"
+  },
+  {
+    "name": "Nudeln",
+    "quantity": 500,
+    "unit": "g",
+    "expiryDays": 365,
+    "location": "Vorratskammer"
+  }
+]
+Gib keine Markdown-Formatierung wie \`\`\`json zurück, sondern NUR das reine Array.`;
 
         const response = await ai.models.generateContent({
             model: "gemini-flash-latest",
@@ -135,10 +159,14 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Array aus Strings in deutscher S
             return JSON.parse(cleaned);
         } catch (e) {
             console.error("Failed to parse scanned receipt response:", cleaned, e);
-            // Fallback parsing: look for lines or extract quotes
-            const matches = cleaned.match(/"([^"]+)"/g);
-            if (matches) {
-                return matches.map(m => m.replace(/"/g, ''));
+            // Fallback parsing: check if we can get a partial list
+            try {
+                const matches = cleaned.match(/\{[^\}]+\}/g);
+                if (matches) {
+                    return matches.map(m => JSON.parse(m));
+                }
+            } catch (err) {
+                console.error("Fallback regex parsing failed:", err);
             }
             return [];
         }

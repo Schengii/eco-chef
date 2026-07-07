@@ -57,7 +57,7 @@ export class EcoChefPantry extends LitElement {
         .add-form {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
             margin-bottom: 24px;
             background: var(--bg-color);
             padding: 16px;
@@ -66,17 +66,10 @@ export class EcoChefPantry extends LitElement {
         }
         .form-row {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
         }
-        .form-row input[type="text"] {
-            flex-grow: 2;
-            margin-bottom: 0;
-            padding: 12px;
-            border-radius: 12px;
-        }
-        .form-row input[type="date"] {
-            flex-grow: 1;
-            margin-bottom: 0;
+        .form-row input, .form-row select {
             padding: 12px;
             border-radius: 12px;
             border: 2px solid var(--border);
@@ -84,6 +77,24 @@ export class EcoChefPantry extends LitElement {
             color: var(--text-dark);
             font-family: inherit;
             font-size: 14px;
+            box-sizing: border-box;
+        }
+        .input-name {
+            flex: 2 1 200px;
+        }
+        .input-qty {
+            flex: 1 1 70px;
+            max-width: 100px;
+        }
+        .input-unit {
+            flex: 1 1 80px;
+            max-width: 120px;
+        }
+        .input-date {
+            flex: 1.5 1 130px;
+        }
+        .input-loc {
+            flex: 1.5 1 130px;
         }
         .add-btn {
             background: var(--text-dark);
@@ -99,10 +110,31 @@ export class EcoChefPantry extends LitElement {
         .add-btn:hover {
             opacity: 0.9;
         }
+        
+        /* Categories Grouping */
+        .location-section {
+            margin-top: 20px;
+        }
+        .location-title {
+            font-size: 14px;
+            font-weight: 850;
+            color: var(--primary-dark);
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dark-theme .location-title {
+            color: var(--primary);
+        }
+        
         .pantry-list {
             display: flex;
             flex-direction: column;
             gap: 10px;
+            margin-bottom: 16px;
         }
         .pantry-row {
             display: flex;
@@ -121,11 +153,31 @@ export class EcoChefPantry extends LitElement {
             display: flex;
             flex-direction: column;
             gap: 4px;
+            flex: 1;
+        }
+        .item-main {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
         .item-name {
             font-size: 15px;
             font-weight: 800;
             color: var(--text-dark);
+        }
+        .item-quantity-badge {
+            background: var(--border);
+            color: var(--text-dark);
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 8px;
+        }
+        .item-expiry-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         .item-expiry {
             font-size: 11px;
@@ -199,7 +251,10 @@ export class EcoChefPantry extends LitElement {
     @property({ type: Boolean }) isScanning = false;
 
     @state() private newItemName = '';
+    @state() private newItemQuantity = 1;
+    @state() private newItemUnit = 'Stk.';
     @state() private newItemExpiry = '';
+    @state() private newItemLocation: 'Kühlschrank' | 'Vorratskammer' | 'Gefrierfach' | 'Sonstiges' = 'Kühlschrank';
 
     private getDaysRemaining(expiryDateStr?: string): number | null {
         if (!expiryDateStr) return null;
@@ -223,13 +278,19 @@ export class EcoChefPantry extends LitElement {
         this.dispatchEvent(new CustomEvent('add-pantry-item', {
             detail: {
                 name: this.newItemName.trim(),
-                expiryDate: this.newItemExpiry || undefined
+                expiryDate: this.newItemExpiry || undefined,
+                quantity: Number(this.newItemQuantity) || 1,
+                unit: this.newItemUnit,
+                location: this.newItemLocation
             },
             bubbles: true,
             composed: true
         }));
         this.newItemName = '';
         this.newItemExpiry = '';
+        this.newItemQuantity = 1;
+        this.newItemUnit = 'Stk.';
+        this.newItemLocation = 'Kühlschrank';
     }
 
     private handleDelete(name: string) {
@@ -256,6 +317,30 @@ export class EcoChefPantry extends LitElement {
     }
 
     override render() {
+        // Group items by location
+        const grouped: { [key: string]: PantryItemAdvanced[] } = {
+            'Kühlschrank': [],
+            'Vorratskammer': [],
+            'Gefrierfach': [],
+            'Sonstiges': []
+        };
+
+        this.pantryItems.forEach(item => {
+            const loc = item.location || 'Sonstiges';
+            if (grouped[loc]) {
+                grouped[loc].push(item);
+            } else {
+                grouped['Sonstiges'].push(item);
+            }
+        });
+
+        const locationEmojis: { [key: string]: string } = {
+            'Kühlschrank': '❄️ Kühlschrank',
+            'Vorratskammer': '🌾 Vorratskammer',
+            'Gefrierfach': '🧊 Gefrierfach',
+            'Sonstiges': '📦 Sonstiges'
+        };
+
         return html`
             <div class="pantry-card">
                 <div class="section-header">
@@ -271,8 +356,25 @@ export class EcoChefPantry extends LitElement {
 
                 <div class="add-form">
                     <div class="form-row">
-                        <input type="text" placeholder="Zutat hinzufügen (z.B. Tomaten)" .value="${this.newItemName}" @input="${(e: Event) => this.newItemName = (e.target as HTMLInputElement).value}" />
-                        <input type="date" .value="${this.newItemExpiry}" @input="${(e: Event) => this.newItemExpiry = (e.target as HTMLInputElement).value}" />
+                        <input class="input-name" type="text" placeholder="Zutat (z.B. Tomaten)" .value="${this.newItemName}" @input="${(e: Event) => this.newItemName = (e.target as HTMLInputElement).value}" />
+                        <input class="input-qty" type="number" placeholder="Menge" .value="${this.newItemQuantity.toString()}" @input="${(e: Event) => this.newItemQuantity = Number((e.target as HTMLInputElement).value)}" min="0.1" step="any" />
+                        <select class="input-unit" .value="${this.newItemUnit}" @change="${(e: Event) => this.newItemUnit = (e.target as HTMLSelectElement).value}">
+                            <option value="Stk.">Stk.</option>
+                            <option value="g">g</option>
+                            <option value="kg">kg</option>
+                            <option value="ml">ml</option>
+                            <option value="L">L</option>
+                            <option value="Pkg.">Pkg.</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <input class="input-date" type="date" .value="${this.newItemExpiry}" @input="${(e: Event) => this.newItemExpiry = (e.target as HTMLInputElement).value}" title="Mindesthaltbarkeitsdatum" />
+                        <select class="input-loc" .value="${this.newItemLocation}" @change="${(e: Event) => this.newItemLocation = (e.target as HTMLSelectElement).value as any}">
+                            <option value="Kühlschrank">Kühlschrank ❄️</option>
+                            <option value="Vorratskammer">Vorratskammer 🌾</option>
+                            <option value="Gefrierfach">Gefrierfach 🧊</option>
+                            <option value="Sonstiges">Sonstiges 📦</option>
+                        </select>
                     </div>
                     <button class="add-btn" @click="${this.handleAdd}">Hinzufügen</button>
                 </div>
@@ -282,27 +384,41 @@ export class EcoChefPantry extends LitElement {
                         Deine Vorratskammer ist leer.
                     </p>
                 ` : html`
-                    <div class="pantry-list">
-                        ${this.pantryItems.map(item => {
-                            const days = this.getDaysRemaining(item.expiryDate);
-                            return html`
-                                <div class="pantry-row">
-                                    <div class="item-info">
-                                        <span class="item-name">${item.name}</span>
-                                        ${this.getStatusBadge(days)}
-                                    </div>
-                                    <div class="actions-group">
-                                        <button class="row-btn" @click="${() => this.handleUseItem(item.name)}" title="Als Zutat zum Kochen auswählen">
-                                            🍳
-                                        </button>
-                                        <button class="row-btn delete" @click="${() => this.handleDelete(item.name)}" title="Löschen">
-                                            🗑️
-                                        </button>
-                                    </div>
+                    ${Object.keys(grouped).map(loc => {
+                        const items = grouped[loc];
+                        if (items.length === 0) return '';
+                        return html`
+                            <div class="location-section">
+                                <h4 class="location-title">${locationEmojis[loc]}</h4>
+                                <div class="pantry-list">
+                                    ${items.map(item => {
+                                        const days = this.getDaysRemaining(item.expiryDate);
+                                        return html`
+                                            <div class="pantry-row">
+                                                <div class="item-info">
+                                                    <div class="item-main">
+                                                        <span class="item-name">${item.name}</span>
+                                                        <span class="item-quantity-badge">${item.quantity || 1} ${item.unit || 'Stk.'}</span>
+                                                    </div>
+                                                    <div class="item-expiry-row">
+                                                        ${this.getStatusBadge(days)}
+                                                    </div>
+                                                </div>
+                                                <div class="actions-group">
+                                                    <button class="row-btn" @click="${() => this.handleUseItem(item.name)}" title="Als Zutat zum Kochen auswählen">
+                                                        🍳
+                                                    </button>
+                                                    <button class="row-btn delete" @click="${() => this.handleDelete(item.name)}" title="Löschen">
+                                                        🗑️
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        `;
+                                    })}
                                 </div>
-                            `;
-                        })}
-                    </div>
+                            </div>
+                        `;
+                    })}
                 `}
             </div>
 

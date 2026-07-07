@@ -56,6 +56,66 @@ export class EcoChefAchievements extends LitElement {
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+        
+        /* Charts section styling */
+        .charts-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+        .chart-box {
+            background: var(--bg-color);
+            border: 2px solid var(--border);
+            border-radius: 20px;
+            padding: 16px;
+        }
+        .chart-header {
+            font-size: 13px;
+            font-weight: 850;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chart-svg {
+            width: 100%;
+            height: 140px;
+            display: block;
+        }
+        .bar {
+            fill: url(#co2Grad);
+            transition: height 0.5s ease, y 0.5s ease;
+            cursor: pointer;
+        }
+        .bar-protein {
+            fill: url(#proteinGrad);
+            transition: height 0.5s ease, y 0.5s ease;
+            cursor: pointer;
+        }
+        .bar-bg {
+            fill: var(--border);
+            opacity: 0.3;
+        }
+        .chart-axis {
+            stroke: var(--text-muted);
+            stroke-width: 1;
+            opacity: 0.3;
+        }
+        .chart-text {
+            font-size: 9px;
+            font-weight: bold;
+            fill: var(--text-muted);
+            text-anchor: middle;
+        }
+        .chart-value-text {
+            font-size: 8px;
+            font-weight: 900;
+            fill: var(--text-dark);
+            text-anchor: middle;
+        }
+        
         .badge-list {
             display: flex;
             flex-direction: column;
@@ -133,7 +193,7 @@ export class EcoChefAchievements extends LitElement {
         .progress-text {
             font-size: 11px;
             color: var(--text-muted);
-            font-weight: 700;
+            font-weight: 750;
             margin-top: 4px;
             text-align: right;
         }
@@ -157,8 +217,31 @@ export class EcoChefAchievements extends LitElement {
         };
     }
 
+    private getLast7DaysData() {
+        const data = [];
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(today.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const dayLabel = d.toLocaleDateString('de-DE', { weekday: 'short' });
+            const stat = this.stats[dateStr] || { calories: 0, protein: 0, carbs: 0, fat: 0, co2Saved: 0, count: 0 };
+            data.push({
+                dayLabel,
+                co2Saved: stat.co2Saved || 0,
+                protein: stat.protein || 0
+            });
+        }
+        return data;
+    }
+
     override render() {
         const cum = this.getCumulativeStats();
+        const last7Days = this.getLast7DaysData();
+
+        // Calculate max values for scaling SVG bars
+        const maxCO2 = Math.max(1.0, ...last7Days.map(d => d.co2Saved));
+        const maxProtein = Math.max(20.0, ...last7Days.map(d => d.protein));
 
         return html`
             <div class="achievements-card">
@@ -172,6 +255,83 @@ export class EcoChefAchievements extends LitElement {
                     <div class="stat-box">
                         <div class="stat-value">🍳 ${cum.cookedCount}</div>
                         <div class="stat-label">Gerichte Gekocht</div>
+                    </div>
+                </div>
+
+                <!-- Visuelle Charts -->
+                <div class="charts-container">
+                    <!-- CO2 Ersparnis Chart -->
+                    <div class="chart-box">
+                        <div class="chart-header">
+                            <span>🌱 CO2-Ersparnis (letzte 7 Tage)</span>
+                            <span style="font-weight: 900; color: var(--primary-dark);">Max: ${maxCO2.toFixed(1)} kg</span>
+                        </div>
+                        <svg class="chart-svg" viewBox="0 0 320 140">
+                            <defs>
+                                <linearGradient id="co2Grad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#10b981" />
+                                    <stop offset="100%" stop-color="#047857" />
+                                </linearGradient>
+                            </defs>
+                            
+                            <!-- X Axis -->
+                            <line x1="10" y1="115" x2="310" y2="115" class="chart-axis" />
+                            
+                            <!-- Bars -->
+                            ${last7Days.map((d, index) => {
+                                const x = 20 + index * 42;
+                                const barHeight = (d.co2Saved / maxCO2) * 80;
+                                const y = 115 - barHeight;
+                                return html`
+                                    <!-- background column track -->
+                                    <rect x="${x}" y="35" width="22" height="80" rx="4" class="bar-bg" />
+                                    <!-- actual data bar -->
+                                    ${barHeight > 0 ? html`
+                                        <rect x="${x}" y="${y}" width="22" height="${barHeight}" rx="4" class="bar" />
+                                        <text x="${x + 11}" y="${y - 4}" class="chart-value-text">${d.co2Saved.toFixed(1)}</text>
+                                    ` : ''}
+                                    <!-- Day label -->
+                                    <text x="${x + 11}" y="130" class="chart-text">${d.dayLabel}</text>
+                                `;
+                            })}
+                        </svg>
+                    </div>
+
+                    <!-- Protein Chart -->
+                    <div class="chart-box">
+                        <div class="chart-header">
+                            <span>💪 Proteinzufuhr (letzte 7 Tage)</span>
+                            <span style="font-weight: 900; color: #3b82f6;">Max: ${maxProtein.toFixed(0)}g</span>
+                        </div>
+                        <svg class="chart-svg" viewBox="0 0 320 140">
+                            <defs>
+                                <linearGradient id="proteinGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#60a5fa" />
+                                    <stop offset="100%" stop-color="#2563eb" />
+                                </linearGradient>
+                            </defs>
+                            
+                            <!-- X Axis -->
+                            <line x1="10" y1="115" x2="310" y2="115" class="chart-axis" />
+                            
+                            <!-- Bars -->
+                            ${last7Days.map((d, index) => {
+                                const x = 20 + index * 42;
+                                const barHeight = (d.protein / maxProtein) * 80;
+                                const y = 115 - barHeight;
+                                return html`
+                                    <!-- background column track -->
+                                    <rect x="${x}" y="35" width="22" height="80" rx="4" class="bar-bg" />
+                                    <!-- actual data bar -->
+                                    ${barHeight > 0 ? html`
+                                        <rect x="${x}" y="${y}" width="22" height="${barHeight}" rx="4" class="bar-protein" />
+                                        <text x="${x + 11}" y="${y - 4}" class="chart-value-text">${d.protein.toFixed(0)}g</text>
+                                    ` : ''}
+                                    <!-- Day label -->
+                                    <text x="${x + 11}" y="130" class="chart-text">${d.dayLabel}</text>
+                                `;
+                            })}
+                        </svg>
                     </div>
                 </div>
 

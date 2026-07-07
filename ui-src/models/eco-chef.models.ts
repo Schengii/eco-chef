@@ -49,6 +49,9 @@ export interface PantryItemAdvanced {
     active: boolean;
     addedDate: string;
     expiryDate?: string;
+    quantity?: number;
+    unit?: string;
+    location?: 'Kühlschrank' | 'Vorratskammer' | 'Gefrierfach' | 'Sonstiges';
 }
 
 export interface Achievement {
