@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "EcoChef - Dein intelligenter KI-Rezept-Zauberer. Koche nachhaltig mit deinen Kühlschrankzutaten.",
   "scripts": {
-    "test": "echo 'Error: no test specified' && exit 1",
+    "test": "jest",
     "dev": "kill-port --port 4444 && webpack serve --mode=development",
     "build": "webpack --mode=production"
   },
@@ -24,14 +24,17 @@
     }
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^25.3.5",
     "baseline-browser-mapping": "^2.10.0",
     "cordova-android": "^15.0.0",
     "cordova-plugin-camera": "^8.0.0",
     "css-loader": "7.1.2",
     "html-webpack-plugin": "5.6.3",
+    "jest": "^30.4.2",
     "kill-port": "2.0.1",
     "mini-css-extract-plugin": "2.9.4",
+    "ts-jest": "^29.4.11",
     "ts-loader": "9.5.2",
     "typescript": "^5.9.2",
     "url-loader": "^4.1.1",
