@@ -316,6 +316,13 @@ export class EcoChefPantry extends LitElement {
         }));
     }
 
+    private handlePantryItemScanTrigger() {
+        this.dispatchEvent(new CustomEvent('trigger-product-scan', {
+            bubbles: true,
+            composed: true
+        }));
+    }
+
     override render() {
         // Group items by location
         const grouped: { [key: string]: PantryItemAdvanced[] } = {
@@ -343,14 +350,19 @@ export class EcoChefPantry extends LitElement {
 
         return html`
             <div class="pantry-card">
-                <div class="section-header">
+                <div class="section-header" style="flex-wrap: wrap; gap: 8px;">
                     <h3 class="title">🥫 Meine Reste-Kammer</h3>
                     ${this.isScanning ? html`
                         <div class="loader"></div>
                     ` : html`
-                        <button class="scan-btn" @click="${this.handleScanTrigger}">
-                            🧾 Bon scannen
-                        </button>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="scan-btn" @click="${this.handleScanTrigger}">
+                                🧾 Bon scannen
+                            </button>
+                            <button class="scan-btn" @click="${this.handlePantryItemScanTrigger}" style="background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); border-color: #6d28d9;">
+                                📸 Produkt & MHD scannen
+                            </button>
+                        </div>
                     `}
                 </div>
 

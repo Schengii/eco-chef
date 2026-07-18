@@ -178,12 +178,16 @@ Gib keine Markdown-Formatierung wie \`\`\`json zurück, sondern NUR das reine Ar
         }
     },
 
-    async generateWeeklyPlan(pantry: string[], diet: string, effort: string, persons: number): Promise<any> {
+    async generateWeeklyPlan(pantry: string[], diet: string, effort: string, persons: number, isMealPrep = false): Promise<any> {
         const userKey = StorageService.getGeminiApiKey();
         const apiKey = userKey || GEMINI_API_KEY;
         const ai = new GoogleGenAI({ apiKey });
 
-        const prompt = `Generiere einen wöchentlichen Speiseplan (Montag bis Sonntag) für ${persons} Personen.
+        const prepClause = isMealPrep 
+            ? "\nOptimiere den Plan extrem für Meal Prep / Batch Cooking: Wähle eine oder zwei Hauptzutaten (z.B. Linsen, Süßkartoffeln, Quinoa, Kichererbsen), die am Wochenanfang in großer Menge zubereitet und an mehreren Tagen in verschiedenen Gerichten kreativ wiederverwendet werden, um Kochzeit und Energie zu sparen. Erwähne das in den 'notes' der Gerichte."
+            : "";
+
+        const prompt = `Generiere einen wöchentlichen Speiseplan (Montag bis Sonntag) für ${persons} Personen.${prepClause}
 Berücksichtige folgende vorhandene Vorräte: ${pantry.join(', ') || 'keine angegeben'}.
 Ernährungsweise: ${diet}. Zubereitungsaufwand: ${effort}.
 Der Speiseplan soll als JSON-Objekt zurückgegeben werden. Jeder Wochentag (Montag, Dienstag, Mittwoch, Donnerstag, Freitag, Samstag, Sonntag) soll ein eigenes Feld mit folgenden Eigenschaften sein:
@@ -219,6 +223,66 @@ Gib AUSSCHLIESSLICH dieses JSON-Objekt zurück, ohne zusätzlichen Text und ohne
             return JSON.parse(cleaned);
         } catch (e) {
             console.error("Failed to parse weekly plan:", cleaned, e);
+            throw e;
+        }
+    },
+
+    async scanPantryItem(capturedImage: string): Promise<any> {
+        const userKey = StorageService.getGeminiApiKey();
+        const apiKey = userKey || GEMINI_API_KEY;
+        const ai = new GoogleGenAI({ apiKey });
+        
+        let base64Data = '';
+        let mimeType = 'image/jpeg';
+        if (capturedImage.includes(',')) {
+            const parts = capturedImage.split(',');
+            base64Data = parts[1];
+            const mimeMatch = parts[0].match(/data:(.*?);/);
+            if (mimeMatch) {
+                mimeType = mimeMatch[1];
+            }
+        } else {
+            base64Data = capturedImage;
+        }
+
+        const prompt = `Analysiere das Bild dieses Lebensmittel-Produkts oder seiner Verpackung.
+Extrahiere:
+1. Den Namen des Lebensmittels (name, z.B. "Naturjoghurt").
+2. Die Menge (quantity, z.B. 500) und Einheit (unit, z.B. "g").
+3. Das gedruckte Mindesthaltbarkeitsdatum (expiryDate im Format YYYY-MM-DD, z.B. "2026-08-15"). Falls kein konkretes Datum auf dem Produkt erkennbar ist, schätze die typische Haltbarkeit in Tagen ab heute ab und gib das berechnete Datum zurück.
+4. Den Lagerort (location: "Kühlschrank", "Vorratskammer", "Gefrierfach" oder "Sonstiges").
+
+Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt, ohne Markdown-Formatierung:
+{
+  "name": "Produktname",
+  "quantity": 500,
+  "unit": "g",
+  "expiryDate": "YYYY-MM-DD",
+  "location": "Kühlschrank"
+}`;
+
+        const response = await ai.models.generateContent({
+            model: "gemini-flash-latest",
+            contents: [
+                {
+                    inlineData: {
+                        data: base64Data,
+                        mimeType: mimeType
+                    }
+                },
+                prompt
+            ],
+            config: {
+                responseMimeType: "application/json"
+            }
+        });
+
+        const text = (response.text || '').trim();
+        const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+            return JSON.parse(cleaned);
+        } catch (e) {
+            console.error("Failed to parse scanned product package:", cleaned, e);
             throw e;
         }
     }

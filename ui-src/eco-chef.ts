@@ -88,6 +88,7 @@ export class EcoChef extends LitElement {
     @state() calorieGoal = 2000;
     @state() proteinGoal = 80;
     @state() geminiApiKey = '';
+    @state() selectedAvatar = '🧑‍🍳';
 
     @state() currentTab = 'zauberer';
     @state() pantryItemsAdvanced: PantryItemAdvanced[] = [];
@@ -95,6 +96,7 @@ export class EcoChef extends LitElement {
     @state() mealPlan: MealPlan = {};
     @state() isGeneratingPlan = false;
     @state() isScanningReceipt = false;
+    @state() isScanningProduct = false;
     @state() syncCode = '';
 
     defaultAchievements: Achievement[] = [
@@ -102,7 +104,9 @@ export class EcoChef extends LitElement {
         { id: 'klimaSchuetzer', title: 'Klimaschützer', description: 'Erreiche eine CO₂-Ersparnis von insgesamt 10 kg.', icon: '🌳', unlocked: false, progress: 0, target: 10 },
         { id: 'sterneChef', title: 'Sterne-Eco-Chef', description: 'Bewerte 3 gekochte Rezepte mit 5 Sternen.', icon: '⭐', unlocked: false, progress: 0, target: 3 },
         { id: 'scannerProfi', title: 'Scanner-Profi', description: 'Scanne 3 Kassenzettel per Kamera.', icon: '🧾', unlocked: false, progress: 0, target: 3 },
-        { id: 'pflanzenfresser', title: 'Pflanzenfresser', description: 'Koche 5 vegetarische oder vegane Gerichte.', icon: '🌿', unlocked: false, progress: 0, target: 5 }
+        { id: 'pflanzenfresser', title: 'Pflanzenfresser', description: 'Koche 5 vegetarische oder vegane Gerichte.', icon: '🌿', unlocked: false, progress: 0, target: 5 },
+        { id: 'mealPrepKing', title: 'Meal-Prep-King', description: 'Generiere einen wöchentlichen Meal-Prep-Plan.', icon: '📦', unlocked: false, progress: 0, target: 1 },
+        { id: 'mhdRetter', title: 'MHD-Retter', description: 'Füge Zutat mit nahem MHD zur Koch-Auswahl hinzu.', icon: '⏰', unlocked: false, progress: 0, target: 1 }
     ];
 
     override connectedCallback() {
@@ -130,6 +134,8 @@ export class EcoChef extends LitElement {
         this.calorieGoal = StorageService.getCalorieGoal();
         this.proteinGoal = StorageService.getProteinGoal();
         this.geminiApiKey = StorageService.getGeminiApiKey();
+        this.selectedAvatar = localStorage.getItem('ecoChef_selectedAvatar') || '🧑‍🍳';
+        this.syncCode = localStorage.getItem('ecoChef_syncCode') || '';
 
         this.pantryItemsAdvanced = StorageService.getPantryAdvanced();
         this.mealPlan = StorageService.getMealPlan();
@@ -138,10 +144,22 @@ export class EcoChef extends LitElement {
         if (loadedAchievements.length === 0) {
             loadedAchievements = [...this.defaultAchievements];
             StorageService.setAchievements(loadedAchievements);
+        } else {
+            // Merge defaults if new achievements were added
+            this.defaultAchievements.forEach(def => {
+                if (!loadedAchievements.some(a => a.id === def.id)) {
+                    loadedAchievements.push(def);
+                }
+            });
+            StorageService.setAchievements(loadedAchievements);
         }
         this.achievementsList = loadedAchievements;
         
         this.loadChips();
+
+        if (this.syncCode) {
+            this.handleApplySyncCode(new CustomEvent('apply-sync-code', { detail: { code: this.syncCode } }));
+        }
 
         this.updateFontScaleStyle();
         this.updateBodyBackground();
@@ -671,8 +689,8 @@ export class EcoChef extends LitElement {
                          ${this.isDarkMode ? '☀️' : '🌙'}
                      </button>
                      
-                     <h2>EcoChef</h2>
-                     <p class="subtitle">Dein KI-Rezept-Zauberer 🧑‍🍳</p>
+                     <h2>${this.selectedAvatar} EcoChef</h2>
+                     <p class="subtitle">Dein KI-Rezept-Zauberer</p>
                      
                      <div class="header-actions">
                          <button class="saved-btn ${this.currentTab === 'zauberer' ? 'active' : ''}" @click="${() => { this.currentTab = 'zauberer'; this.showSavedRecipes = false; }}" aria-label="Rezept-Generator">
@@ -709,12 +727,18 @@ export class EcoChef extends LitElement {
                           .proteinGoal="${this.proteinGoal}"
                           .geminiApiKey="${this.geminiApiKey}"
                           .syncCode="${this.syncCode}"
+                          .selectedAvatar="${this.selectedAvatar}"
                           @toggle-pantry-item="${(e: CustomEvent) => this.togglePantryItem(e.detail.item)}"
                           @toggle-allergen="${(e: CustomEvent) => this.toggleAllergen(e.detail.allergen)}"
                           @change-font-scale="${(e: CustomEvent) => this.changeFontScale(e.detail.delta)}"
                           @change-calorie-goal="${(e: CustomEvent) => this.changeCalorieGoal(e.detail.goal)}"
                           @change-protein-goal="${(e: CustomEvent) => this.changeProteinGoal(e.detail.goal)}"
                           @change-gemini-api-key="${(e: CustomEvent) => this.changeGeminiApiKey(e.detail.key)}"
+                          @change-avatar="${(e: CustomEvent) => {
+                              this.selectedAvatar = e.detail.avatar;
+                              localStorage.setItem('ecoChef_selectedAvatar', e.detail.avatar);
+                              this.autoSyncPush();
+                          }}"
                           @generate-sync-code="${this.handleGenerateSyncCode}"
                           @apply-sync-code="${this.handleApplySyncCode}"
                           @toggle-lrs-mode="${this.toggleLrsMode}"
@@ -729,12 +753,13 @@ export class EcoChef extends LitElement {
                   ${this.currentTab === 'pantry' ? html`
                       <eco-chef-pantry
                           .pantryItems="${this.pantryItemsAdvanced}"
-                          .isScanning="${this.isLoading && this.isScanningReceipt}"
+                          .isScanning="${this.isLoading && (this.isScanningReceipt || this.isScanningProduct)}"
                           @add-pantry-item="${this.handleAddPantryItem}"
                           @delete-pantry-item="${this.handleDeletePantryItem}"
                           @use-pantry-item="${this.handleUsePantryItem}"
                           @add-seasonal-ingredient="${this.handleSeasonalIngredient}"
-                          @trigger-receipt-scan="${this.handleTriggerReceiptScan}">
+                          @trigger-receipt-scan="${this.handleTriggerReceiptScan}"
+                          @trigger-product-scan="${this.handleTriggerProductScan}">
                       </eco-chef-pantry>
                   ` : ''}
 
@@ -1699,8 +1724,12 @@ export class EcoChef extends LitElement {
 
     override updated(changedProperties: Map<string | number | symbol, unknown>) {
         super.updated(changedProperties);
-        if (changedProperties.has('capturedImage') && this.capturedImage && this.isScanningReceipt) {
-            this.processReceipt();
+        if (changedProperties.has('capturedImage') && this.capturedImage) {
+            if (this.isScanningReceipt) {
+                this.processReceipt();
+            } else if (this.isScanningProduct) {
+                this.processProductScan();
+            }
         }
     }
 
@@ -1723,6 +1752,7 @@ export class EcoChef extends LitElement {
         this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, item];
         StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
         this.srAnnouncement = `${name} zur Reste-Kammer hinzugefügt.`;
+        this.autoSyncPush();
     }
 
     handleDeletePantryItem(e: CustomEvent) {
@@ -1730,10 +1760,33 @@ export class EcoChef extends LitElement {
         this.pantryItemsAdvanced = this.pantryItemsAdvanced.filter(item => item.name !== name);
         StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
         this.srAnnouncement = `${name} aus der Reste-Kammer entfernt.`;
+        this.autoSyncPush();
     }
 
     handleUsePantryItem(e: CustomEvent) {
         const { name } = e.detail;
+        
+        // Gamification Challenge: mhdRetter
+        const matchedItem = this.pantryItemsAdvanced.find(p => p.name.toLowerCase() === name.toLowerCase());
+        if (matchedItem && matchedItem.expiryDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const expiry = new Date(matchedItem.expiryDate);
+            expiry.setHours(0, 0, 0, 0);
+            const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays <= 3) {
+                const list = [...this.achievementsList];
+                const ach = list.find(a => a.id === 'mhdRetter');
+                if (ach && !ach.unlocked) {
+                    ach.progress = 1;
+                    ach.unlocked = true;
+                    this.achievementsList = list;
+                    StorageService.setAchievements(this.achievementsList);
+                    alert("🏆 Erfolg freigeschaltet: MHD-Retter! Du hast eine Zutat verwendet, die bald abläuft.");
+                }
+            }
+        }
+
         if (!this.ingredientChips.includes(name)) {
             this.ingredientChips = [...this.ingredientChips, name];
             this.saveChips();
@@ -1806,7 +1859,8 @@ export class EcoChef extends LitElement {
         }
     }
 
-    async handleGenerateWeeklyPlan() {
+    async handleGenerateWeeklyPlan(e: CustomEvent) {
+        const isMealPrep = e.detail?.isMealPrep || false;
         this.isGeneratingPlan = true;
         this.srAnnouncement = "Wochenplan wird generiert...";
         try {
@@ -1815,11 +1869,24 @@ export class EcoChef extends LitElement {
                 pantryNames,
                 this.selectedDiet,
                 this.selectedEffort,
-                this.persons
+                this.persons,
+                isMealPrep
             );
             this.mealPlan = plan;
             StorageService.setMealPlan(plan);
             this.srAnnouncement = "Wochenplan erfolgreich generiert.";
+
+            if (isMealPrep) {
+                const list = [...this.achievementsList];
+                const ach = list.find(a => a.id === 'mealPrepKing');
+                if (ach && !ach.unlocked) {
+                    ach.progress = 1;
+                    ach.unlocked = true;
+                    this.achievementsList = list;
+                    StorageService.setAchievements(this.achievementsList);
+                    alert("🏆 Erfolg freigeschaltet: Meal-Prep-King! Du hast die Wochenplanung im Meal-Prep Modus optimiert.");
+                }
+            }
         } catch (e) {
             console.error("Failed to generate weekly plan", e);
             alert("Fehler beim Generieren des Wochenplans.");
@@ -1867,6 +1934,7 @@ export class EcoChef extends LitElement {
             });
             if (res.ok) {
                 this.syncCode = code;
+                localStorage.setItem('ecoChef_syncCode', code);
                 this.srAnnouncement = `Sync-Code generiert: ${code}.`;
                 this.requestUpdate();
             } else {
@@ -1910,6 +1978,8 @@ export class EcoChef extends LitElement {
                         this.ingredientChips = data.ingredientChips;
                         this.saveChips();
                     }
+                    this.syncCode = code;
+                    localStorage.setItem('ecoChef_syncCode', code);
                     alert("🎉 Daten erfolgreich synchronisiert!");
                     this.srAnnouncement = "Synchronisation abgeschlossen.";
                     this.requestUpdate();
@@ -1962,5 +2032,66 @@ export class EcoChef extends LitElement {
 
         this.achievementsList = list;
         StorageService.setAchievements(this.achievementsList);
+    }
+
+    handleTriggerProductScan() {
+        this.isScanningProduct = true;
+        this.openCamera();
+    }
+
+    async processProductScan() {
+        if (!this.capturedImage) return;
+        this.isLoading = true;
+        this.srAnnouncement = "Verpackung wird auf MHD und Inhalt analysiert...";
+        try {
+            const item = await GeminiService.scanPantryItem(this.capturedImage);
+            if (item && item.name) {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const newItem = {
+                    name: item.name || "Unbekanntes Produkt",
+                    active: true,
+                    addedDate: todayStr,
+                    expiryDate: item.expiryDate || todayStr,
+                    quantity: item.quantity || 1,
+                    unit: item.unit || 'Stk.',
+                    location: item.location || 'Kühlschrank'
+                };
+                this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, newItem];
+                StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
+                alert(`🎉 Produkt "${newItem.name}" erfolgreich erkannt und der Vorratskammer hinzugefügt! (MHD: ${newItem.expiryDate})`);
+                this.autoSyncPush();
+            } else {
+                alert("Produkt konnte nicht eindeutig identifiziert werden.");
+            }
+        } catch (e) {
+            console.error("Product scan failed", e);
+            alert("Fehler beim Scannen des Produkts.");
+        } finally {
+            this.capturedImage = null;
+            this.isScanningProduct = false;
+            this.isLoading = false;
+        }
+    }
+
+    async autoSyncPush() {
+        if (!this.syncCode) return;
+        const payload = {
+            pantryItemsAdvanced: this.pantryItemsAdvanced,
+            shoppingList: this.shoppingList,
+            achievementsList: this.achievementsList,
+            stats: this.stats,
+            urgentIngredients: this.urgentIngredients,
+            ingredientChips: this.ingredientChips
+        };
+        try {
+            await fetch(`https://kvdb.io/ecochefsyncbucket_${this.syncCode}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            console.log("Auto-sync push completed successfully.");
+        } catch (e) {
+            console.warn("Auto-sync push failed", e);
+        }
     }
 }

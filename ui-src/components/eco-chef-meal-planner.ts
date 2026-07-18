@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { MealPlan, MealPlanDay } from '../models/eco-chef.models';
 
 @customElement('eco-chef-meal-planner')
@@ -165,10 +165,13 @@ export class EcoChefMealPlanner extends LitElement {
     @property({ type: Object }) mealPlan: MealPlan = {};
     @property({ type: Boolean }) isGeneratingPlan = false;
 
+    @state() private isMealPrepMode = false;
+
     private daysOfWeek = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 
     private onGeneratePlan() {
         this.dispatchEvent(new CustomEvent('generate-weekly-plan', {
+            detail: { isMealPrep: this.isMealPrepMode },
             bubbles: true,
             composed: true
         }));
@@ -207,6 +210,13 @@ export class EcoChefMealPlanner extends LitElement {
                         </p>
                     </div>
                 ` : html`
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; background: var(--bg-color); border: 2px solid var(--border); padding: 12px; border-radius: 14px; box-shadow: var(--shadow-sm);">
+                        <span style="font-size: 13px; font-weight: 850; color: var(--text-dark); display: flex; align-items: center; gap: 6px;">
+                            📦 Meal-Prep Modus (Batch Cooking)
+                        </span>
+                        <input type="checkbox" ?checked="${this.isMealPrepMode}" @change="${(e: Event) => this.isMealPrepMode = (e.target as HTMLInputElement).checked}" style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);" />
+                    </div>
+
                     <button class="generate-btn" @click="${this.onGeneratePlan}">
                         ✨ Wochenplan mit KI generieren
                     </button>

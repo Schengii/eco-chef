@@ -18,6 +18,17 @@ export class EcoChefSettings extends LitElement {
     @property({ type: Number }) proteinGoal = 80;
     @property({ type: String }) geminiApiKey = '';
     @property({ type: String }) syncCode = '';
+    @property({ type: String }) selectedAvatar = '🧑‍🍳';
+
+    private avatarList = ['🧑‍🍳', '👨‍🍳', '👩‍🍳', '🧙‍♂️', '🦁', '🦊', '🐼', '🥦', '🍕', '🥑'];
+
+    private _selectAvatar(avatar: string) {
+        this.dispatchEvent(new CustomEvent('change-avatar', {
+            detail: { avatar },
+            bubbles: true,
+            composed: true
+        }));
+    }
 
     private _getWeeklyStats() {
         let totalCalories = 0;
@@ -180,6 +191,22 @@ export class EcoChefSettings extends LitElement {
         return html`
             <div class="settings-container">
                 <h3 class="recipe-subheading">⚙️ Einstellungen & Vorrat</h3>
+
+                <!-- Profil Avatar Section -->
+                <div class="settings-section">
+                    <h4 class="settings-title">👤 Mein Chefkoch-Profil</h4>
+                    <p class="subtitle" style="margin-bottom: 12px;">Wähle deinen persönlichen Koch-Avatar:</p>
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; background: var(--bg-color); padding: 12px; border-radius: 18px; border: 2px solid var(--border);">
+                        ${this.avatarList.map(avatar => html`
+                            <button @click="${() => this._selectAvatar(avatar)}" 
+                                    style="font-size: 28px; width: 50px; height: 50px; border-radius: 12px; border: 2px solid ${this.selectedAvatar === avatar ? 'var(--primary)' : 'var(--border)'}; background: ${this.selectedAvatar === avatar ? 'var(--primary-light)' : 'var(--surface)'}; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; box-shadow: ${this.selectedAvatar === avatar ? '0 0 10px var(--primary)' : 'none'};"
+                                    aria-label="Avatar ${avatar} wählen"
+                                    aria-pressed="${this.selectedAvatar === avatar}">
+                                ${avatar}
+                            </button>
+                        `)}
+                    </div>
+                </div>
 
                 <!-- Statistik & Tracker Section -->
                 <div class="settings-section">
