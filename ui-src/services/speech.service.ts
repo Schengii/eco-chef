@@ -49,8 +49,31 @@ class SpeechServiceClass {
             this.recognition.onresult = (event: any) => {
                 const last = event.results.length - 1;
                 const command = event.results[last][0].transcript.trim().toLowerCase();
-                if (this.onCommandCallback) {
-                    this.onCommandCallback(command);
+                
+                let processedCommand = '';
+                const wakeWords = ['ecochef', 'eco chef', 'chefkoch', 'chef', 'koch', 'hallo chef'];
+                let foundWakeWord = false;
+                
+                for (const ww of wakeWords) {
+                    if (command.startsWith(ww)) {
+                        processedCommand = command.substring(ww.length).trim();
+                        foundWakeWord = true;
+                        break;
+                    }
+                }
+                
+                if (!foundWakeWord) {
+                    const directCommands = ['weiter', 'nächster', 'zurück', 'vorheriger', 'vorlesen', 'lies vor', 'stopp', 'anhalten', 'hilfe'];
+                    if (directCommands.includes(command)) {
+                        processedCommand = command;
+                    } else {
+                        console.log("Ignored ambient sound/speech:", command);
+                        return;
+                    }
+                }
+                
+                if (this.onCommandCallback && processedCommand) {
+                    this.onCommandCallback(processedCommand);
                 }
             };
 

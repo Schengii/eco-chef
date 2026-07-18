@@ -14,6 +14,7 @@ export class EcoChefRecipeView extends LitElement {
     @property({ type: Number }) currentRating = 0;
     @property({ type: Boolean }) isLoading = false;
     @property({ type: Array }) pantryItems: PantryItemAdvanced[] = [];
+    @property({ type: Array }) chatHistory: string[] = [];
 
     @state() private isEditing = false;
     @state() private additionalPrompt = '';
@@ -63,11 +64,13 @@ export class EcoChefRecipeView extends LitElement {
     }
 
     private _regenerateRecipe() {
+        if (!this.additionalPrompt.trim()) return;
         this.dispatchEvent(new CustomEvent('regenerate-recipe', {
             detail: { additionalPrompt: this.additionalPrompt },
             bubbles: true,
             composed: true
         }));
+        this.additionalPrompt = '';
     }
 
     private _markAsCooked() {
@@ -246,7 +249,17 @@ export class EcoChefRecipeView extends LitElement {
                 </div>
 
                 <div class="regenerate-box">
-                    <h4>Nicht ganz zufrieden?</h4>
+                    <h4>Rezept anpassen / Chat 💬</h4>
+                    ${this.chatHistory && this.chatHistory.length > 0 ? html`
+                        <div class="chat-history" style="margin-bottom: 12px; background: var(--bg-color); border: 2px solid var(--border); padding: 12px; border-radius: 12px; max-height: 150px; overflow-y: auto; text-align: left;">
+                            ${this.chatHistory.map(msg => html`
+                                <div class="chat-message" style="margin-bottom: 6px; font-size: 13px; font-weight: 700; color: var(--text-dark); display: flex; gap: 6px; align-items: flex-start;">
+                                    <span>💬</span>
+                                    <span>${msg}</span>
+                                </div>
+                            `)}
+                        </div>
+                    ` : ''}
                     <input
                             type="text"
                             class="regenerate-input"
@@ -257,7 +270,7 @@ export class EcoChefRecipeView extends LitElement {
                     ${this.isLoading ? html`
                         <div class="loader inline-loader"></div>
                     ` : html`
-                        <button class="secondary-btn" @click="${this._regenerateRecipe}">🔄 Neu zaubern</button>
+                        <button class="secondary-btn" @click="${this._regenerateRecipe}">💬 Rezept anpassen</button>
                     `}
                 </div>
 

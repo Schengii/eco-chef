@@ -39,6 +39,7 @@ export class EcoChef extends LitElement {
     @state() showSavedRecipes = false;
     @state() savedRecipesList: Recipe[] = [];
     @state() additionalPrompt = '';
+    @state() recipeChatHistory: string[] = [];
 
     @state() isCookingMode = false;
     @state() currentCookingStep = 0;
@@ -296,6 +297,20 @@ export class EcoChef extends LitElement {
             cleanName = ingredient.item.replace(/^(\*|\d+\.)\s*/, '').trim();
             category = ingredient.category || 'Sonstiges';
         }
+        
+        const cleanNameLower = cleanName.toLowerCase();
+        const isInPantry = this.pantryItemsAdvanced.some(p => {
+            const pClean = p.name.toLowerCase().trim();
+            return cleanNameLower.includes(pClean) || pClean.includes(cleanNameLower);
+        });
+
+        if (isInPantry) {
+            const confirmAdd = confirm(`ℹ️ "${cleanName}" ist bereits in deiner Vorratskammer vorhanden. Trotzdem auf die Einkaufsliste setzen?`);
+            if (!confirmAdd) {
+                return;
+            }
+        }
+
         if (!this.shoppingList.some(item => item.name === cleanName)) {
             this.shoppingList.push({ name: cleanName, checked: false, category });
             this.saveShoppingList();
@@ -924,6 +939,7 @@ export class EcoChef extends LitElement {
                           .currentRating="${this.currentRating}"
                           .isLoading="${this.isLoading}"
                           .pantryItems="${this.pantryItemsAdvanced}"
+                          .chatHistory="${this.recipeChatHistory}"
                           @add-to-shopping-list="${(e: CustomEvent) => this.addToShoppingList(e.detail.item)}"
                           @set-recipe-rating="${(e: CustomEvent) => this.setRecipeRating(e.detail.rating)}"
                           @mark-cooked="${this.markAsCooked}"
@@ -931,6 +947,9 @@ export class EcoChef extends LitElement {
                           @print-recipe="${this.printRecipe}"
                           @regenerate-recipe="${(e: CustomEvent) => {
                               this.additionalPrompt = e.detail.additionalPrompt;
+                              if (this.additionalPrompt.trim()) {
+                                  this.recipeChatHistory = [...this.recipeChatHistory, this.additionalPrompt];
+                              }
                               this.askGoogle();
                           }}"
                           @update-recipe="${(e: CustomEvent) => {
@@ -942,7 +961,10 @@ export class EcoChef extends LitElement {
                                    };
                                }
                            }}"
-                          @close="${() => this.showExitDialog = true}">
+                          @close="${() => {
+                              this.recipeChatHistory = [];
+                              this.showExitDialog = true;
+                          }}">
                       </eco-chef-recipe-view>
                   ` : ''}
                </div>
@@ -1127,7 +1149,8 @@ export class EcoChef extends LitElement {
             Berechne die Zutatenmengen für exakt ${portions} Person(en).
             ${strictIngredientRule}
             
-            ${this.additionalPrompt ? `🚨 ÄNDERUNGSWUNSCH: "${this.additionalPrompt}". Bitte anpassen!` : ''}
+            ${this.recipeChatHistory.length > 0 ? `🚨 ÄNDERUNGSWÜNSCHE (alle vorherigen und der aktuelle müssen berücksichtigt werden):
+            ${this.recipeChatHistory.map((p, idx) => `${idx + 1}. "${p}"`).join('\n')}` : ''}
             
             Antworte AUSSCHLIESSLICH mit einem gültigen JSON-Objekt. Das JSON MUSS diese exakte Struktur haben:
             {
@@ -1216,6 +1239,7 @@ export class EcoChef extends LitElement {
         this.showSavedRecipes = false;
         this.showShoppingList = false;
         this.additionalPrompt = '';
+        this.recipeChatHistory = [];
         this.isCookingMode = false;
         SpeechService.cancelSpeak();
         this.stopTimer();

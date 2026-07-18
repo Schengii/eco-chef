@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { Achievement, DailyStat } from '../models/eco-chef.models';
 
 @customElement('eco-chef-achievements')
@@ -202,6 +202,9 @@ export class EcoChefAchievements extends LitElement {
     @property({ type: Array }) achievements: Achievement[] = [];
     @property({ type: Object }) stats: { [date: string]: DailyStat } = {};
 
+    @state() private hoveredIndex: number | null = null;
+    @state() private hoveredChart: string | null = null;
+
     private getCumulativeStats() {
         let totalCO2 = 0;
         let cookedCount = 0;
@@ -287,13 +290,29 @@ export class EcoChefAchievements extends LitElement {
                                     <rect x="${x}" y="35" width="22" height="80" rx="4" class="bar-bg" />
                                     <!-- actual data bar -->
                                     ${barHeight > 0 ? html`
-                                        <rect x="${x}" y="${y}" width="22" height="${barHeight}" rx="4" class="bar" />
+                                        <rect x="${x}" y="${y}" width="22" height="${barHeight}" rx="4" class="bar" 
+                                            @mouseenter="${() => { this.hoveredIndex = index; this.hoveredChart = 'co2'; }}"
+                                            @mouseleave="${() => { this.hoveredIndex = null; this.hoveredChart = null; }}"
+                                            @touchstart="${() => { this.hoveredIndex = index; this.hoveredChart = 'co2'; }}"
+                                        >
+                                            <title>${d.dayLabel}: ${d.co2Saved.toFixed(1)} kg</title>
+                                        </rect>
                                         <text x="${x + 11}" y="${y - 4}" class="chart-value-text">${d.co2Saved.toFixed(1)}</text>
                                     ` : ''}
                                     <!-- Day label -->
                                     <text x="${x + 11}" y="130" class="chart-text">${d.dayLabel}</text>
                                 `;
                             })}
+
+                            <!-- Floating Tooltip -->
+                            ${this.hoveredChart === 'co2' && this.hoveredIndex !== null ? html`
+                                <g>
+                                    <rect x="${Math.max(5, Math.min(255, 20 + this.hoveredIndex * 42 - 19))}" y="10" width="60" height="20" rx="6" fill="#1e293b" />
+                                    <text x="${Math.max(5, Math.min(255, 20 + this.hoveredIndex * 42 - 19)) + 30}" y="23" fill="#ffffff" font-size="9" font-weight="bold" text-anchor="middle">
+                                        ${last7Days[this.hoveredIndex].co2Saved.toFixed(1)} kg
+                                    </text>
+                                </g>
+                            ` : ''}
                         </svg>
                     </div>
 
@@ -324,13 +343,29 @@ export class EcoChefAchievements extends LitElement {
                                     <rect x="${x}" y="35" width="22" height="80" rx="4" class="bar-bg" />
                                     <!-- actual data bar -->
                                     ${barHeight > 0 ? html`
-                                        <rect x="${x}" y="${y}" width="22" height="${barHeight}" rx="4" class="bar-protein" />
+                                        <rect x="${x}" y="${y}" width="22" height="${barHeight}" rx="4" class="bar-protein" 
+                                            @mouseenter="${() => { this.hoveredIndex = index; this.hoveredChart = 'protein'; }}"
+                                            @mouseleave="${() => { this.hoveredIndex = null; this.hoveredChart = null; }}"
+                                            @touchstart="${() => { this.hoveredIndex = index; this.hoveredChart = 'protein'; }}"
+                                        >
+                                            <title>${d.dayLabel}: ${d.protein.toFixed(0)}g</title>
+                                        </rect>
                                         <text x="${x + 11}" y="${y - 4}" class="chart-value-text">${d.protein.toFixed(0)}g</text>
                                     ` : ''}
                                     <!-- Day label -->
                                     <text x="${x + 11}" y="130" class="chart-text">${d.dayLabel}</text>
                                 `;
                             })}
+
+                            <!-- Floating Tooltip -->
+                            ${this.hoveredChart === 'protein' && this.hoveredIndex !== null ? html`
+                                <g>
+                                    <rect x="${Math.max(5, Math.min(255, 20 + this.hoveredIndex * 42 - 19))}" y="10" width="60" height="20" rx="6" fill="#1e293b" />
+                                    <text x="${Math.max(5, Math.min(255, 20 + this.hoveredIndex * 42 - 19)) + 30}" y="23" fill="#ffffff" font-size="9" font-weight="bold" text-anchor="middle">
+                                        ${last7Days[this.hoveredIndex].protein.toFixed(0)}g
+                                    </text>
+                                </g>
+                            ` : ''}
                         </svg>
                     </div>
                 </div>

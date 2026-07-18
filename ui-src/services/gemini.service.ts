@@ -35,6 +35,9 @@ export const GeminiService = {
         const response = await ai.models.generateContent({
             model: "gemini-flash-latest",
             contents: requestContents,
+            config: {
+                responseMimeType: "application/json"
+            }
         });
         
         return response.text || '';
@@ -151,6 +154,9 @@ Gib keine Markdown-Formatierung wie \`\`\`json zurück, sondern NUR das reine Ar
                 },
                 prompt
             ],
+            config: {
+                responseMimeType: "application/json"
+            }
         });
 
         const text = (response.text || '').trim();
@@ -202,6 +208,9 @@ Gib AUSSCHLIESSLICH dieses JSON-Objekt zurück, ohne zusätzlichen Text und ohne
         const response = await ai.models.generateContent({
             model: "gemini-flash-latest",
             contents: [prompt],
+            config: {
+                responseMimeType: "application/json"
+            }
         });
 
         const text = (response.text || '').trim();
