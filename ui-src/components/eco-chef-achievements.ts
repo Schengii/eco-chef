@@ -204,6 +204,7 @@ export class EcoChefAchievements extends LitElement {
 
     @state() private hoveredIndex: number | null = null;
     @state() private hoveredChart: string | null = null;
+    @state() private showCertificate = false;
 
     private getCumulativeStats() {
         let totalCO2 = 0;
@@ -260,6 +261,37 @@ export class EcoChefAchievements extends LitElement {
                         <div class="stat-label">Gerichte Gekocht</div>
                     </div>
                 </div>
+
+                <button class="main-btn" @click="${() => this.showCertificate = true}" style="width: 100%; margin-bottom: 24px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; font-weight: 850; border: none;" aria-label="CO2 Umwelt-Zertifikat anzeigen">
+                    📜 Mein CO₂-Umweltzertifikat anzeigen
+                </button>
+
+                <!-- Zertifikat Modal -->
+                ${this.showCertificate ? html`
+                    <div style="position: fixed; inset: 0; background: rgba(15,23,42,0.7); z-index: 2300; display: flex; align-items: center; justify-content: center; padding: 20px;">
+                        <div style="background: var(--surface); border: 4px double #15803d; border-radius: 24px; padding: 28px; max-width: 440px; text-align: center; box-shadow: var(--shadow-xl);">
+                            <div style="font-size: 54px; margin-bottom: 8px;">🏅</div>
+                            <h3 style="margin: 0 0 6px 0; font-size: 22px; color: var(--primary-dark);">Öko-Nachhaltigkeitszertifikat</h3>
+                            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Offiziell ausgestellt von EcoChef</p>
+
+                            <div style="background: var(--bg-color); border: 2px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 20px;">
+                                <div style="font-size: 14px; font-weight: 800; color: var(--text-dark); margin-bottom: 6px;">
+                                    Status: <span style="color: #15803d;">🌱 Klima-Retter Gold</span>
+                                </div>
+                                <div style="font-size: 24px; font-weight: 900; color: #15803d; margin-bottom: 4px;">
+                                    ${cum.totalCO2} kg CO₂
+                                </div>
+                                <div style="font-size: 12px; color: var(--text-muted);">
+                                    Erfolgreich durch Resteverwertung und pflanzenbasierte Gerichte eingespart!
+                                </div>
+                            </div>
+
+                            <button class="main-btn" @click="${() => this.showCertificate = false}" style="width: 100%;">
+                                Schließen
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
 
                 <!-- Visuelle Charts -->
                 <div class="charts-container">

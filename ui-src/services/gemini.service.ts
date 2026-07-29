@@ -178,6 +178,26 @@ Gib keine Markdown-Formatierung wie \`\`\`json zurück, sondern NUR das reine Ar
         }
     },
 
+    async askCookingQuestion(question: string, recipeTitle: string): Promise<string> {
+        const client = this.getClient();
+        const prompt = `Du bist ein erfahrener Küchenchef-Assistent im Live-Kochmodus.
+Der Nutzer kocht gerade das Rezept "${recipeTitle}".
+Nutzerfrage: "${question}"
+
+Antworte prägnant, hilfreich und freundlich in 1-2 kurzen Sätzen auf Deutsch, damit es beim Kochen direkt verstanden wird. Keine Listen oder lange Erklärungen.`;
+
+        try {
+            const response = await client.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt
+            });
+            return (response.text || 'Entschuldigung, ich konnte die Frage nicht beantworten.').trim();
+        } catch (e) {
+            console.error('Failed to answer cooking question', e);
+            return 'Entschuldigung, bei der Abfrage des Kochassistenten gab es ein Problem.';
+        }
+    },
+
     async generateWeeklyPlan(pantry: string[], diet: string, effort: string, persons: number, isMealPrep = false): Promise<any> {
         const userKey = StorageService.getGeminiApiKey();
         const apiKey = userKey || GEMINI_API_KEY;

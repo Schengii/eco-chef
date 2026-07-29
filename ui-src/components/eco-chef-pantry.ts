@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { PantryItemAdvanced } from '../models/eco-chef.models';
 import './eco-chef-seasonal-calendar';
+import './eco-chef-fridge-guide';
 
 @customElement('eco-chef-pantry')
 export class EcoChefPantry extends LitElement {
@@ -473,6 +474,7 @@ export class EcoChefPantry extends LitElement {
             </div>
 
             <eco-chef-seasonal-calendar></eco-chef-seasonal-calendar>
+            <eco-chef-fridge-guide></eco-chef-fridge-guide>
         `;
     }
 }

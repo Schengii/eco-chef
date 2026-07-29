@@ -180,6 +180,19 @@ export class EcoChefCookingMode extends LitElement {
     @property({ type: Boolean }) isVoiceControlActive = false;
     @property({ type: String }) voiceStatusText = '';
     @property({ type: Array }) activeTimers: ActiveTimer[] = [];
+    @property({ type: String }) assistantAnswer = '';
+
+    @state() private questionInput = '';
+
+    private _askAssistant() {
+        if (!this.questionInput.trim()) return;
+        this.dispatchEvent(new CustomEvent('ask-cooking-assistant', {
+            detail: { question: this.questionInput.trim() },
+            bubbles: true,
+            composed: true
+        }));
+        this.questionInput = '';
+    }
 
     private _formatTime(seconds: number) {
         const m = Math.floor(seconds / 60);
@@ -349,6 +362,29 @@ export class EcoChefCookingMode extends LitElement {
                         </div>
 
                         <button class="control-btn" @click="${this._nextStep}" ?disabled="${this.currentCookingStep === totalSteps - 1}" style="flex: 1; padding: 12px; font-weight: bold;" aria-label="Nächster Schritt">Weiter ➡️</button>
+                    </div>
+
+                    <!-- KI Live-Kochassistent Fragen-Box -->
+                    <div style="margin-top: 20px; background: var(--bg-color); border: 2px solid var(--border); border-radius: 18px; padding: 16px;">
+                        <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 850; color: var(--text-dark); display: flex; align-items: center; gap: 6px;">
+                            👨‍🍳 KI-Kochassistent Fragen
+                        </h4>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text"
+                                   placeholder="Frage stellen (z.B. Womit Sahne ersetzen?)"
+                                   .value="${this.questionInput}"
+                                   @input="${(e: Event) => this.questionInput = (e.target as HTMLInputElement).value}"
+                                   @keypress="${(e: KeyboardEvent) => e.key === 'Enter' && this._askAssistant()}"
+                                   style="flex: 1; padding: 10px 14px; border-radius: 12px; border: 2px solid var(--border); background: var(--surface); color: var(--text-dark); font-family: inherit; font-size: 13px;" />
+                            <button class="scan-btn" @click="${this._askAssistant}" style="padding: 10px 14px; font-size: 13px;">
+                                Fragen ❓
+                            </button>
+                        </div>
+                        ${this.assistantAnswer ? html`
+                            <div style="margin-top: 12px; background: var(--primary-light); border: 2px solid var(--primary); border-radius: 12px; padding: 12px; font-size: 13px; color: var(--primary-dark); font-weight: 700;">
+                                💬 <strong>Antwort:</strong> ${this.assistantAnswer}
+                            </div>
+                        ` : ''}
                     </div>
 
                 </div>

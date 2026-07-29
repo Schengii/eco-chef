@@ -10,6 +10,7 @@ import { SpeechService } from './services/speech.service';
 import { GeminiService } from './services/gemini.service';
 import { BarcodeService } from './services/barcode.service';
 import { QrService } from './services/qr.service';
+import { PdfService } from './services/pdf.service';
 
 // Import subcomponents so they are registered
 import './components/eco-chef-welcome';
@@ -97,6 +98,7 @@ export class EcoChef extends LitElement {
     @state() notificationsEnabled = StorageService.getNotificationsEnabled();
     @state() showQrModal = false;
     @state() qrSvgMarkup = '';
+    @state() assistantAnswerText = '';
 
     @state() currentTab = 'zauberer';
     @state() pantryItemsAdvanced: PantryItemAdvanced[] = [];
