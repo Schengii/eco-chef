@@ -52,6 +52,26 @@ export interface PantryItemAdvanced {
     quantity?: number;
     unit?: string;
     location?: 'Kühlschrank' | 'Vorratskammer' | 'Gefrierfach' | 'Sonstiges';
+    barcode?: string;
+    nutriScore?: 'a' | 'b' | 'c' | 'd' | 'e';
+    brand?: string;
+}
+
+export interface MarketLocation {
+    id: string;
+    name: string;
+    type: 'Wochenmarkt' | 'Hofladen' | 'Unverpackt';
+    address: string;
+    distanceKm: number;
+    openHours: string;
+    specialties: string[];
+    phone?: string;
+}
+
+export interface BudgetSettings {
+    monthlyBudget: number;
+    currentSpent: number;
+    savedEuro: number;
 }
 
 export interface Achievement {

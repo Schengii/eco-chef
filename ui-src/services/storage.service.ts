@@ -216,6 +216,28 @@ export const StorageService = {
         localStorage.setItem('ecoChef_mealplan', JSON.stringify(plan));
     },
 
+    getBudgetSettings(): { monthlyBudget: number; currentSpent: number; savedEuro: number } {
+        const saved = localStorage.getItem('ecoChef_budget');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                console.error("Error parsing budget settings", e);
+            }
+        }
+        return { monthlyBudget: 250, currentSpent: 0, savedEuro: 0 };
+    },
+    setBudgetSettings(budget: { monthlyBudget: number; currentSpent: number; savedEuro: number }): void {
+        localStorage.setItem('ecoChef_budget', JSON.stringify(budget));
+    },
+
+    getNotificationsEnabled(): boolean {
+        return localStorage.getItem('ecoChef_notificationsEnabled') === 'true';
+    },
+    setNotificationsEnabled(enabled: boolean): void {
+        localStorage.setItem('ecoChef_notificationsEnabled', String(enabled));
+    },
+
     clearAll(): void {
         localStorage.clear();
     }

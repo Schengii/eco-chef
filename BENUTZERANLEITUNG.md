@@ -106,12 +106,21 @@ Jedes generierte Rezept kann dauerhaft auf deinem Gerät gesichert werden:
 * **Speichern:** Klicke nach dem Kochen auf das Rezept-Schließen-Symbol (X) und wähle **💾 Speichern**. Du kannst dem Gericht vorab eine Sternebewertung (1–5 ⭐) geben.
 * **Rezeptbuch öffnen:** Über **📚 Meine Rezepte** im Hauptmenü kannst du alle deine Kreationen durchsuchen, nach Bewertung filtern oder löschen.
 * **Voll-Backup (Gesamtdaten JSON) 📦:** In den **Einstellungen** kannst du nun mit einem Klick dein **gesamtes EcoChef-Profil** (Rezepte, Vorratskammer, Einkäufe, Statistiken & Erfolge) als JSON sichern und auf anderen Geräten wiederherstellen.
+* **QR-Code Teilen 📱:** Tippe beim Verlassen eines Rezeptes auf **„📱 QR-Code anzeigen“**, um einen Vektor-QR-Code zu generieren, den Freunde mit ihrer Handy-Kamera scannen können.
 
 ---
 
-## 7. Barrierefreiheit & Lesehilfen
+## 7. OpenFoodFacts Barcode-Scanner & Regio-Markt Finder
 
-EcoChef wurde speziell im Hinblick auf Barrierefreiheit entwickelt. In den **Einstellungen** findest du folgende Werkzeuge:
+* **EAN-Barcode Scanner 🔍:** In der Vorratskammer kannst du den 8- bis 14-stelligen Barcode von Lebensmittelverpackungen eingeben oder scannen. Die App fragt automatisch Produktdaten, Nutri-Score (A-E) und geschätzte Haltbarkeit von OpenFoodFacts ab!
+* **Regio-Markt Finder 🌾:** Wechsel im Hauptmenü auf **Regio Markt**, um Wochenmärkte, Hofläden und Unverpackt-Geschäfte in deiner Nähe zu entdecken. Mit einem Klick kannst du Frische-Spezialitäten direkt auf deine Einkaufsliste setzen!
+* **Monatsbudget & Spar-Calculator 💰:** Trage in den Einstellungen dein gewünschtes Lebensmittelbudget ein. Auf der Einkaufsliste siehst du nun deinen Budget-Fortschritt sowie deine Ersparnis durch das Verwenden ablaufender Reste.
+
+---
+
+## 8. Barrierefreiheit & Lesehilfen
+
+EcoChef wurde speziell im Hinblick auf Barrierefreiheit (WCAG compliant) entwickelt. In den **Einstellungen** findest du folgende Werkzeuge:
 
 * **Schriftgröße anpassen:** Vergrößere oder verkleinere die App-Texte stufenlos (von 80 % bis 200 %).
 * **LRS-Modus (Lesehilfe) 👁️:** Speziell für Menschen mit Lese-Rechtschreib-Schwäche (Legasthenie). Aktiviert die wissenschaftlich optimierte Schriftart *OpenDyslexic* sowie größere Zeilen- und Wortabstände für verbesserte Lesbarkeit.

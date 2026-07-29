@@ -1,20 +1,24 @@
 # EcoChef 🧑‍🍳 - Dein intelligenter KI-Rezept-Zauberer
 
-**EcoChef** ist eine moderne, nachhaltige Hybrid-Web- & Mobile-App, die aus deinen vorhandenen Kühlschrankzutaten kreative, klimaschonende und leckere Gerichte zaubert. Mit Fokus auf Resteverwertung, Barrierefreiheit (LRS-Modus, Leselineal, Screenreader), Sprachsteuerung und umfassendem Ernährungs- sowie CO₂-Tracking.
+**EcoChef** ist eine moderne, nachhaltige Hybrid-Web- & Mobile-App, die aus deinen vorhandenen Kühlschrankzutaten kreative, klimaschonende und leckere Gerichte zaubert. Mit Fokus auf Resteverwertung, Barrierefreiheit (LRS-Modus, Leselineal, Screenreader), Sprachsteuerung, Wochenmärkte-Finder, OpenFoodFacts Barcode-Scanner und umfassendes Budget- & Umwelt-Tracking.
 
 ---
 
-## 🌟 Kernfunktionen & Neuerungen
+## 🌟 Kernfunktionen & Features
 
 - 🪄 **KI-Rezept-Zauberer (Google Gemini 2.5/Flash & Imagen):** Generierung maßgeschneiderter Rezepte inkl. Nährwerten, Eco-Score, Wein-/Getränkeempfehlung & Gerichtsfoto.
-- 📸 **Kühlschrank- & Kassenzettel-Scan:** Scanne deine Einkäufe oder deinen Kühlschrank per Kamera/Upload. Produkte und Mindesthaltbarkeitsdaten (MHD) werden automatisch erkannt.
+- 📱 **QR-Code Rezept-Sharing:** Generiere hochauflösende Vektor-QR-Codes für jedes Rezept, um Gerichte sekundenschnell auf andere Smartphones zu übertragen.
+- 🔍 **OpenFoodFacts EAN-Barcode-Scanner:** Scanne Barcodes von Lebensmittelverpackungen, um Name, Marke, Nutri-Score (A-E) und Haltbarkeit automatisch abzufragen und in die Reste-Kammer einzutragen.
+- 🌾 **Regionalitäts- & Wochenmarkt-Finder (`eco-chef-regional-map`):** Entdecke regionale Wochenmärkte, Hofläden & Unverpackt-Geschäfte in deiner Nähe inkl. Öffnungszeiten, Entfernung und Direktübernahme von Markt-Spezialitäten auf deine Einkaufsliste.
+- 💰 **Monatsbudget-Tracker & Spar-Kalkulator:** Lelege dein monatliches Lebensmittelbudget fest, verfolge deine Ausgaben und berechne deine Ersparnis durch Resteverwertung.
+- 🚨 **MHD Ablauf-Erinnerungen & Warn-Banner:** Automatische Warnung auf dem Startbildschirm bei Zutaten mit Ablaufdatum in $\le 2$ Tagen inkl. 1-Klick-Rezeptverkochen.
+- 📸 **Kühlschrank- & Kassenzettel-Scan:** Scanne deine Einkäufe oder deinen Kühlschrank per Kamera/Upload.
 - 🍽️ **Dynamische Portionsskalierung:** Skaliere Mengenangaben & Nährwerte in Rezepten interaktiv von 1 bis 12 Personen in Echtzeit.
 - 🛒 **Einkaufsliste ➔ Vorratskammer Übernahme:** Umschalten abgehakter Einkaufsartikel mit einem Klick in die Reste-Kammer mit automatischer Haltbarkeitsberechnung.
-- ⏱️ **Kochmodus mit Sprachsteuerung & Custom-Timern:** Freihändiges Navigieren per Sprachbefehl, automatische Schritt-Timer sowie manuelle Schnell-Timer (+1 Min, +5 Min, +10 Min, Eigener Timer).
+- ⏱️ **Kochmodus mit Sprachsteuerung & Custom-Timern:** Freihändiges Navigieren per Sprachbefehl, automatische Schritt-Timer sowie manuelle Schnell-Timer.
 - 📦 **Vollständiges System-Backup (JSON):** Exportiere & Importiere dein gesamtes EcoChef-Profil (Rezepte, Vorratskammer, Einkäufe, Statistiken & Erfolge).
-- 📅 **AI-Wochenplaner & Meal Prep:** Erstellung automatisierter Speisepläne optimiert für Batch Cooking / Resteverwertung.
 - 🏆 **Gamification & Umwelt-Tracking:** Erfolge freischalten (Retter-König, Klimaschützer, MHD-Retter) und CO₂-Ersparnis visualisieren.
-- 👁️ **Barrierefreiheit (WCAG & LRS):** OpenDyslexic-Schriftart, verschiebbares Leselineal, stufenlose Schriftvergrößerung, TalkBack / VoiceOver Support.
+- 👁️ **Barrierefreiheit (WCAG compliant & LRS-Modus):** OpenDyslexic-Schriftart, verschiebbares Leselineal, stufenlose Schriftvergrößerung, TalkBack / VoiceOver Support.
 
 ---
 
@@ -59,12 +63,13 @@ EcoChef/
 │   ├── components/             # Modulare UI-Komponenten
 │   │   ├── eco-chef-recipe-view.ts       # Rezeptansicht & Portionsskalierer
 │   │   ├── eco-chef-cooking-mode.ts      # Kochmodus & Sprachsteuerung/Timer
-│   │   ├── eco-chef-pantry.ts            # Vorratskammer & Kassenzettel-Scan
-│   │   ├── eco-chef-shopping-list.ts     # Einkaufsliste & Übernahme
-│   │   ├── eco-chef-settings.ts          # Setup & System-Backup
+│   │   ├── eco-chef-pantry.ts            # Vorratskammer & EAN Barcode / Bon-Scan
+│   │   ├── eco-chef-regional-map.ts      # Regio-Markt & Unverpackt Finder
+│   │   ├── eco-chef-shopping-list.ts     # Einkaufsliste & Budget-Tracker
+│   │   ├── eco-chef-settings.ts          # Setup, Budget & Voll-Backup
 │   │   ├── eco-chef-meal-planner.ts      # Wochenplaner
 │   │   └── eco-chef-achievements.ts     # Erfolge & SVG-Charts
-│   ├── services/               # Gemini API, Storage, Speech, Audio Services
+│   ├── services/               # Gemini API, Barcode, QR, Storage, Speech Services
 │   ├── models/                 # TypeScript Interfaces
 │   └── styles/                 # Design System & CSS Tokens
 ├── BENUTZERANLEITUNG.md        # Ausführliche Anleitung für Anwender

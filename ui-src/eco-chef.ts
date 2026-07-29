@@ -8,6 +8,8 @@ import { StorageService } from './services/storage.service';
 import { AudioService } from './services/audio.service';
 import { SpeechService } from './services/speech.service';
 import { GeminiService } from './services/gemini.service';
+import { BarcodeService } from './services/barcode.service';
+import { QrService } from './services/qr.service';
 
 // Import subcomponents so they are registered
 import './components/eco-chef-welcome';
@@ -21,6 +23,7 @@ import './components/eco-chef-cooking-mode';
 import './components/eco-chef-pantry';
 import './components/eco-chef-meal-planner';
 import './components/eco-chef-achievements';
+import './components/eco-chef-regional-map';
 
 @customElement('eco-chef')
 export class EcoChef extends LitElement {
@@ -90,6 +93,10 @@ export class EcoChef extends LitElement {
     @state() proteinGoal = 80;
     @state() geminiApiKey = '';
     @state() selectedAvatar = '🧑‍🍳';
+    @state() budgetSettings = StorageService.getBudgetSettings();
+    @state() notificationsEnabled = StorageService.getNotificationsEnabled();
+    @state() showQrModal = false;
+    @state() qrSvgMarkup = '';
 
     @state() currentTab = 'zauberer';
     @state() pantryItemsAdvanced: PantryItemAdvanced[] = [];
@@ -726,6 +733,9 @@ export class EcoChef extends LitElement {
                          <button class="saved-btn ${this.currentTab === 'shopping' ? 'active' : ''}" @click="${() => { this.currentTab = 'shopping'; }}" aria-label="Einkaufsliste">
                              🛒 Einkäufe
                          </button>
+                         <button class="saved-btn ${this.currentTab === 'regional' ? 'active' : ''}" @click="${() => { this.currentTab = 'regional'; }}" aria-label="Wochenmärkte">
+                             🌾 Regio Markt
+                         </button>
                          <button class="saved-btn ${this.currentTab === 'achievements' ? 'active' : ''}" @click="${() => { this.currentTab = 'achievements'; }}" aria-label="Erfolge">
                              🏆 Erfolge
                          </button>
@@ -746,6 +756,8 @@ export class EcoChef extends LitElement {
                           .stats="${this.stats}"
                           .calorieGoal="${this.calorieGoal}"
                           .proteinGoal="${this.proteinGoal}"
+                          .budgetSettings="${this.budgetSettings}"
+                          .notificationsEnabled="${this.notificationsEnabled}"
                           .geminiApiKey="${this.geminiApiKey}"
                           .syncCode="${this.syncCode}"
                           .selectedAvatar="${this.selectedAvatar}"
@@ -754,6 +766,14 @@ export class EcoChef extends LitElement {
                           @change-font-scale="${(e: CustomEvent) => this.changeFontScale(e.detail.delta)}"
                           @change-calorie-goal="${(e: CustomEvent) => this.changeCalorieGoal(e.detail.goal)}"
                           @change-protein-goal="${(e: CustomEvent) => this.changeProteinGoal(e.detail.goal)}"
+                          @change-monthly-budget="${(e: CustomEvent) => {
+                              this.budgetSettings = { ...this.budgetSettings, monthlyBudget: e.detail.budget };
+                              StorageService.setBudgetSettings(this.budgetSettings);
+                          }}"
+                          @toggle-notifications="${(e: CustomEvent) => {
+                              this.notificationsEnabled = e.detail.enabled;
+                              StorageService.setNotificationsEnabled(this.notificationsEnabled);
+                          }}"
                           @change-gemini-api-key="${(e: CustomEvent) => this.changeGeminiApiKey(e.detail.key)}"
                           @change-avatar="${(e: CustomEvent) => {
                               this.selectedAvatar = e.detail.avatar;
@@ -781,9 +801,16 @@ export class EcoChef extends LitElement {
                           @delete-pantry-item="${this.handleDeletePantryItem}"
                           @use-pantry-item="${this.handleUsePantryItem}"
                           @add-seasonal-ingredient="${this.handleSeasonalIngredient}"
+                          @search-barcode="${(e: CustomEvent) => this.handleBarcodeSearch(e.detail.barcode)}"
                           @trigger-receipt-scan="${this.handleTriggerReceiptScan}"
                           @trigger-product-scan="${this.handleTriggerProductScan}">
                       </eco-chef-pantry>
+                  ` : ''}
+
+                  ${this.currentTab === 'regional' ? html`
+                      <eco-chef-regional-map
+                          @add-shopping-item="${(e: CustomEvent) => this.addManualShoppingItem(e.detail.name)}">
+                      </eco-chef-regional-map>
                   ` : ''}
 
                   ${this.currentTab === 'mealplan' ? html`
@@ -804,6 +831,41 @@ export class EcoChef extends LitElement {
                   ` : ''}
 
                   ${this.currentTab === 'zauberer' && !this.recipe && !this.showSavedRecipes ? html`
+                      ${(() => {
+                          if (!this.notificationsEnabled) return '';
+                          const expiring = this.pantryItemsAdvanced.filter(item => {
+                              if (!item.expiryDate) return false;
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              const exp = new Date(item.expiryDate);
+                              exp.setHours(0, 0, 0, 0);
+                              const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                              return diffDays >= 0 && diffDays <= 2;
+                          });
+
+                          if (expiring.length === 0) return '';
+                          const names = expiring.map(i => i.name);
+                          return html`
+                              <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 18px; padding: 14px 18px; margin-bottom: 20px; color: #92400e; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm); gap: 10px;">
+                                  <div>
+                                      <strong style="font-size: 13px;">🚨 MHD-Warnung: ${expiring.length} Zutat(en) laufen bald ab!</strong>
+                                      <div style="font-size: 12px; margin-top: 2px; font-weight: 600;">${names.join(', ')}</div>
+                                  </div>
+                                  <button class="main-btn" @click="${() => {
+                                      names.forEach(name => {
+                                          if (!this.ingredientChips.includes(name)) {
+                                              this.ingredientChips = [...this.ingredientChips, name];
+                                              this.urgentIngredients[name] = true;
+                                          }
+                                      });
+                                      this.saveChips();
+                                  }}" style="width: auto; padding: 8px 14px; font-size: 12px; margin: 0; background: #d97706; color: white; white-space: nowrap;">
+                                      🪄 Verkochen
+                                  </button>
+                              </div>
+                          `;
+                      })()}
+
                       <div class="input-with-camera">
                           <input type="text" id="ingredients-input" placeholder="Zutat eingeben & Enter drücken oder Foto 📷" .value="${this.ingredients}" @input="${this._handleInput}" @keypress="${this.handleIngredientsKeypress}" style="margin-bottom: 0;" aria-label="Zutaten eingeben" />
                           <button class="camera-btn" @click="${this.openCamera}" title="Kühlschrank scannen" aria-label="Kühlschrank scannen oder Foto hochladen">📸</button>
@@ -906,6 +968,7 @@ export class EcoChef extends LitElement {
                   ${this.currentTab === 'shopping' ? html`
                       <eco-chef-shopping-list
                           .shoppingList="${this.shoppingList}"
+                          .budgetSettings="${this.budgetSettings}"
                           @add-item="${(e: CustomEvent) => this.addManualShoppingItem(e.detail.name)}"
                           @toggle-item="${(e: CustomEvent) => this.toggleShoppingItem(e.detail.index)}"
                           @remove-item="${(e: CustomEvent) => this.removeShoppingItem(e.detail.index)}"
@@ -1058,9 +1121,26 @@ export class EcoChef extends LitElement {
                                 this.showExitDialog = false;
                             }}">💾 Speichern${this.currentRating ? ` (${this.currentRating}⭐)` : ''}
                             </button>
+                           <button class="modal-btn new" @click="${this.openQrModal}" style="background: #8b5cf6; color: white;">📱 QR-Code anzeigen</button>
                            <button class="modal-btn new" @click="${this.startNewRecipe}">🔄 Neues Rezept laden</button>
                            <button class="modal-btn exit" @click="${this.exitApp}">❌ App verlassen</button>
                            <button class="modal-btn cancel" @click="${() => this.showExitDialog = false}">Zurück zum Rezept</button>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- QR-Code Modal -->
+                ${this.showQrModal ? html`
+                    <div class="modal-overlay" style="z-index: 2200;">
+                        <div class="modal-content" style="max-width: 400px; display: flex; flex-direction: column; align-items: center; border-radius: 24px; padding: 24px; text-align: center;">
+                            <h3 style="margin-bottom: 12px; color: var(--text-dark);">📱 Rezept per QR-Code teilen</h3>
+                            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Scanne diesen QR-Code mit einem anderen Smartphone, um das Rezept zu übertragen.</p>
+                            
+                            <div style="margin-bottom: 20px;" .innerHTML="${this.qrSvgMarkup}"></div>
+                            
+                            <button class="main-btn" @click="${() => this.showQrModal = false}" style="width: 100%;">
+                                Schließen
+                            </button>
                         </div>
                     </div>
                 ` : ''}
@@ -1666,6 +1746,31 @@ export class EcoChef extends LitElement {
         downloadAnchor.click();
         downloadAnchor.remove();
         this.srAnnouncement = "Vollständiges EcoChef-Backup heruntergeladen.";
+    }
+
+    async handleBarcodeSearch(barcode: string) {
+        this.isLoading = true;
+        this.srAnnouncement = "Barcode wird abgefragt...";
+        const res = await BarcodeService.fetchProductByBarcode(barcode);
+        this.isLoading = false;
+
+        if (res.found) {
+            const newItem = BarcodeService.createPantryItemFromBarcode(res, barcode);
+            this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, newItem];
+            StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
+            alert(`🎉 "${res.name}" erfolgreich aus Barcode hinzugefügt!`);
+            this.srAnnouncement = `${res.name} aus Barcode hinzugefügt.`;
+            this.autoSyncPush();
+        } else {
+            alert(`❌ ${res.rawMessage || 'Produkt nicht gefunden.'}`);
+        }
+    }
+
+    openQrModal() {
+        if (!this.recipe) return;
+        const payloadStr = QrService.encodeRecipePayload(this.recipe);
+        this.qrSvgMarkup = QrService.generateQrSvgMarkup(payloadStr);
+        this.showQrModal = true;
     }
 
     importFullBackup(payload: any) {

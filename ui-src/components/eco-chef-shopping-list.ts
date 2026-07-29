@@ -8,6 +8,7 @@ export class EcoChefShoppingList extends LitElement {
     static override styles = ecoChefStyles;
 
     @property({ type: Array }) shoppingList: ShoppingItem[] = [];
+    @property({ type: Object }) budgetSettings: { monthlyBudget: number; currentSpent: number; savedEuro: number } = { monthlyBudget: 250, currentSpent: 0, savedEuro: 0 };
 
     @state() private manualShoppingItem = '';
 
@@ -60,9 +61,23 @@ export class EcoChefShoppingList extends LitElement {
     }
 
     override render() {
+        const pct = Math.min(100, Math.round((this.budgetSettings.currentSpent / (this.budgetSettings.monthlyBudget || 1)) * 100));
+
         return html`
             <div class="shopping-list-container">
                 <h3 class="recipe-subheading">🛒 Deine Einkaufsliste</h3>
+
+                <!-- Monats-Budget Tracker Card -->
+                <div style="background: var(--bg-color); border: 2px solid var(--border); border-radius: 18px; padding: 16px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 850; font-size: 13px; color: var(--text-dark);">
+                        <span>💰 Monatsbudget: ${this.budgetSettings.currentSpent} € / ${this.budgetSettings.monthlyBudget} €</span>
+                        <span style="color: #16a34a;">🌱 ${this.budgetSettings.savedEuro} € gespart!</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+                        <div style="width: ${pct}%; height: 100%; background: ${pct > 90 ? '#ef4444' : 'var(--primary-gradient)'}; transition: width 0.4s ease;"></div>
+                    </div>
+                </div>
+
                 <div class="add-item-box">
                     <input type="text"
                            placeholder="Zutat hinzufügen..."

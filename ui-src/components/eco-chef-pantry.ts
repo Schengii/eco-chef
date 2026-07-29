@@ -255,6 +255,7 @@ export class EcoChefPantry extends LitElement {
     @state() private newItemUnit = 'Stk.';
     @state() private newItemExpiry = '';
     @state() private newItemLocation: 'Kühlschrank' | 'Vorratskammer' | 'Gefrierfach' | 'Sonstiges' = 'Kühlschrank';
+    @state() private barcodeInput = '';
 
     private getDaysRemaining(expiryDateStr?: string): number | null {
         if (!expiryDateStr) return null;
@@ -264,6 +265,32 @@ export class EcoChefPantry extends LitElement {
         expiry.setHours(0, 0, 0, 0);
         const diffTime = expiry.getTime() - today.getTime();
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    private getNutriScoreBadge(score?: 'a' | 'b' | 'c' | 'd' | 'e') {
+        if (!score) return '';
+        const colors: { [key: string]: string } = {
+            a: '#15803d',
+            b: '#84cc16',
+            c: '#eab308',
+            d: '#f97316',
+            e: '#ef4444'
+        };
+        return html`
+            <span style="background: ${colors[score] || '#64748b'}; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 6px; text-transform: uppercase;">
+                Nutri-Score ${score.toUpperCase()}
+            </span>
+        `;
+    }
+
+    private handleBarcodeSearch() {
+        if (!this.barcodeInput.trim()) return;
+        this.dispatchEvent(new CustomEvent('search-barcode', {
+            detail: { barcode: this.barcodeInput.trim() },
+            bubbles: true,
+            composed: true
+        }));
+        this.barcodeInput = '';
     }
 
     private getStatusBadge(days: number | null) {
@@ -388,7 +415,17 @@ export class EcoChefPantry extends LitElement {
                             <option value="Sonstiges">Sonstiges 📦</option>
                         </select>
                     </div>
-                    <button class="add-btn" @click="${this.handleAdd}">Hinzufügen</button>
+                    <div class="form-row" style="align-items: center; gap: 8px;">
+                        <input type="text" 
+                               placeholder="🔍 Barcode / EAN suchen (OpenFoodFacts)" 
+                               .value="${this.barcodeInput}" 
+                               @input="${(e: Event) => this.barcodeInput = (e.target as HTMLInputElement).value}" 
+                               style="flex: 1; padding: 10px; border-radius: 12px; border: 2px solid var(--border); background: var(--surface); color: var(--text-dark); font-family: inherit; font-size: 13px;" />
+                        <button class="scan-btn" @click="${this.handleBarcodeSearch}" style="padding: 10px 14px; font-size: 12px;">
+                            EAN Abfragen
+                        </button>
+                    </div>
+                    <button class="add-btn" @click="${this.handleAdd}">Manuell Hinzufügen</button>
                 </div>
 
                 ${this.pantryItems.length === 0 ? html`
@@ -411,6 +448,7 @@ export class EcoChefPantry extends LitElement {
                                                     <div class="item-main">
                                                         <span class="item-name">${item.name}</span>
                                                         <span class="item-quantity-badge">${item.quantity || 1} ${item.unit || 'Stk.'}</span>
+                                                        ${this.getNutriScoreBadge(item.nutriScore)}
                                                     </div>
                                                     <div class="item-expiry-row">
                                                         ${this.getStatusBadge(days)}

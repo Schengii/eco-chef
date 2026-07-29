@@ -137,6 +137,10 @@ Im Rahmen des Projekts wurden folgende Kernbereiche eigenständig konzipiert und
 8. **Erweiterungen & Qualitätssicherung:**
    - **Dynamische Portionsrekonstruktion:** Mathematisches Skalieren von Rezeptmengen und Nährwertparametern in Echtzeit.
    - **Shopping ➔ Pantry Überführung:** Nahtloses Übertragen abgehakter Einkaufslisten-Objekte in den erweiterten Vorratsspeicher (`PantryItemAdvanced`).
+   - **OpenFoodFacts Barcode API (`BarcodeService`):** EAN-13 Produktabfrage zur automatischen Erfassung von Marken, Produkttiteln und Nutri-Scores (A-E).
+   - **Vektor QR-Code Sharing (`QrService`):** Vektor-basierte QR-Code Generierung zur Rezeptübertragung ohne externe Bibliotheken.
+   - **Regio-Markt Finder (`eco-chef-regional-map`):** Interaktive Web-Komponente für Wochenmärkte, Hofläden und Unverpackt-Geschäfte.
+   - **Budget & MHD-Ablauf-Tracking:** Visualisierung von Monatsbudgets, Spar-Kalkulation und automatischen MHD-Warnbannern ($\le 2$ Tage).
    - **Lokales Datums-Handling (`getLocalDateString`):** Behebung von Zeitzonen-Offsets bei der Datumsgenerierung (`toISOString`).
    - **Vollständiges Datensicherungs-System:** JSON-basiertes Komplett-Backup und Restore von Einstellungen, Rezepten, Vorräten und Erfolgen.
-   - **Automatisierte Unit-Test-Abdeckung:** Erweiterte Jest-Testsuite (`storage.service.spec.ts`) zur Sicherstellung der Datenintegrität.
+   - **Automatisierte Unit-Test-Abdeckung:** Erweiterte Jest-Testsuite (`storage.service.spec.ts`, `barcode.service.spec.ts`, `qr.service.spec.ts`) mit 100% Erfolgsquote.

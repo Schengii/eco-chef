@@ -19,6 +19,8 @@ export class EcoChefSettings extends LitElement {
     @property({ type: String }) geminiApiKey = '';
     @property({ type: String }) syncCode = '';
     @property({ type: String }) selectedAvatar = '🧑‍🍳';
+    @property({ type: Object }) budgetSettings: { monthlyBudget: number; currentSpent: number; savedEuro: number } = { monthlyBudget: 250, currentSpent: 0, savedEuro: 0 };
+    @property({ type: Boolean }) notificationsEnabled = true;
 
     private avatarList = ['🧑‍🍳', '👨‍🍳', '👩‍🍳', '🧙‍♂️', '🦁', '🦊', '🐼', '🥦', '🍕', '🥑'];
 
@@ -192,7 +194,36 @@ export class EcoChefSettings extends LitElement {
             <div class="settings-container">
                 <h3 class="recipe-subheading">⚙️ Einstellungen & Vorrat</h3>
 
-                <!-- Profil Avatar Section -->
+                <!-- Budget & Benachrichtigungen Section -->
+                <div class="settings-section">
+                    <h4 class="settings-title">💰 Budget & MHD-Ablauf-Erinnerungen</h4>
+                    
+                    <div class="goal-input-group" style="margin-bottom: 16px;">
+                        <label class="goal-label" for="budget-goal">Monatliches Lebensmittel-Budget (€):</label>
+                        <input type="number"
+                               id="budget-goal"
+                               class="goal-input"
+                               .value="${this.budgetSettings.monthlyBudget.toString()}"
+                               @change="${(e: Event) => {
+                                   const val = Number((e.target as HTMLInputElement).value) || 250;
+                                   this.dispatchEvent(new CustomEvent('change-monthly-budget', { detail: { budget: val }, bubbles: true, composed: true }));
+                               }}"
+                               min="50" max="2000" step="10" />
+                    </div>
+
+                    <div class="setting-toggle-row">
+                        <span class="setting-label">🔔 MHD-Ablauf-Erinnerungen aktivieren</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox"
+                                   .checked="${this.notificationsEnabled}"
+                                   @change="${(e: Event) => {
+                                       const val = (e.target as HTMLInputElement).checked;
+                                       this.dispatchEvent(new CustomEvent('toggle-notifications', { detail: { enabled: val }, bubbles: true, composed: true }));
+                                   }}" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
                 <div class="settings-section">
                     <h4 class="settings-title">👤 Mein Chefkoch-Profil</h4>
                     <p class="subtitle" style="margin-bottom: 12px;">Wähle deinen persönlichen Koch-Avatar:</p>
