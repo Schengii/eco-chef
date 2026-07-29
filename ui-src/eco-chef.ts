@@ -1,7 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-import { Recipe, IngredientItem, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan, ActiveTimer } from './models/eco-chef.models';
+import { Recipe, IngredientItem, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan, ActiveTimer, getLocalDateString } from './models/eco-chef.models';
 import { ecoChefStyles } from './styles/eco-chef.styles';
 
 import { StorageService } from './services/storage.service';
@@ -84,6 +84,7 @@ export class EcoChef extends LitElement {
 
     @state() searchQuery = '';
     @state() currentRating = 0;
+    @state() savedFilterRating = 0;
 
     @state() calorieGoal = 2000;
     @state() proteinGoal = 80;
@@ -502,7 +503,7 @@ export class EcoChef extends LitElement {
 
     markAsCooked() {
         if (!this.recipe) return;
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalDateString();
         
         const cal = this.parseVal(this.recipe.nutrition.calories);
         const prot = this.parseVal(this.recipe.nutrition.protein);
@@ -927,7 +928,13 @@ export class EcoChef extends LitElement {
                                      aria-label="Gespeicherte Rezepte durchsuchen" />
                           </div>
 
-                          <div style="display: flex; gap: 10px; margin-top: 16px; margin-bottom: 16px;">
+                          <div style="display: flex; gap: 6px; margin-top: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                              <button class="chip ${this.savedFilterRating === 0 ? 'active' : ''}" @click="${() => this.savedFilterRating = 0}">Alle</button>
+                              <button class="chip ${this.savedFilterRating === 4 ? 'active' : ''}" @click="${() => this.savedFilterRating = 4}">⭐ 4+ Sterne</button>
+                              <button class="chip ${this.savedFilterRating === 5 ? 'active' : ''}" @click="${() => this.savedFilterRating = 5}">⭐ 5 Sterne</button>
+                          </div>
+
+                          <div style="display: flex; gap: 10px; margin-top: 10px; margin-bottom: 16px;">
                               <input type="file" id="import-file" accept=".json" style="display: none;" @change="${this.handleImportFile}" />
                               <button class="secondary-btn" @click="${() => (this.shadowRoot?.querySelector('#import-file') as HTMLInputElement)?.click()}" style="border-color: #8b5cf6; color: #6d28d9;" aria-label="Rezepte aus JSON-Datei importieren">
                                   📂 Rezepte importieren (JSON)
@@ -1350,6 +1357,7 @@ export class EcoChef extends LitElement {
     openSavedRecipe(savedRecipe: any) {
         this.recipe = {
             ...savedRecipe,
+            co2SavedKg: typeof savedRecipe.co2SavedKg === 'number' ? savedRecipe.co2SavedKg : (parseFloat(savedRecipe.co2SavedKg) || 0),
             ingredientsList: this.normalizeIngredients(savedRecipe.ingredientsList)
         };
         this.recipeImage = savedRecipe.image || null;
@@ -1557,10 +1565,10 @@ export class EcoChef extends LitElement {
         const checkedItems = this.shoppingList.filter(item => item.checked);
         if (checkedItems.length === 0) return;
 
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getLocalDateString();
         const defaultExpiry = new Date();
         defaultExpiry.setDate(defaultExpiry.getDate() + 7);
-        const expiryStr = defaultExpiry.toISOString().split('T')[0];
+        const expiryStr = getLocalDateString(defaultExpiry);
 
         let addedCount = 0;
         const updatedPantry = [...this.pantryItemsAdvanced];
@@ -1653,7 +1661,7 @@ export class EcoChef extends LitElement {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `ecoChef_full_backup_${new Date().toISOString().split('T')[0]}.json`);
+        downloadAnchor.setAttribute("download", `ecoChef_full_backup_${getLocalDateString()}.json`);
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         downloadAnchor.remove();
@@ -1857,9 +1865,13 @@ export class EcoChef extends LitElement {
     }
 
     getFilteredSavedRecipes() {
-        if (!this.searchQuery.trim()) return this.savedRecipesList;
+        let result = this.savedRecipesList;
+        if (this.savedFilterRating > 0) {
+            result = result.filter((r: any) => (r.rating || 0) >= this.savedFilterRating);
+        }
+        if (!this.searchQuery.trim()) return result;
         const query = this.searchQuery.toLowerCase();
-        return this.savedRecipesList.filter((r: any) =>
+        return result.filter((r: any) =>
             r.title?.toLowerCase().includes(query) ||
             r.ingredientsList?.some((i: any) => i.item?.toLowerCase().includes(query))
         );
@@ -1920,7 +1932,7 @@ export class EcoChef extends LitElement {
         const item: PantryItemAdvanced = {
             name,
             active: true,
-            addedDate: new Date().toISOString().split('T')[0],
+            addedDate: getLocalDateString(),
             expiryDate,
             quantity: quantity !== undefined ? quantity : 1,
             unit: unit !== undefined ? unit : 'Stk.',
@@ -1994,11 +2006,11 @@ export class EcoChef extends LitElement {
         try {
             const items = await GeminiService.scanReceipt(this.capturedImage);
             if (items && items.length > 0) {
-                const todayStr = new Date().toISOString().split('T')[0];
+                const todayStr = getLocalDateString();
                 const newItems = items.map(item => {
                     const expiry = new Date();
                     expiry.setDate(expiry.getDate() + (item.expiryDays || 7));
-                    const expiryDateStr = expiry.toISOString().split('T')[0];
+                    const expiryDateStr = getLocalDateString(expiry);
                     return {
                         name: item.name || "Zutat",
                         active: true,
@@ -2223,7 +2235,7 @@ export class EcoChef extends LitElement {
         try {
             const item = await GeminiService.scanPantryItem(this.capturedImage);
             if (item && item.name) {
-                const todayStr = new Date().toISOString().split('T')[0];
+                const todayStr = getLocalDateString();
                 const newItem = {
                     name: item.name || "Unbekanntes Produkt",
                     active: true,

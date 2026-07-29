@@ -134,3 +134,9 @@ Im Rahmen des Projekts wurden folgende Kernbereiche eigenständig konzipiert und
    Einbindung eines Tracking-Systems für verbrauchte Kalorien/Proteine sowie Berechnung einer CO2-Ersparnis-Bilanz.
 7. **Premium-UI/UX (Styling & Animationen):** 
    Erstellung eines HSL-basierten, barrierefreien CSS-Designsystems mit flüssigen Übergängen, ansprechendem Dark-Mode und Mikro-Animationen (z. B. pulsierender Mikrofon-Status, schwebende Icons).
+8. **Erweiterungen & Qualitätssicherung:**
+   - **Dynamische Portionsrekonstruktion:** Mathematisches Skalieren von Rezeptmengen und Nährwertparametern in Echtzeit.
+   - **Shopping ➔ Pantry Überführung:** Nahtloses Übertragen abgehakter Einkaufslisten-Objekte in den erweiterten Vorratsspeicher (`PantryItemAdvanced`).
+   - **Lokales Datums-Handling (`getLocalDateString`):** Behebung von Zeitzonen-Offsets bei der Datumsgenerierung (`toISOString`).
+   - **Vollständiges Datensicherungs-System:** JSON-basiertes Komplett-Backup und Restore von Einstellungen, Rezepten, Vorräten und Erfolgen.
+   - **Automatisierte Unit-Test-Abdeckung:** Erweiterte Jest-Testsuite (`storage.service.spec.ts`) zur Sicherstellung der Datenintegrität.

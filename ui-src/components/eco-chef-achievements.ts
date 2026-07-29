@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { Achievement, DailyStat } from '../models/eco-chef.models';
+import { Achievement, DailyStat, getLocalDateString } from '../models/eco-chef.models';
 
 @customElement('eco-chef-achievements')
 export class EcoChefAchievements extends LitElement {
@@ -226,7 +226,7 @@ export class EcoChefAchievements extends LitElement {
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(today.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = getLocalDateString(d);
             const dayLabel = d.toLocaleDateString('de-DE', { weekday: 'short' });
             const stat = this.stats[dateStr] || { calories: 0, protein: 0, carbs: 0, fat: 0, co2Saved: 0, count: 0 };
             data.push({

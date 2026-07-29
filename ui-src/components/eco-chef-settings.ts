@@ -1,7 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { ecoChefStyles } from '../styles/eco-chef.styles';
-import { DailyStat } from '../models/eco-chef.models';
+import { DailyStat, getLocalDateString } from '../models/eco-chef.models';
 
 @customElement('eco-chef-settings')
 export class EcoChefSettings extends LitElement {
@@ -42,7 +42,7 @@ export class EcoChefSettings extends LitElement {
         for (let i = 0; i < 7; i++) {
             const d = new Date();
             d.setDate(d.getDate() - i);
-            last7Days.push(d.toISOString().split('T')[0]);
+            last7Days.push(getLocalDateString(d));
         }
 
         last7Days.forEach(date => {
