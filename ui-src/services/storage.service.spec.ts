@@ -1,5 +1,5 @@
 import { StorageService } from './storage.service';
-import { PantryItemAdvanced } from '../models/eco-chef.models';
+import { PantryItemAdvanced, Achievement, MealPlan } from '../models/eco-chef.models';
 
 const localStorageMock = (() => {
   let store: { [key: string]: string } = {};
@@ -50,5 +50,28 @@ describe('StorageService Tests', () => {
     const testPantry: PantryItemAdvanced[] = [{ name: 'Joghurt', active: true, addedDate: '2026-07-18', expiryDate: '2026-07-25', quantity: 2, unit: 'Pkg.', location: 'Kühlschrank' }];
     StorageService.setPantryAdvanced(testPantry);
     expect(StorageService.getPantryAdvanced()).toEqual(testPantry);
+  });
+
+  test('should store and retrieve Calorie and Protein goals', () => {
+    expect(StorageService.getCalorieGoal()).toBe(2000);
+    expect(StorageService.getProteinGoal()).toBe(80);
+    StorageService.setCalorieGoal(2400);
+    StorageService.setProteinGoal(100);
+    expect(StorageService.getCalorieGoal()).toBe(2400);
+    expect(StorageService.getProteinGoal()).toBe(100);
+  });
+
+  test('should store and retrieve Achievements', () => {
+    expect(StorageService.getAchievements()).toEqual([]);
+    const testAch: Achievement[] = [{ id: 'test', title: 'Test Ach', description: 'desc', icon: '⭐', unlocked: true, progress: 1, target: 1 }];
+    StorageService.setAchievements(testAch);
+    expect(StorageService.getAchievements()).toEqual(testAch);
+  });
+
+  test('should store and retrieve MealPlan', () => {
+    expect(StorageService.getMealPlan()).toEqual({});
+    const testPlan: MealPlan = { Montag: { title: 'Curry', prepTime: '20 Min', co2SavedKg: 1.5 } };
+    StorageService.setMealPlan(testPlan);
+    expect(StorageService.getMealPlan()).toEqual(testPlan);
   });
 });

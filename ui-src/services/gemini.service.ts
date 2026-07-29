@@ -160,16 +160,16 @@ Gib keine Markdown-Formatierung wie \`\`\`json zurück, sondern NUR das reine Ar
         });
 
         const text = (response.text || '').trim();
-        const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
         try {
             return JSON.parse(cleaned);
         } catch (e) {
             console.error("Failed to parse scanned receipt response:", cleaned, e);
-            // Fallback parsing: check if we can get a partial list
             try {
-                const matches = cleaned.match(/\{[^\}]+\}/g);
-                if (matches) {
-                    return matches.map(m => JSON.parse(m));
+                const startIndex = cleaned.indexOf('[');
+                const endIndex = cleaned.lastIndexOf(']');
+                if (startIndex !== -1 && endIndex !== -1) {
+                    return JSON.parse(cleaned.substring(startIndex, endIndex + 1));
                 }
             } catch (err) {
                 console.error("Fallback regex parsing failed:", err);

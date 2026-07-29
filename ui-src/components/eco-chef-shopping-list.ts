@@ -110,9 +110,14 @@ export class EcoChefShoppingList extends LitElement {
                     </div>
 
                     ${this.shoppingList.some(item => item.checked) ? html`
-                        <button class="secondary-btn" @click="${this._clearCheckedShoppingItems}" style="margin-top: 20px; border-color: var(--border);">
-                            🧹 Erledigte löschen
-                        </button>
+                        <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                            <button class="main-btn" @click="${() => this.dispatchEvent(new CustomEvent('transfer-to-pantry', { bubbles: true, composed: true }))}" style="flex: 1.5; background: var(--primary-gradient); color: white; border: none; font-weight: 800; font-size: 13px; margin-top: 0;">
+                                🥫 Abgehakte in Reste-Kammer übernehmen
+                            </button>
+                            <button class="secondary-btn" @click="${this._clearCheckedShoppingItems}" style="flex: 1; border-color: var(--border); margin-top: 0;">
+                                🧹 Erledigte löschen
+                            </button>
+                        </div>
                     ` : ''}
                 `}
             </div>

@@ -551,14 +551,34 @@ export class EcoChef extends LitElement {
         this.currentStepTimeMinutes = totalMinutes > 0 ? totalMinutes : null;
     }
 
-    startTimer(minutes?: number, label?: string) {
-        const mins = minutes !== undefined ? minutes : this.currentStepTimeMinutes;
-        if (!mins) return;
+    startTimer(minutes?: number | CustomEvent, label?: string) {
+        let mins: number | null = null;
+        let stepLabel: string | undefined = label;
+
+        if (typeof minutes === 'number') {
+            mins = minutes;
+        } else if (minutes && typeof minutes === 'object' && 'detail' in minutes) {
+            const detail = (minutes as CustomEvent).detail;
+            if (detail) {
+                if (typeof detail.minutes === 'number') {
+                    mins = detail.minutes;
+                }
+                if (detail.label) {
+                    stepLabel = detail.label;
+                }
+            }
+        }
+
+        if (mins === null || mins === undefined || isNaN(mins)) {
+            mins = this.currentStepTimeMinutes;
+        }
+
+        if (!mins || mins <= 0 || isNaN(mins)) return;
 
         const defaultLabel = this.recipe ? `Schritt ${this.currentCookingStep + 1}: ${this.recipe.instructions[this.currentCookingStep].substring(0, 30)}...` : `Timer ${this.activeTimers.length + 1}`;
-        const stepLabel = label || defaultLabel;
+        const finalLabel = stepLabel || defaultLabel;
 
-        const existingIndex = this.activeTimers.findIndex(t => t.label === stepLabel);
+        const existingIndex = this.activeTimers.findIndex(t => t.label === finalLabel);
         if (existingIndex !== -1) {
             const updated = [...this.activeTimers];
             updated[existingIndex] = {
@@ -570,7 +590,7 @@ export class EcoChef extends LitElement {
         } else {
             const newTimer: ActiveTimer = {
                 id: Math.random().toString(36).substring(2, 9),
-                label: stepLabel,
+                label: finalLabel,
                 totalSeconds: mins * 60,
                 secondsRemaining: mins * 60,
                 stepIndex: this.currentCookingStep
@@ -745,6 +765,8 @@ export class EcoChef extends LitElement {
                           @toggle-reading-ruler="${this.toggleReadingRuler}"
                           @toggle-privacy="${this.togglePrivacyDetails}"
                           @export-recipes="${this.exportRecipes}"
+                          @export-full-backup="${this.exportFullBackup}"
+                          @import-full-backup="${(e: CustomEvent) => this.importFullBackup(e.detail.data)}"
                           @import-recipes-success="${(e: CustomEvent) => this.importRecipesSuccess(e.detail.recipes)}"
                           @clear-all-data="${this.clearAllData}">
                       </eco-chef-settings>
@@ -783,7 +805,6 @@ export class EcoChef extends LitElement {
                   ${this.currentTab === 'zauberer' && !this.recipe && !this.showSavedRecipes ? html`
                       <div class="input-with-camera">
                           <input type="text" id="ingredients-input" placeholder="Zutat eingeben & Enter drücken oder Foto 📷" .value="${this.ingredients}" @input="${this._handleInput}" @keypress="${this.handleIngredientsKeypress}" style="margin-bottom: 0;" aria-label="Zutaten eingeben" />
-                          <input type="file" id="file-upload" accept="image/*" style="display: none;" @change="${this.handleFileUpload}" />
                           <button class="camera-btn" @click="${this.openCamera}" title="Kühlschrank scannen" aria-label="Kühlschrank scannen oder Foto hochladen">📸</button>
                       </div>
 
@@ -888,6 +909,7 @@ export class EcoChef extends LitElement {
                           @toggle-item="${(e: CustomEvent) => this.toggleShoppingItem(e.detail.index)}"
                           @remove-item="${(e: CustomEvent) => this.removeShoppingItem(e.detail.index)}"
                           @clear-checked="${this.clearCheckedShoppingItems}"
+                          @transfer-to-pantry="${this.transferShoppingToPantry}"
                           @share-list="${this.shareShoppingList}">
                       </eco-chef-shopping-list>
                   ` : ''}
@@ -967,6 +989,7 @@ export class EcoChef extends LitElement {
                           .chatHistory="${this.recipeChatHistory}"
                           @add-to-shopping-list="${(e: CustomEvent) => this.addToShoppingList(e.detail.item)}"
                           @set-recipe-rating="${(e: CustomEvent) => this.setRecipeRating(e.detail.rating)}"
+                          @change-portions="${(e: CustomEvent) => this.handlePortionChange(e.detail.persons)}"
                           @mark-cooked="${this.markAsCooked}"
                           @start-cooking="${this.startCooking}"
                           @print-recipe="${this.printRecipe}"
@@ -1065,7 +1088,8 @@ export class EcoChef extends LitElement {
                     @close="${this.closeTimerExpiredModal}">
                 </eco-chef-timer-expired-modal>
 
-                <!-- Screen Reader Live Announcements -->
+                <!-- Screen Reader Live Announcements & Global File Upload Input -->
+                <input type="file" id="file-upload" accept="image/*" style="display: none;" @change="${this.handleFileUpload}" />
                 <div class="sr-only" aria-live="polite" id="sr-announcements">
                     ${this.srAnnouncement}
                 </div>
@@ -1527,6 +1551,159 @@ export class EcoChef extends LitElement {
         downloadAnchor.click();
         downloadAnchor.remove();
         this.srAnnouncement = "Deine Rezepte wurden als Datei heruntergeladen.";
+    }
+
+    transferShoppingToPantry() {
+        const checkedItems = this.shoppingList.filter(item => item.checked);
+        if (checkedItems.length === 0) return;
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const defaultExpiry = new Date();
+        defaultExpiry.setDate(defaultExpiry.getDate() + 7);
+        const expiryStr = defaultExpiry.toISOString().split('T')[0];
+
+        let addedCount = 0;
+        const updatedPantry = [...this.pantryItemsAdvanced];
+
+        checkedItems.forEach(cItem => {
+            const exists = updatedPantry.some(p => p.name.toLowerCase() === cItem.name.toLowerCase());
+            if (!exists) {
+                updatedPantry.push({
+                    name: cItem.name,
+                    active: true,
+                    addedDate: todayStr,
+                    expiryDate: expiryStr,
+                    quantity: 1,
+                    unit: 'Stk.',
+                    location: 'Kühlschrank'
+                });
+                addedCount++;
+            }
+        });
+
+        this.pantryItemsAdvanced = updatedPantry;
+        StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
+
+        this.shoppingList = this.shoppingList.filter(item => !item.checked);
+        this.saveShoppingList();
+
+        alert(`🎉 ${addedCount} abgehakte Zutat(en) wurden in deine Reste-Kammer übernommen!`);
+        this.srAnnouncement = `${addedCount} Zutaten in Reste-Kammer übernommen.`;
+        this.autoSyncPush();
+    }
+
+    handlePortionChange(newPersons: number) {
+        if (!this.recipe || newPersons === this.persons || newPersons < 1) return;
+        const ratio = newPersons / this.persons;
+        const oldPersons = this.persons;
+        this.persons = newPersons;
+
+        const scaledIngredients = this.recipe.ingredientsList.map(ing => {
+            const scaledItemStr = ing.item.replace(/(\d+(?:[.,]\d+)?)/g, (match) => {
+                const val = parseFloat(match.replace(',', '.'));
+                if (isNaN(val)) return match;
+                const scaled = val * ratio;
+                return Number.isInteger(scaled) ? scaled.toString() : scaled.toFixed(1).replace('.', ',');
+            });
+            return {
+                ...ing,
+                item: scaledItemStr
+            };
+        });
+
+        const scaleNutrVal = (strVal: string | undefined) => {
+            if (!strVal) return strVal || '?';
+            return strVal.replace(/(\d+(?:[.,]\d+)?)/g, (match) => {
+                const val = parseFloat(match.replace(',', '.'));
+                if (isNaN(val)) return match;
+                const scaled = val * ratio;
+                return Math.round(scaled).toString();
+            });
+        };
+
+        this.recipe = {
+            ...this.recipe,
+            nutrition: {
+                calories: scaleNutrVal(this.recipe.nutrition?.calories),
+                protein: scaleNutrVal(this.recipe.nutrition?.protein),
+                carbs: scaleNutrVal(this.recipe.nutrition?.carbs),
+                fat: scaleNutrVal(this.recipe.nutrition?.fat),
+            },
+            ingredientsList: scaledIngredients
+        };
+
+        this.srAnnouncement = `Portionsmenge von ${oldPersons} auf ${newPersons} Personen angepasst.`;
+    }
+
+    exportFullBackup() {
+        const backupData = {
+            version: '1.0.0',
+            exportedAt: new Date().toISOString(),
+            savedRecipes: StorageService.getSavedRecipes(),
+            pantryItemsAdvanced: StorageService.getPantryAdvanced(),
+            shoppingList: StorageService.getShoppingList(),
+            stats: StorageService.getStats(),
+            achievements: StorageService.getAchievements(),
+            urgentIngredients: StorageService.getUrgentIngredients(),
+            ingredientChips: StorageService.getIngredientChips(),
+            calorieGoal: StorageService.getCalorieGoal(),
+            proteinGoal: StorageService.getProteinGoal()
+        };
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `ecoChef_full_backup_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        this.srAnnouncement = "Vollständiges EcoChef-Backup heruntergeladen.";
+    }
+
+    importFullBackup(payload: any) {
+        if (!payload || typeof payload !== 'object') {
+            alert("❌ Ungültiges Backup-Format.");
+            return;
+        }
+
+        try {
+            if (Array.isArray(payload.savedRecipes)) {
+                StorageService.setSavedRecipes(payload.savedRecipes);
+                this.savedRecipesList = payload.savedRecipes;
+            }
+            if (Array.isArray(payload.pantryItemsAdvanced)) {
+                StorageService.setPantryAdvanced(payload.pantryItemsAdvanced);
+                this.pantryItemsAdvanced = payload.pantryItemsAdvanced;
+            }
+            if (Array.isArray(payload.shoppingList)) {
+                StorageService.setShoppingList(payload.shoppingList);
+                this.shoppingList = payload.shoppingList;
+            }
+            if (payload.stats && typeof payload.stats === 'object') {
+                StorageService.setStats(payload.stats);
+                this.stats = payload.stats;
+            }
+            if (Array.isArray(payload.achievements)) {
+                StorageService.setAchievements(payload.achievements);
+                this.achievementsList = payload.achievements;
+            }
+            if (payload.urgentIngredients) {
+                StorageService.setUrgentIngredients(payload.urgentIngredients);
+                this.urgentIngredients = payload.urgentIngredients;
+            }
+            if (Array.isArray(payload.ingredientChips)) {
+                StorageService.setIngredientChips(payload.ingredientChips);
+                this.ingredientChips = payload.ingredientChips;
+            }
+
+            alert("🎉 Gesamtes EcoChef-Backup erfolgreich wiederhergestellt!");
+            this.srAnnouncement = "Gesamtdaten erfolgreich importiert.";
+            this.requestUpdate();
+            this.autoSyncPush();
+        } catch (e) {
+            console.error("Failed to restore full backup", e);
+            alert("❌ Fehler beim Wiederherstellen des Backups.");
+        }
     }
 
     toggleLrsMode() {

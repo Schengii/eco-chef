@@ -207,8 +207,25 @@ export class EcoChefCookingMode extends LitElement {
         this.dispatchEvent(new CustomEvent('toggle-voice', { bubbles: true, composed: true }));
     }
 
-    private _startTimer() {
-        this.dispatchEvent(new CustomEvent('start-timer', { bubbles: true, composed: true }));
+    private _startTimer(minutes?: number, label?: string) {
+        this.dispatchEvent(new CustomEvent('start-timer', {
+            detail: {
+                minutes: typeof minutes === 'number' ? minutes : this.currentStepTimeMinutes,
+                label: label || (this.recipe ? `Schritt ${this.currentCookingStep + 1}` : undefined)
+            },
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    private _promptCustomTimer() {
+        const val = prompt("Timer-Dauer in Minuten eingeben:", "5");
+        if (val) {
+            const mins = parseInt(val, 10);
+            if (!isNaN(mins) && mins > 0) {
+                this._startTimer(mins, `Timer ${mins} Min.`);
+            }
+        }
     }
 
     private _stopTimer(id?: string) {
@@ -282,12 +299,21 @@ export class EcoChefCookingMode extends LitElement {
                             </div>
                             <button class="stop-timer-btn" @click="${() => this._stopTimer(currentStepTimer.id)}" style="background: hsl(0, 84.3%, 95%); border-color: hsl(0, 84.3%, 90%); color: hsl(0, 84.3%, 45%); font-weight: 800; font-size: 13px; padding: 8px 16px; border-radius: 14px;" aria-label="Timer abbrechen">⏹️ Stoppen</button>
                         ` : this.currentStepTimeMinutes ? html`
-                            <button class="start-timer-btn" @click="${this._startTimer}" style="background: var(--accent); border-color: var(--accent-dark); color: white; padding: 12px 20px; font-size: 15px; font-weight: 850; border-radius: 18px; box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 8px;" aria-label="Timer über ${this.currentStepTimeMinutes} Minuten starten">
-                                ⏳ ${this.currentStepTimeMinutes} Min. Timer starten
+                            <button class="start-timer-btn" @click="${() => this._startTimer()}" style="background: var(--accent); border-color: var(--accent-dark); color: white; padding: 12px 20px; font-size: 15px; font-weight: 850; border-radius: 18px; box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 8px;" aria-label="Timer über ${this.currentStepTimeMinutes} Minuten starten">
+                                ⏳ ${this.currentStepTimeMinutes} Min. Schritt-Timer starten
                             </button>
                         ` : html`
-                            <span style="font-size: 13px; color: var(--text-muted); font-weight: bold; font-style: italic;">Kein Timer für diesen Schritt vorhanden</span>
+                            <span style="font-size: 13px; color: var(--text-muted); font-weight: bold; font-style: italic;">Kein automatischer Schritt-Timer</span>
                         `}
+
+                        <!-- Schnelle Manuelle Custom Timer -->
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 8px;">
+                            <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); width: 100%; text-align: center;">Schnell-Timer:</span>
+                            <button class="action-btn" @click="${() => this._startTimer(1, '1 Min. Timer')}" style="padding: 4px 10px; font-size: 11px; border-radius: 8px;">+1 Min</button>
+                            <button class="action-btn" @click="${() => this._startTimer(5, '5 Min. Timer')}" style="padding: 4px 10px; font-size: 11px; border-radius: 8px;">+5 Min</button>
+                            <button class="action-btn" @click="${() => this._startTimer(10, '10 Min. Timer')}" style="padding: 4px 10px; font-size: 11px; border-radius: 8px;">+10 Min</button>
+                            <button class="action-btn" @click="${this._promptCustomTimer}" style="padding: 4px 10px; font-size: 11px; border-radius: 8px; border-color: var(--primary);">⏱️ Eigener</button>
+                        </div>
                     </div>
 
                     <!-- Dashboard für Hintergrund-Timer -->

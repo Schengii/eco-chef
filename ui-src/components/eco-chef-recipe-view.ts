@@ -200,9 +200,14 @@ export class EcoChefRecipeView extends LitElement {
                         <button class="main-btn save-edit-btn" @click="${this._saveEdits}">💾 Änderungen übernehmen</button>
                     </div>
                 ` : html`
-                    <h3 class="recipe-subheading">
-                        🛒 Zutaten (für ${this.persons}):
-                        <button class="icon-btn" @click="${() => this.isEditing = true}" aria-label="Zutaten bearbeiten">🖊️</button>
+                    <h3 class="recipe-subheading" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <span>🛒 Zutaten:</span>
+                        <div style="display: flex; align-items: center; gap: 6px; font-size: 14px;">
+                            <button class="step-btn" @click="${() => this.dispatchEvent(new CustomEvent('change-portions', { detail: { persons: Math.max(1, this.persons - 1) }, bubbles: true, composed: true }))}" aria-label="Portionen verringern" style="padding: 2px 8px; font-size: 14px;">-</button>
+                            <span style="font-weight: 850; color: var(--primary-dark);">🍽️ ${this.persons} ${this.persons === 1 ? 'Person' : 'Personen'}</span>
+                            <button class="step-btn" @click="${() => this.dispatchEvent(new CustomEvent('change-portions', { detail: { persons: Math.min(12, this.persons + 1) }, bubbles: true, composed: true }))}" aria-label="Portionen vergrößern" style="padding: 2px 8px; font-size: 14px;">+</button>
+                            <button class="icon-btn" @click="${() => this.isEditing = true}" aria-label="Zutaten bearbeiten" style="margin-left: 6px;">🖊️</button>
+                        </div>
                     </h3>
                     <ul class="ingredients-list">
                         ${this.recipe.ingredientsList.map(item => {

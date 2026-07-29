@@ -63,15 +63,18 @@ Nach dem Klick auf **✨ Rezept Zaubern** erstellt Gemini ein maßgeschneidertes
 * **Nährwertangaben & CO2-Ersparnis:** Übersicht der Kalorien, Proteine, Kohlenhydrate, Fette sowie der geschätzten CO2-Ersparnis in kg im Vergleich zu einem Fleischgericht.
 * **Getränkeempfehlung & Aufbewahrungstipp:** Vorschläge für passende Getränke und Tipps, wie Reste gelagert werden sollten.
 
+* **Dynamische Portionsskalierung (1–12 Personen) 🍽️:** In der Rezeptansicht kannst du die Personenanzahl direkt über die Plus- und Minus-Tasten verändern. Die Mengenangaben aller Zutaten sowie die Kalorien- und Nährwerte werden automatisch in Echtzeit umgerechnet!
+
 ---
 
 ## 4. Interaktiver Kochmodus & Sprachsteuerung
 
 Klicke im Rezept auf **Kochmodus starten**, um eine ablenkungsfreie Schritt-für-Schritt-Ansicht zu öffnen.
 
-### A. Der automatische Timer ⏱️
+### A. Der automatische & manuelle Timer ⏱️
 Enthält ein Kochschritt eine Zeitangabe (z.B. „15 Minuten köcheln lassen“), erkennt die App dies automatisch.
 * Tippe auf **Timer starten**, um den Countdown zu aktivieren.
+* **Manuelle Schnell-Timer:** Über die neuen Schnell-Buttons (+1 Min, +5 Min, +10 Min, Eigener Timer) kannst du jederzeit beliebige individuelle Zusatz-Timer starten.
 * Sobald die Zeit abgelaufen ist, vibriert dein Handy und ein Alarmton ertönt.
 
 ### B. Sprachsteuerung (Freihändig kochen) 🎙️
@@ -87,22 +90,22 @@ Um beim Kochen keine schmutzigen Hände auf das Display legen zu müssen, kannst
 
 ---
 
-## 5. Einkaufsliste
+## 5. Einkaufsliste & Reste-Kammer Übernahme
 
 Fehlen dir Zutaten für ein Rezept?
 * Klicke im Rezept bei der Zutat auf **Einkaufsliste**. Die Zutat wird automatisch deiner Einkaufsliste hinzugefügt und nach Kategorien (z.B. *Obst & Gemüse*, *Milchprodukte*) sortiert.
 * **Manuell hinzufügen:** Auf der Einkaufslisten-Seite kannst du Artikel auch manuell eingeben.
 * **Teilen-Funktion 📤:** Klicke auf **Teilen**, um deine Einkaufsliste formatiert per WhatsApp, E-Mail oder SMS zu verschicken oder in die Zwischenablage zu kopieren.
+* **Übernahme in Reste-Kammer 🥫:** Wenn du vom Einkaufen zurückkommst und Artikel abgehakt hast, kannst du auf **„Abgehakte in Reste-Kammer übernehmen“** klicken. Alle gekauften Zutaten wandern direkt in deine Vorratskammer mit geschätztem Haltbarkeitsdatum!
 
 ---
 
-## 6. Meine Rezepte (Speichern, Import & Export)
+## 6. Meine Rezepte & System-Backups (Speichern, Import & Export)
 
 Jedes generierte Rezept kann dauerhaft auf deinem Gerät gesichert werden:
 * **Speichern:** Klicke nach dem Kochen auf das Rezept-Schließen-Symbol (X) und wähle **💾 Speichern**. Du kannst dem Gericht vorab eine Sternebewertung (1–5 ⭐) geben.
 * **Rezeptbuch öffnen:** Über **📚 Meine Rezepte** im Hauptmenü kannst du alle deine Kreationen durchsuchen, nach Bewertung filtern oder löschen.
-* **Exportieren:** Klicke in den Einstellungen auf **Rezepte exportieren (JSON)**, um all deine Rezepte als Datei auf deinem Gerät zu sichern.
-* **Importieren:** Du kannst eine solche JSON-Datei jederzeit wieder importieren, um deine Rezepte auf ein neues Handy zu übertragen.
+* **Voll-Backup (Gesamtdaten JSON) 📦:** In den **Einstellungen** kannst du nun mit einem Klick dein **gesamtes EcoChef-Profil** (Rezepte, Vorratskammer, Einkäufe, Statistiken & Erfolge) als JSON sichern und auf anderen Geräten wiederherstellen.
 
 ---
 

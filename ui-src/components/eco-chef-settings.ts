@@ -434,6 +434,29 @@ export class EcoChefSettings extends LitElement {
                     <button class="secondary-btn" @click="${() => (this.shadowRoot?.querySelector('#import-settings-file') as HTMLInputElement)?.click()}" style="margin-bottom: 12px; border-color: #7c3aed; color: #6d28d9;" aria-label="Rezepte aus JSON importieren">
                         📂 Rezepte importieren (JSON)
                     </button>
+
+                    <button class="main-btn" @click="${() => this.dispatchEvent(new CustomEvent('export-full-backup', { bubbles: true, composed: true }))}" style="margin-bottom: 12px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; border: none; font-weight: 800;" aria-label="Vollständiges Backup exportieren">
+                        📦 Voll-Backup (Gesamtdaten JSON) sichern
+                    </button>
+
+                    <input type="file" id="import-full-backup-file" accept=".json" style="display: none;" @change="${(e: Event) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                                try {
+                                    const parsed = JSON.parse(ev.target?.result as string);
+                                    this.dispatchEvent(new CustomEvent('import-full-backup', { detail: { data: parsed }, bubbles: true, composed: true }));
+                                } catch (err) {
+                                    alert("❌ Ungültige Backup-Datei.");
+                                }
+                            };
+                            reader.readAsText(file);
+                        }
+                    }}" />
+                    <button class="secondary-btn" @click="${() => (this.shadowRoot?.querySelector('#import-full-backup-file') as HTMLInputElement)?.click()}" style="margin-bottom: 12px; border-color: #10b981; color: #047857;" aria-label="Voll-Backup importieren">
+                        📂 Voll-Backup wiederherstellen (JSON)
+                    </button>
                     
                     <button class="secondary-btn" @click="${this._clearAllData}" style="border-color: #dc2626; color: #b91c1c;" aria-label="Alle Anwendungsdaten löschen">
                         🗑️ Alle App-Daten löschen
