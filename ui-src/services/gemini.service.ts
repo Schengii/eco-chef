@@ -3,6 +3,12 @@ import { GEMINI_API_KEY } from '../api-config';
 import { StorageService } from './storage.service';
 
 export const GeminiService = {
+    getClient(): GoogleGenAI {
+        const userKey = StorageService.getGeminiApiKey();
+        const apiKey = userKey || GEMINI_API_KEY;
+        return new GoogleGenAI({ apiKey });
+    },
+
     async generateRecipe(capturedImage: string | null, promptText: string): Promise<string> {
         const userKey = StorageService.getGeminiApiKey();
         const apiKey = userKey || GEMINI_API_KEY;

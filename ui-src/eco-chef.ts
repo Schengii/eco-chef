@@ -999,10 +999,13 @@ export class EcoChef extends LitElement {
                               <button class="chip ${this.savedFilterRating === 5 ? 'active' : ''}" @click="${() => this.savedFilterRating = 5}">⭐ 5 Sterne</button>
                           </div>
 
-                          <div style="display: flex; gap: 10px; margin-top: 10px; margin-bottom: 16px;">
+                          <div style="display: flex; gap: 10px; margin-top: 10px; margin-bottom: 16px; flex-wrap: wrap;">
                               <input type="file" id="import-file" accept=".json" style="display: none;" @change="${this.handleImportFile}" />
                               <button class="secondary-btn" @click="${() => (this.shadowRoot?.querySelector('#import-file') as HTMLInputElement)?.click()}" style="border-color: #8b5cf6; color: #6d28d9;" aria-label="Rezepte aus JSON-Datei importieren">
                                   📂 Rezepte importieren (JSON)
+                              </button>
+                              <button class="secondary-btn" @click="${this.exportCookbookPdf}" style="border-color: #10b981; color: #047857;" aria-label="Kochbuch als PDF/Druck ausgeben">
+                                  📖 Kochbuch als PDF / Drucken
                               </button>
                           </div>
 
@@ -1098,13 +1101,15 @@ export class EcoChef extends LitElement {
                        .isVoiceControlActive="${this.isVoiceControlActive}"
                        .voiceStatusText="${this.voiceStatusText}"
                        .activeTimers="${this.activeTimers}"
+                       .assistantAnswer="${this.assistantAnswerText}"
                        @close="${this.exitCookingMode}"
                        @prev-step="${this.prevStep}"
                        @next-step="${this.nextStep}"
                        @read-step="${this.readCurrentStep}"
                        @toggle-voice="${this.toggleVoiceControl}"
                        @start-timer="${this.startTimer}"
-                       @stop-timer="${(e: CustomEvent) => this.stopTimer(e.detail?.id)}">
+                       @stop-timer="${(e: CustomEvent) => this.stopTimer(e.detail?.id)}"
+                       @ask-cooking-assistant="${this.handleAskCookingAssistant}">
                    </eco-chef-cooking-mode>
                ` : ''}
 
@@ -1478,69 +1483,7 @@ export class EcoChef extends LitElement {
 
     printRecipe() {
         if (!this.recipe) return;
-
-        const printContent = `
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <title>${this.recipe.title} - EcoChef Rezept</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Georgia, 'Times New Roman', serif; max-width: 700px; margin: 0 auto; padding: 40px 24px; color: #1a1a1a; }
-        h1 { font-size: 28px; margin-bottom: 8px; color: #047857; }
-        .meta { display: flex; gap: 16px; margin-bottom: 24px; font-size: 14px; color: #666; }
-        .section-title { font-size: 18px; font-weight: 700; margin: 24px 0 12px; border-bottom: 2px solid #047857; padding-bottom: 4px; }
-        .ingredients { list-style: disc; padding-left: 24px; }
-        .ingredients li { margin-bottom: 6px; font-size: 15px; }
-        .step { display: flex; gap: 12px; margin-bottom: 12px; }
-        .step-num { background: #ecfdf5; color: #047857; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
-        .step-text { font-size: 15px; line-height: 1.6; }
-        .nutrition { display: flex; gap: 20px; margin-top: 12px; font-size: 14px; }
-        .tip { background: #fffbeb; border: 1px solid #fde68a; padding: 12px 16px; border-radius: 8px; margin-top: 20px; font-size: 14px; }
-        .footer { margin-top: 32px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 12px; }
-        @media print { body { padding: 20px; } }
-    </style>
-</head>
-<body>
-    <h1>${this.recipe.title}</h1>
-    <div class="meta">
-        <span>📊 ${this.recipe.difficulty}</span>
-        <span>🕒 ${this.recipe.prepTime}</span>
-        <span>🍽️ ${this.persons} Portionen</span>
-        <span>🌍 Eco-Score: ${this.recipe.ecoScore}</span>
-    </div>
-    <div class="nutrition">
-        <span>🔥 ${this.recipe.nutrition?.calories}</span>
-        <span>🥩 ${this.recipe.nutrition?.protein} Protein</span>
-        <span>🌾 ${this.recipe.nutrition?.carbs} KH</span>
-        <span>🥑 ${this.recipe.nutrition?.fat} Fett</span>
-    </div>
-    <h2 class="section-title">🛒 Zutaten</h2>
-    <ul class="ingredients">
-        ${this.recipe.ingredientsList.map(i => `<li>${i.item}</li>`).join('')}
-    </ul>
-    <h2 class="section-title">🍳 Zubereitung</h2>
-    ${this.recipe.instructions.map((step, i) => `
-        <div class="step">
-            <div class="step-num">${i + 1}</div>
-            <div class="step-text">${step}</div>
-        </div>
-    `).join('')}
-    <div class="tip">💡 <strong>Tipp:</strong> ${this.recipe.tip}</div>
-    <p style="margin-top: 16px; font-size: 14px;">🍷 <strong>Getränke-Empfehlung:</strong> ${this.recipe.beverage}</p>
-    <p style="margin-top: 8px; font-size: 14px;">🧊 <strong>Aufbewahrung:</strong> ${this.recipe.storageTip}</p>
-    <div class="footer">Erstellt mit EcoChef 🧑‍🍳 — Dein KI-Rezept-Zauberer</div>
-</body>
-</html>`;
-
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            printWindow.document.write(printContent);
-            printWindow.document.close();
-            printWindow.focus();
-            setTimeout(() => printWindow.print(), 300);
-        }
+        PdfService.printCookbook([this.recipe], this.selectedAvatar);
         this.srAnnouncement = `Rezept "${this.recipe.title}" wird gedruckt.`;
     }
 
@@ -2388,6 +2331,28 @@ export class EcoChef extends LitElement {
             console.log("Auto-sync push completed successfully.");
         } catch (e) {
             console.warn("Auto-sync push failed", e);
+        }
+    }
+
+    exportCookbookPdf() {
+        if (this.savedRecipesList.length === 0) {
+            alert("Du hast noch keine gespeicherten Rezepte im Kochbuch.");
+            return;
+        }
+        PdfService.printCookbook(this.savedRecipesList, this.selectedAvatar);
+    }
+
+    async handleAskCookingAssistant(e: CustomEvent) {
+        const { question } = e.detail;
+        if (!this.recipe || !question) return;
+        this.assistantAnswerText = 'Chef denkt nach...';
+        try {
+            const answer = await GeminiService.askCookingQuestion(question, this.recipe.title);
+            this.assistantAnswerText = answer;
+            SpeechService.speak(answer);
+        } catch (err) {
+            console.error("Cooking assistant query failed", err);
+            this.assistantAnswerText = 'Fehler bei der Antwort des Kochassistenten.';
         }
     }
 }
