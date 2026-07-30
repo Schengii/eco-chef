@@ -25,6 +25,7 @@ import './components/eco-chef-pantry';
 import './components/eco-chef-meal-planner';
 import './components/eco-chef-achievements';
 import './components/eco-chef-regional-map';
+import './components/eco-chef-dashboard';
 
 @customElement('eco-chef')
 export class EcoChef extends LitElement {
@@ -96,6 +97,7 @@ export class EcoChef extends LitElement {
     @state() selectedAvatar = '🧑‍🍳';
     @state() budgetSettings = StorageService.getBudgetSettings();
     @state() notificationsEnabled = StorageService.getNotificationsEnabled();
+    @state() soundEffectsEnabled = StorageService.getSoundEffectsEnabled();
     @state() showQrModal = false;
     @state() qrSvgMarkup = '';
     @state() assistantAnswerText = '';
@@ -621,6 +623,7 @@ export class EcoChef extends LitElement {
             }
 
             this.activeTimers = this.activeTimers.map(timer => {
+                if (timer.isPaused) return timer;
                 if (timer.secondsRemaining > 0) {
                     return { ...timer, secondsRemaining: timer.secondsRemaining - 1 };
                 } else {
@@ -741,6 +744,9 @@ export class EcoChef extends LitElement {
                          <button class="saved-btn ${this.currentTab === 'achievements' ? 'active' : ''}" @click="${() => { this.currentTab = 'achievements'; }}" aria-label="Erfolge">
                              🏆 Erfolge
                          </button>
+                         <button class="saved-btn ${this.currentTab === 'dashboard' ? 'active' : ''}" @click="${() => { this.currentTab = 'dashboard'; }}" aria-label="Analytics Dashboard">
+                             📊 Analytics
+                         </button>
                          <button class="saved-btn ${this.currentTab === 'settings' ? 'active' : ''}" @click="${() => { this.currentTab = 'settings'; }}" aria-label="Einstellungen">
                              ⚙️ Setup
                          </button>
@@ -760,9 +766,11 @@ export class EcoChef extends LitElement {
                           .proteinGoal="${this.proteinGoal}"
                           .budgetSettings="${this.budgetSettings}"
                           .notificationsEnabled="${this.notificationsEnabled}"
+                          .soundEffectsEnabled="${this.soundEffectsEnabled}"
                           .geminiApiKey="${this.geminiApiKey}"
                           .syncCode="${this.syncCode}"
                           .selectedAvatar="${this.selectedAvatar}"
+                          @toggle-sound-effects="${(e: CustomEvent) => this.toggleSoundEffects(e.detail.enabled)}"
                           @toggle-pantry-item="${(e: CustomEvent) => this.togglePantryItem(e.detail.item)}"
                           @toggle-allergen="${(e: CustomEvent) => this.toggleAllergen(e.detail.allergen)}"
                           @change-font-scale="${(e: CustomEvent) => this.changeFontScale(e.detail.delta)}"
@@ -805,8 +813,17 @@ export class EcoChef extends LitElement {
                           @add-seasonal-ingredient="${this.handleSeasonalIngredient}"
                           @search-barcode="${(e: CustomEvent) => this.handleBarcodeSearch(e.detail.barcode)}"
                           @trigger-receipt-scan="${this.handleTriggerReceiptScan}"
-                          @trigger-product-scan="${this.handleTriggerProductScan}">
+                          @trigger-product-scan="${this.handleTriggerProductScan}"
+                          @trigger-mystery-box="${this.triggerMysteryBox}">
                       </eco-chef-pantry>
+                  ` : ''}
+
+                  ${this.currentTab === 'dashboard' ? html`
+                      <eco-chef-dashboard
+                          .stats="${this.stats}"
+                          .calorieGoal="${this.calorieGoal}"
+                          .proteinGoal="${this.proteinGoal}">
+                      </eco-chef-dashboard>
                   ` : ''}
 
                   ${this.currentTab === 'regional' ? html`
@@ -1187,6 +1204,31 @@ export class EcoChef extends LitElement {
                 <div class="sr-only" aria-live="polite" id="sr-announcements">
                     ${this.srAnnouncement}
                 </div>
+
+                <!-- Floating Persistent Mini Timer Widget -->
+                ${this.activeTimers.length > 0 && !this.isCookingMode ? html`
+                    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: #0f172a; color: white; border: 2px solid #10b981; border-radius: 20px; padding: 12px 18px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 12px; font-family: inherit;">
+                        <span style="font-size: 20px;">⏱️</span>
+                        <div>
+                            <div style="font-size: 13px; font-weight: 800; color: #10b981;">
+                                ${this.activeTimers[0].label}
+                            </div>
+                            <div style="font-size: 16px; font-weight: 900; font-family: monospace;">
+                                ${Math.floor(this.activeTimers[0].secondsRemaining / 60)}:${(this.activeTimers[0].secondsRemaining % 60).toString().padStart(2, '0')}
+                                ${this.activeTimers.length > 1 ? `(+${this.activeTimers.length - 1} weitere)` : ''}
+                            </div>
+                        </div>
+                        <button @click="${() => this.togglePauseTimer(this.activeTimers[0].id)}" style="background: #334155; color: white; border: none; border-radius: 10px; width: 32px; height: 32px; font-size: 14px; cursor: pointer;">
+                            ${this.activeTimers[0].isPaused ? '▶️' : '⏸️'}
+                        </button>
+                        <button @click="${() => this.startTimer(1, this.activeTimers[0].label)}" style="background: #059669; color: white; border: none; border-radius: 10px; padding: 6px 10px; font-size: 12px; font-weight: 800; cursor: pointer;">
+                            +1 Min
+                        </button>
+                        <button @click="${() => this.isCookingMode = true}" style="background: #10b981; color: white; border: none; border-radius: 10px; padding: 6px 12px; font-size: 12px; font-weight: 800; cursor: pointer;">
+                            Kochmodus 🍳
+                        </button>
+                    </div>
+                ` : ''}
 
                 <!-- Webcam/Kamera Modal für Webbrowser -->
                 ${this.showWebcam ? html`
@@ -2354,5 +2396,44 @@ export class EcoChef extends LitElement {
             console.error("Cooking assistant query failed", err);
             this.assistantAnswerText = 'Fehler bei der Antwort des Kochassistenten.';
         }
+    }
+
+    togglePauseTimer(id: string) {
+        this.activeTimers = this.activeTimers.map(t => {
+            if (t.id === id) {
+                return { ...t, isPaused: !t.isPaused };
+            }
+            return t;
+        });
+    }
+
+    triggerMysteryBox() {
+        if (this.pantryItemsAdvanced.length === 0) {
+            alert("Deine Vorratskammer ist leer! Füge zuerst ein paar Zutaten hinzu.");
+            return;
+        }
+        const sorted = [...this.pantryItemsAdvanced].sort((a, b) => {
+            const dA = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity;
+            const dB = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity;
+            return dA - dB;
+        });
+
+        const topItems = sorted.slice(0, 3).map(i => i.name);
+        this.ingredientChips = Array.from(new Set([...this.ingredientChips, ...topItems]));
+        topItems.forEach(item => {
+            this.urgentIngredients[item] = true;
+        });
+        this.selectedEffort = 'schnell';
+        this.saveChips();
+        this.currentTab = 'zauberer';
+        this.srAnnouncement = `Mystery Box aktiviert mit den Zutaten: ${topItems.join(', ')}. Express-Rezept wird generiert.`;
+        AudioService.playSuccessChime();
+        this.askGoogle();
+    }
+
+    toggleSoundEffects(enabled: boolean) {
+        this.soundEffectsEnabled = enabled;
+        StorageService.setSoundEffectsEnabled(enabled);
+        this.srAnnouncement = `Soundeffekte wurden ${enabled ? 'aktiviert' : 'deaktiviert'}.`;
     }
 }

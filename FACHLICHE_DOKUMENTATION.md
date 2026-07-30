@@ -143,4 +143,9 @@ Im Rahmen des Projekts wurden folgende Kernbereiche eigenständig konzipiert und
    - **Budget & MHD-Ablauf-Tracking:** Visualisierung von Monatsbudgets, Spar-Kalkulation und automatischen MHD-Warnbannern ($\le 2$ Tage).
    - **Lokales Datums-Handling (`getLocalDateString`):** Behebung von Zeitzonen-Offsets bei der Datumsgenerierung (`toISOString`).
    - **Vollständiges Datensicherungs-System:** JSON-basiertes Komplett-Backup und Restore von Einstellungen, Rezepten, Vorräten und Erfolgen.
-   - **Automatisierte Unit-Test-Abdeckung:** Erweiterte Jest-Testsuite (`storage.service.spec.ts`, `barcode.service.spec.ts`, `qr.service.spec.ts`) mit 100% Erfolgsquote.
+   - **Automatisierte Unit-Test-Abdeckung:** Erweiterte Jest-Testsuite (`storage.service.spec.ts`, `barcode.service.spec.ts`, `qr.service.spec.ts`, `audio.service.spec.ts`, `pdf.service.spec.ts`, `dashboard.service.spec.ts`) mit 22 automatisierten Tests und 100 % Erfolgsquote.
+   - **Nährwert- & Klimaschutz-Analytics (`eco-chef-dashboard`):** Eigenständige Dashboard-Komponente zur Visualisierung von Makronährstoffzielen, Umwelt-Meilensteinen (Autofahrten, Bäume, Handy-Ladungen) und 7-Tage-Historien.
+   - **Globales Floating-Timer-Widget:** Permanenter, schwebender Countdown mit Pausierungs- und Schnellverlängerungs-Funktionalität.
+   - **"Mystery Box" Restekiste:** Algorithmus zur automatischen Selektion der am schnellsten ablaufenden Zutaten für 15-Minuten-Express-Rezepte.
+   - **Synthetisierte Web-Audio-Soundeffekte (`audio.service`):** Oszillator-basierte Akustiksignale für Erfolge, Timer und Zutateneingaben ohne externe Audio-Assets.
+

@@ -126,3 +126,14 @@ EcoChef wurde speziell im Hinblick auf Barrierefreiheit (WCAG compliant) entwick
 * **LRS-Modus (Lesehilfe) 👁️:** Speziell für Menschen mit Lese-Rechtschreib-Schwäche (Legasthenie). Aktiviert die wissenschaftlich optimierte Schriftart *OpenDyslexic* sowie größere Zeilen- und Wortabstände für verbesserte Lesbarkeit.
 * **Mobiles Leselineal (Reading Ruler) ↔️:** Legt einen farbigen Fokusbalken über den Text. Du kannst das Lineal mit dem Finger nach oben und unten verschieben, um beim Lesen nicht in den Zeilen zu verrutschen.
 * **Screenreader-Kompatibilität (WCAG compliant):** Vollständige Unterstützung von Android TalkBack und iOS VoiceOver durch strukturierte ARIA-Attribute und unsichtbare Live-Announcements für Statusänderungen.
+
+---
+
+## 9. Neue Zusatz-Features
+
+* **📊 Nährwert- & Klimaschutz-Analytics:** Der neue Tab **📊 Analytics** visualisiert deine tägliche Kalorien- und Proteinaufnahme im Vergleich zu deinen individuellen Tageszielen. Zudem werden dir Umwelt-Meilensteine für deine gesparte CO₂-Menge angezeigt (umgerechnet in Autofahrt-Kilometer, gepflanzte Bäume und Handy-Ladungen) sowie ein 7-Tage-Verlauf deiner gekochten Mahlzeiten.
+* **⏱️ Globaler Mini-Timer (Floating Widget):** Wenn ein Koch-Timer läuft und du den Kochmodus verlässt, erscheint unten rechts ein schwebendes Timer-Widget. Es zeigt den Live-Countdown, lässt dich den Timer pausieren, um +1 Min. verlängern oder per Klick zurück in den Kochmodus springen.
+* **🎲 "Mystery Box" Restekiste:** Ein Klick auf **🎲 Restekiste Zaubern** in der Reste-Kammer wählt automatisch die 3 am schnellsten ablaufenden Zutaten aus und startet sofort die Generierung eines schnellen 15-Minuten-Express-Rezepts.
+* **🥫 Vorratskammer-Sortierung & Ampel-System:** Filter nach Lagerort (*Kühlschrank, Vorratskammer, Gefrierfach, 🚨 Bald ablaufend*) und automatische MHD-Ampeln (Rot = abgelaufen/heute, Orange = 1–3 Tage, Grün = haltbar).
+* **🔊 Synthetisierte Web-Audio Soundeffekte:** Akustisches Feedback bei geschafften Erfolgen, hinzugefügten Zutaten und beendeten Timern (in den Einstellungen ein-/ausschaltbar).
+

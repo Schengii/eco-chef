@@ -102,6 +102,7 @@ export interface ActiveTimer {
     totalSeconds: number;
     secondsRemaining: number;
     stepIndex: number;
+    isPaused?: boolean;
 }
 
 export function getLocalDateString(d: Date = new Date()): string {

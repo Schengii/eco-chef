@@ -238,6 +238,14 @@ export const StorageService = {
         localStorage.setItem('ecoChef_notificationsEnabled', String(enabled));
     },
 
+    getSoundEffectsEnabled(): boolean {
+        const item = localStorage.getItem('ecoChef_soundEffectsEnabled');
+        return item === null ? true : item === 'true';
+    },
+    setSoundEffectsEnabled(enabled: boolean): void {
+        localStorage.setItem('ecoChef_soundEffectsEnabled', String(enabled));
+    },
+
     clearAll(): void {
         localStorage.clear();
     }

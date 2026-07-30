@@ -258,6 +258,16 @@ export class EcoChefPantry extends LitElement {
     @state() private newItemLocation: 'Kühlschrank' | 'Vorratskammer' | 'Gefrierfach' | 'Sonstiges' = 'Kühlschrank';
     @state() private barcodeInput = '';
 
+    @state() private selectedLocationFilter: string = 'all';
+    @state() private sortBy: string = 'expiry';
+
+    private handleTriggerMysteryBox() {
+        this.dispatchEvent(new CustomEvent('trigger-mystery-box', {
+            bubbles: true,
+            composed: true
+        }));
+    }
+
     private getDaysRemaining(expiryDateStr?: string): number | null {
         if (!expiryDateStr) return null;
         const today = new Date();
@@ -352,6 +362,28 @@ export class EcoChefPantry extends LitElement {
     }
 
     override render() {
+        // Filter & Sort items
+        let processedItems = [...this.pantryItems];
+
+        if (this.selectedLocationFilter === 'urgent') {
+            processedItems = processedItems.filter(item => {
+                const days = this.getDaysRemaining(item.expiryDate);
+                return days !== null && days <= 3;
+            });
+        } else if (this.selectedLocationFilter !== 'all') {
+            processedItems = processedItems.filter(item => (item.location || 'Sonstiges') === this.selectedLocationFilter);
+        }
+
+        if (this.sortBy === 'expiry') {
+            processedItems.sort((a, b) => {
+                const daysA = this.getDaysRemaining(a.expiryDate) ?? 9999;
+                const daysB = this.getDaysRemaining(b.expiryDate) ?? 9999;
+                return daysA - daysB;
+            });
+        } else if (this.sortBy === 'name') {
+            processedItems.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+        }
+
         // Group items by location
         const grouped: { [key: string]: PantryItemAdvanced[] } = {
             'Kühlschrank': [],
@@ -360,7 +392,7 @@ export class EcoChefPantry extends LitElement {
             'Sonstiges': []
         };
 
-        this.pantryItems.forEach(item => {
+        processedItems.forEach(item => {
             const loc = item.location || 'Sonstiges';
             if (grouped[loc]) {
                 grouped[loc].push(item);
@@ -383,12 +415,15 @@ export class EcoChefPantry extends LitElement {
                     ${this.isScanning ? html`
                         <div class="loader"></div>
                     ` : html`
-                        <div style="display: flex; gap: 8px;">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <button class="scan-btn" @click="${this.handleScanTrigger}">
                                 🧾 Bon scannen
                             </button>
                             <button class="scan-btn" @click="${this.handlePantryItemScanTrigger}" style="background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); border-color: #6d28d9;">
                                 📸 Produkt & MHD scannen
+                            </button>
+                            <button class="scan-btn" @click="${this.handleTriggerMysteryBox}" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-color: #b45309;">
+                                🎲 Restekiste Zaubern
                             </button>
                         </div>
                     `}
@@ -429,9 +464,37 @@ export class EcoChefPantry extends LitElement {
                     <button class="add-btn" @click="${this.handleAdd}">Manuell Hinzufügen</button>
                 </div>
 
-                ${this.pantryItems.length === 0 ? html`
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        <button class="scan-btn" style="padding: 6px 12px; font-size: 12px; opacity: ${this.selectedLocationFilter === 'all' ? '1' : '0.65'};" @click="${() => this.selectedLocationFilter = 'all'}">
+                            Alle (${this.pantryItems.length})
+                        </button>
+                        <button class="scan-btn" style="padding: 6px 12px; font-size: 12px; opacity: ${this.selectedLocationFilter === 'Kühlschrank' ? '1' : '0.65'};" @click="${() => this.selectedLocationFilter = 'Kühlschrank'}">
+                            ❄️ Kühlschrank
+                        </button>
+                        <button class="scan-btn" style="padding: 6px 12px; font-size: 12px; opacity: ${this.selectedLocationFilter === 'Vorratskammer' ? '1' : '0.65'};" @click="${() => this.selectedLocationFilter = 'Vorratskammer'}">
+                            🌾 Kammer
+                        </button>
+                        <button class="scan-btn" style="padding: 6px 12px; font-size: 12px; opacity: ${this.selectedLocationFilter === 'Gefrierfach' ? '1' : '0.65'};" @click="${() => this.selectedLocationFilter = 'Gefrierfach'}">
+                            🧊 Tiefkühl
+                        </button>
+                        <button class="scan-btn" style="padding: 6px 12px; font-size: 12px; background: #fee2e2; color: #dc2626; border-color: #fca5a5; opacity: ${this.selectedLocationFilter === 'urgent' ? '1' : '0.75'};" @click="${() => this.selectedLocationFilter = 'urgent'}">
+                            🚨 Bald ablaufend
+                        </button>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 12px; font-weight: 700; color: var(--text-dark);">Sortierung:</span>
+                        <select .value="${this.sortBy}" @change="${(e: Event) => this.sortBy = (e.target as HTMLSelectElement).value}" style="padding: 6px 10px; border-radius: 10px; border: 2px solid var(--border); font-size: 12px; background: var(--surface); color: var(--text-dark);">
+                            <option value="expiry">⏰ Nächstes MHD zuerst</option>
+                            <option value="name">🔤 Name (A-Z)</option>
+                        </select>
+                    </div>
+                </div>
+
+                ${processedItems.length === 0 ? html`
                     <p style="text-align: center; color: var(--text-muted); font-weight: 700; font-size: 14px;">
-                        Deine Vorratskammer ist leer.
+                        Keine Vorräte für den gewählten Filter gefunden.
                     </p>
                 ` : html`
                     ${Object.keys(grouped).map(loc => {

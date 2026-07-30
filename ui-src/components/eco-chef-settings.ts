@@ -21,6 +21,7 @@ export class EcoChefSettings extends LitElement {
     @property({ type: String }) selectedAvatar = '🧑‍🍳';
     @property({ type: Object }) budgetSettings: { monthlyBudget: number; currentSpent: number; savedEuro: number } = { monthlyBudget: 250, currentSpent: 0, savedEuro: 0 };
     @property({ type: Boolean }) notificationsEnabled = true;
+    @property({ type: Boolean }) soundEffectsEnabled = true;
 
     private avatarList = ['🧑‍🍳', '👨‍🍳', '👩‍🍳', '🧙‍♂️', '🦁', '🦊', '🐼', '🥦', '🍕', '🥑'];
 
@@ -219,6 +220,19 @@ export class EcoChefSettings extends LitElement {
                                    @change="${(e: Event) => {
                                        const val = (e.target as HTMLInputElement).checked;
                                        this.dispatchEvent(new CustomEvent('toggle-notifications', { detail: { enabled: val }, bubbles: true, composed: true }));
+                                   }}" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-toggle-row" style="margin-top: 12px;">
+                        <span class="setting-label">🔊 Synthetisierte Web-Audio Soundeffekte</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox"
+                                   .checked="${this.soundEffectsEnabled}"
+                                   @change="${(e: Event) => {
+                                       const val = (e.target as HTMLInputElement).checked;
+                                       this.dispatchEvent(new CustomEvent('toggle-sound-effects', { detail: { enabled: val }, bubbles: true, composed: true }));
                                    }}" />
                             <span class="slider"></span>
                         </label>
