@@ -2,6 +2,7 @@ import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ecoChefStyles } from '../styles/eco-chef.styles';
 import { Recipe, IngredientItem, PantryItemAdvanced } from '../models/eco-chef.models';
+import { showToast } from './eco-chef-toast';
 
 @customElement('eco-chef-recipe-view')
 export class EcoChefRecipeView extends LitElement {
@@ -107,7 +108,7 @@ export class EcoChefRecipeView extends LitElement {
                 count++;
             }
         });
-        alert(`🎉 ${count} fehlende Zutaten wurden der Einkaufsliste hinzugefügt!`);
+        showToast(`${count} fehlende Zutat(en) zur Einkaufsliste hinzugefügt!`, 'success');
     }
 
     private _shareRecipe() {
@@ -126,7 +127,7 @@ export class EcoChefRecipeView extends LitElement {
             }).catch(err => console.error("Error sharing:", err));
         } else {
             navigator.clipboard.writeText(text).then(() => {
-                alert("Rezept wurde in die Zwischenablage kopiert! 📋");
+                showToast('Rezept in die Zwischenablage kopiert!', 'success');
             }).catch(err => {
                 console.error("Clipboard copy failed:", err);
             });

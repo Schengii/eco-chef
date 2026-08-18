@@ -2,6 +2,7 @@ import { LitElement, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { ecoChefStyles } from '../styles/eco-chef.styles';
 import { DailyStat, getLocalDateString } from '../models/eco-chef.models';
+import { showToast } from './eco-chef-toast';
 
 @customElement('eco-chef-settings')
 export class EcoChefSettings extends LitElement {
@@ -166,7 +167,7 @@ export class EcoChefSettings extends LitElement {
                 const imported = JSON.parse(content);
 
                 if (!Array.isArray(imported)) {
-                    alert('❌ Ungültiges Format. Erwartet wird ein JSON-Array von Rezepten.');
+                    showToast('Ungültiges Format. Erwartet wird ein JSON-Array von Rezepten.', 'error');
                     return;
                 }
 
@@ -176,7 +177,7 @@ export class EcoChefSettings extends LitElement {
                     composed: true
                 }));
             } catch (err) {
-                alert('❌ Fehler beim Importieren. Stelle sicher, dass es sich um eine gültige EcoChef-JSON-Datei handelt.');
+                showToast('Fehler beim Importieren. Bitte eine gültige EcoChef-JSON-Datei wählen.', 'error');
                 console.error('Import error:', err);
             }
         };
@@ -493,7 +494,7 @@ export class EcoChefSettings extends LitElement {
                                     const parsed = JSON.parse(ev.target?.result as string);
                                     this.dispatchEvent(new CustomEvent('import-full-backup', { detail: { data: parsed }, bubbles: true, composed: true }));
                                 } catch (err) {
-                                    alert("❌ Ungültige Backup-Datei.");
+                                    showToast('Ungültige Backup-Datei.', 'error');
                                 }
                             };
                             reader.readAsText(file);

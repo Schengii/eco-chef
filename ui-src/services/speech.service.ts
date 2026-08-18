@@ -31,7 +31,9 @@ class SpeechServiceClass {
     ): void {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         if (!SpeechRecognition) {
-            alert("Sprachsteuerung wird in diesem Browser leider nicht unterstützt.");
+            console.warn('[SpeechService] Web Speech API not supported in this browser.');
+            onStatusChange('Sprachsteuerung wird in diesem Browser nicht unterstützt.');
+            onError();
             return;
         }
 

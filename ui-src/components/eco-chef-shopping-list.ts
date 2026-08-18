@@ -1,7 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ecoChefStyles } from '../styles/eco-chef.styles';
-import { ShoppingItem } from '../models/eco-chef.models';
+import { ShoppingItem, getGroupedShoppingList } from '../models/eco-chef.models';
 
 @customElement('eco-chef-shopping-list')
 export class EcoChefShoppingList extends LitElement {
@@ -12,16 +12,9 @@ export class EcoChefShoppingList extends LitElement {
 
     @state() private manualShoppingItem = '';
 
+    // Note: _getGroupedShoppingList() now delegates to the shared utility from eco-chef.models.ts
     private _getGroupedShoppingList() {
-        const groups: { [key: string]: { item: ShoppingItem, originalIndex: number }[] } = {};
-        this.shoppingList.forEach((item, index) => {
-            const cat = item.category || 'Sonstiges';
-            if (!groups[cat]) {
-                groups[cat] = [];
-            }
-            groups[cat].push({ item, originalIndex: index });
-        });
-        return groups;
+        return getGroupedShoppingList(this.shoppingList);
     }
 
     private _addManualShoppingItem() {

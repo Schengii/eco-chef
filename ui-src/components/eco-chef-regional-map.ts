@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { MarketLocation } from '../models/eco-chef.models';
+import { showToast } from './eco-chef-toast';
 
 @customElement('eco-chef-regional-map')
 export class EcoChefRegionalMap extends LitElement {
@@ -203,7 +204,7 @@ export class EcoChefRegionalMap extends LitElement {
                 composed: true
             }));
         });
-        alert(`🛒 Zutaten vom "${market.name}" wurden zu deiner Einkaufsliste hinzugefügt!`);
+        showToast(`Zutaten vom "${market.name}" zur Einkaufsliste hinzugefügt!`, 'success');
     }
 
     override render() {

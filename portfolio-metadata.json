@@ -1,0 +1,119 @@
+{
+  "repoName": "EcoChef",
+  "titleDe": "🍳 EcoChef — Dein intelligenter KI-Rezept-Zauberer",
+  "titleEn": "🍳 EcoChef — Your Intelligent AI Recipe Wizard",
+  "tags": [
+    "Lit / TypeScript",
+    "Gemini API",
+    "Cordova PWA",
+    "LocalStorage",
+    "Speech Synthesis"
+  ],
+  "image": "assets/images/ecochef_showcase.png",
+  "link": "Projekte/EcoChef/www/index.html",
+  "descDe": "EcoChef ist die IHK-Abschlussarbeit (Hybrid-App) – ein intelligenter Rezept-Assistent. Aus Kühlschrank-Zutaten generiert die Gemini-KI kreative, nachhaltige Rezeptideen inklusive Nährwertangaben, CO2-Einsparungsberechnungen und integriertem Kochmodus mit digitalem Vorlese-Assistenten.",
+  "descEn": "EcoChef is the final IHK graduation project (hybrid app) – an intelligent recipe assistant. Using Gemini AI, it generates creative, sustainable recipes based on your ingredients, calculates nutritional values and CO2 savings, and includes a hands-free reading assistant.",
+  "category": "ai web",
+  "language": "JavaScript",
+  "downloadPpts": [
+    {
+      "titleDe": "IHK-Präsentation (EcoChef)",
+      "titleEn": "IHK Presentation (EcoChef)",
+      "url": "assets/powerpoint/Max PPT Version3.pptx",
+      "size": "7.79 MB"
+    }
+  ],
+  "videoPlaylist": [
+    {
+      "titleDe": "Hauptclip — Übersicht & Navigation",
+      "titleEn": "Main Clip — Overview & Navigation",
+      "url": "assets/videos/V1_Hauptclip.mp4",
+      "duration": "1:06",
+      "descDe": "Der Hauptclip zeigt das grundlegende Konzept von EcoChef: Zutateneingabe im Kühlschrank, Absenden an Gemini, Rezeptgenerierung mit Nährwert- und CO2-Ersparnis-Berechnung.",
+      "descEn": "The main clip highlights the core concept of EcoChef: entering ingredients, submitting to Gemini AI, and generating custom recipes with nutrition and carbon savings data."
+    },
+    {
+      "titleDe": "Kochmodus & Sprachausgabe (TTS)",
+      "titleEn": "Cooking Mode & Text-to-Speech (TTS)",
+      "url": "assets/videos/V2_Kochmodusclip.mp4",
+      "duration": "0:22",
+      "descDe": "Demonstration des interaktiven Kochmodus. Dank Sprachausgabe liest der intelligente Assistent die Zubereitungsschritte vor, damit man beim Kochen die Hände frei hat.",
+      "descEn": "Demonstration of the interactive cooking mode. Thanks to speech synthesis, the assistant reads out the cooking steps hands-free."
+    },
+    {
+      "titleDe": "Rezept anpassen per KI",
+      "titleEn": "Customize Recipe via AI",
+      "url": "assets/videos/V3_Rezept_anpassen_clip.mp4",
+      "duration": "1:16",
+      "descDe": "Zeigt die Flexibilität von EcoChef: Ein generiertes Rezept lässt sich nachträglich anpassen (z. B. schärfer oder vegan), woraufhin Gemini das Rezept neu ausgibt.",
+      "descEn": "Shows the app flexibility: Any generated recipe can be modified on the fly (e.g. spicier or vegan), and Gemini adjusts it instantly."
+    },
+    {
+      "titleDe": "Rezept im LocalStorage speichern",
+      "titleEn": "Save Recipe in LocalStorage",
+      "url": "assets/videos/V4_Rezept_speichern_im_lokalstorage.mp4",
+      "duration": "1:33",
+      "descDe": "EcoChef speichert Lieblingsrezepte dauerhaft lokal ab. Dieser Clip zeigt das Speichern, Abrufen und Verwalten der erstellten Rezepte.",
+      "descEn": "EcoChef stores favorite recipes permanently in local storage. This clip shows saving, loading, and managing custom recipes."
+    },
+    {
+      "titleDe": "Farbschema-Wechsel (Dark/Light Mode)",
+      "titleEn": "Theme Toggle (Dark/Light Mode)",
+      "url": "assets/videos/V5_Dark_Light_Mode_Wechsel.mp4",
+      "duration": "0:50",
+      "descDe": "Veranschaulichung des flüssigen und barrierefreien Wechsels zwischen Dark und Light Mode in der EcoChef-App.",
+      "descEn": "Demonstration of the smooth and accessible transition between dark and light modes in the EcoChef application."
+    }
+  ],
+  "codeFiles": [
+    { "name": "index.html", "path": "Projekte/EcoChef/ui-src/index.html", "type": "html" },
+    { "name": "eco-chef.ts", "path": "Projekte/EcoChef/ui-src/eco-chef.ts", "type": "typescript" },
+    { "name": "gemini.service.ts", "path": "Projekte/EcoChef/ui-src/services/gemini.service.ts", "type": "typescript" },
+    { "name": "speech.service.ts", "path": "Projekte/EcoChef/ui-src/services/speech.service.ts", "type": "typescript" },
+    { "name": "storage.service.ts", "path": "Projekte/EcoChef/ui-src/services/storage.service.ts", "type": "typescript" }
+  ],
+  "ihkPresentation": [
+    {
+      "slide": 1,
+      "titleDe": "1. Problemstellung & Motivation",
+      "titleEn": "1. Problem & Motivation",
+      "descDe": "Lebensmittelverschwendung und mangelnde Kochideen sind alltägliche Probleme. Recruiter und Köche suchen nach Wegen, Ressourcen optimal zu nutzen und CO2-Emissionen beim Kochen zu reduzieren.",
+      "descEn": "Food waste and lack of recipe ideas are daily challenges. Users seek ways to optimize resources and reduce carbon footprints during cooking."
+    },
+    {
+      "slide": 2,
+      "titleDe": "2. Fachliche Anforderungen",
+      "titleEn": "2. Technical & Functional Requirements",
+      "descDe": "Die App muss Zutaten per Tastatur- und Spracheingabe erfassen, kreative Rezepte via Google Gemini Pro API erzeugen, Nährwerte und CO2-Ersparnis berechnen sowie einen barrierefreien Vorlese-Modus bieten.",
+      "descEn": "The app must capture ingredients via keyboard and voice, generate creative recipes using the Google Gemini Pro API, calculate carbon savings, and offer an accessible hands-free read-aloud mode."
+    },
+    {
+      "slide": 3,
+      "titleDe": "3. Software-Architektur (TypeScript)",
+      "titleEn": "3. Software Architecture",
+      "descDe": "Das Frontend basiert auf Lit-HTML/Lit-Element und TypeScript für komponentenbasierte, performante UI. Ein modularer Service-Layer kapselt API-Anfragen, lokale Datenpersistenz und Audio-Synthese ab.",
+      "descEn": "The frontend is built on Lit-HTML/Lit-Element and TypeScript for component-based, high-performance UI. Modular service layers handle APIs, local storage, and audio synthesis."
+    },
+    {
+      "slide": 4,
+      "titleDe": "4. Datenbank- & Datenmodell (JSON & LocalStorage)",
+      "titleEn": "4. Data Model & Persistence",
+      "descDe": "Da es sich um eine Offline-fähige PWA handelt, werden Rezepte und Benutzereinstellungen strukturiert als JSON-Dokumente im browserseitigen LocalStorage gespeichert und über einen Storage-Service validiert.",
+      "descEn": "As an offline-capable PWA, recipes and user settings are stored as structured JSON documents inside the browser's LocalStorage and validated via a dedicated storage service."
+    },
+    {
+      "slide": 5,
+      "titleDe": "5. Live-Demo & Video-Playlist",
+      "titleEn": "5. Video Walkthroughs",
+      "descDe": "Sehen Sie sich die oben eingebettete Video-Playlist an, um die App-Navigation, den interaktiven Kochmodus mit Text-to-Speech (TTS) sowie die dynamische Rezeptanpassung live in Aktion zu erleben.",
+      "descEn": "Review the video playlist above to see application navigation, interactive cooking mode with Text-to-Speech (TTS), and real-time recipe adjustments live in action."
+    },
+    {
+      "slide": 6,
+      "titleDe": "6. Fazit & IHK-Ergebnis",
+      "titleEn": "6. Conclusion & IHK Evaluation",
+      "descDe": "Das Projekt wurde als IHK-Abschlussarbeit eingereicht und mit hervorragenden Noten bewertet. Es demonstriert moderne Hybrid-App-Entwicklung (Cordova/PWA) und die praktische Nutzung von Generativer KI im Alltag.",
+      "descEn": "The project was submitted as a final graduation thesis and received excellent grades. It showcases modern hybrid app development (Cordova/PWA) and generative AI integration."
+    }
+  ]
+}

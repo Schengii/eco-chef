@@ -1,7 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-import { Recipe, IngredientItem, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan, ActiveTimer, getLocalDateString } from './models/eco-chef.models';
+import { Recipe, IngredientItem, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan, ActiveTimer, getLocalDateString, getGroupedShoppingList } from './models/eco-chef.models';
 import { ecoChefStyles } from './styles/eco-chef.styles';
 
 import { StorageService } from './services/storage.service';
@@ -11,6 +11,7 @@ import { GeminiService } from './services/gemini.service';
 import { BarcodeService } from './services/barcode.service';
 import { QrService } from './services/qr.service';
 import { PdfService } from './services/pdf.service';
+import { showToast, showConfirmToast } from './components/eco-chef-toast';
 
 // Import subcomponents so they are registered
 import './components/eco-chef-welcome';
@@ -26,6 +27,7 @@ import './components/eco-chef-meal-planner';
 import './components/eco-chef-achievements';
 import './components/eco-chef-regional-map';
 import './components/eco-chef-dashboard';
+import './components/eco-chef-toast';
 
 @customElement('eco-chef')
 export class EcoChef extends LitElement {
@@ -110,6 +112,7 @@ export class EcoChef extends LitElement {
     @state() isScanningReceipt = false;
     @state() isScanningProduct = false;
     @state() syncCode = '';
+    @state() lastError: string | null = null;
 
     defaultAchievements: Achievement[] = [
         { id: 'retterKoenig', title: 'Retter-König', description: 'Koche Rezepte mit dringend zu verbrauchenden Zutaten.', icon: '👑', unlocked: false, progress: 0, target: 5 },
@@ -335,19 +338,30 @@ export class EcoChef extends LitElement {
         });
 
         if (isInPantry) {
-            const confirmAdd = confirm(`ℹ️ "${cleanName}" ist bereits in deiner Vorratskammer vorhanden. Trotzdem auf die Einkaufsliste setzen?`);
-            if (!confirmAdd) {
-                return;
-            }
+            // Use async confirm toast - non-blocking
+            showConfirmToast(
+                `"${cleanName}" ist bereits in der Vorratskammer. Trotzdem zur Einkaufsliste?`,
+                'Hinzufügen',
+                'Abbrechen'
+            ).then(confirmed => {
+                if (!confirmed) return;
+                if (!this.shoppingList.some(item => item.name === cleanName)) {
+                    this.shoppingList.push({ name: cleanName, checked: false, category });
+                    this.saveShoppingList();
+                    showToast(`"${cleanName}" zur Einkaufsliste hinzugefügt`, 'success');
+                    this.requestUpdate();
+                }
+            });
+            return;
         }
 
         if (!this.shoppingList.some(item => item.name === cleanName)) {
             this.shoppingList.push({ name: cleanName, checked: false, category });
             this.saveShoppingList();
-            alert(`✅ "${cleanName}" wurde zur Einkaufsliste hinzugefügt!`);
+            showToast(`"${cleanName}" zur Einkaufsliste hinzugefügt`, 'success');
             this.requestUpdate();
         } else {
-            alert("Das steht bereits auf deiner Einkaufsliste!");
+            showToast('Das steht bereits auf deiner Einkaufsliste!', 'warning');
         }
     }
 
@@ -456,22 +470,12 @@ export class EcoChef extends LitElement {
         });
     }
 
-    getGroupedShoppingList() {
-        const groups: { [key: string]: { item: ShoppingItem, originalIndex: number }[] } = {};
-        this.shoppingList.forEach((item, index) => {
-            const cat = item.category || 'Sonstiges';
-            if (!groups[cat]) {
-                groups[cat] = [];
-            }
-            groups[cat].push({ item, originalIndex: index });
-        });
-        return groups;
-    }
+    // Note: getGroupedShoppingList() is now the shared utility imported from eco-chef.models.ts
 
     async shareShoppingList() {
         if (this.shoppingList.length === 0) return;
         
-        const grouped = this.getGroupedShoppingList();
+        const grouped = getGroupedShoppingList(this.shoppingList);
         let text = `🛒 *Meine EcoChef Einkaufsliste*:\n`;
         
         const categoriesOrder = ['Obst & Gemüse', 'Milchprodukte & Eier', 'Fleisch & Fisch', 'Vorrat & Gewürze', 'Bäckerei', 'Sonstiges'];
@@ -498,7 +502,7 @@ export class EcoChef extends LitElement {
             }
         } else {
             await navigator.clipboard.writeText(text);
-            alert("Einkaufsliste als Text in die Zwischenablage kopiert!");
+            showToast('Einkaufsliste in die Zwischenablage kopiert!', 'success');
         }
     }
 
@@ -512,6 +516,33 @@ export class EcoChef extends LitElement {
         return 0;
     }
 
+    /**
+     * Estimates CO₂ savings based on eco-score and diet when the AI
+     * does not return an explicit co2SavedKg value.
+     * Eco-Score leaves: 🍃🍃🍃🍃🍃 → A (best) ... 🍃 → E (worst)
+     */
+    private estimateCo2Fallback(): number {
+        if (!this.recipe) return 0;
+        const ecoScore = this.recipe.ecoScore || '';
+        const leafCount = (ecoScore.match(/🍃/g) || []).length;
+
+        // Base CO₂ saving by eco-score (kg per meal vs. meat-based reference)
+        const baseByLeaf: { [k: number]: number } = {
+            5: 1.4,
+            4: 1.0,
+            3: 0.7,
+            2: 0.4,
+            1: 0.2
+        };
+        let base = baseByLeaf[leafCount] ?? 0.5;
+
+        // Multiply by diet factor
+        if (this.selectedDiet === 'vegan')        base *= 1.3;
+        else if (this.selectedDiet === 'vegetarisch') base *= 1.1;
+
+        return parseFloat(base.toFixed(2));
+    }
+
     markAsCooked() {
         if (!this.recipe) return;
         const today = getLocalDateString();
@@ -520,7 +551,11 @@ export class EcoChef extends LitElement {
         const prot = this.parseVal(this.recipe.nutrition.protein);
         const carb = this.parseVal(this.recipe.nutrition.carbs);
         const fat = this.parseVal(this.recipe.nutrition.fat);
-        const co2 = this.recipe.co2SavedKg || 0;
+
+        // Use AI-provided value; if missing or zero, estimate from eco-score + diet
+        const co2 = (this.recipe.co2SavedKg && this.recipe.co2SavedKg > 0)
+            ? this.recipe.co2SavedKg
+            : this.estimateCo2Fallback();
 
         const currentStat: DailyStat = this.stats[today] || {
             calories: 0,
@@ -546,7 +581,7 @@ export class EcoChef extends LitElement {
         StorageService.setStats(this.stats);
         this.updateAchievements();
         this.srAnnouncement = `Rezept "${this.recipe.title}" als gekocht markiert. Kalorien und CO2-Ersparnis wurden getrackt.`;
-        alert("🎉 Rezept als gekocht markiert! Deine Ernährungs- und CO2-Statistiken wurden aktualisiert.");
+        showToast(`Rezept "${this.recipe.title}" als gekocht markiert! +${co2} kg CO₂ gespart 🌱`, 'success', { duration: 4500 });
     }
 
     analyzeCurrentStep() {
@@ -1246,6 +1281,10 @@ export class EcoChef extends LitElement {
                         </div>
                     </div>
                 ` : ''}
+
+                <!-- Global Toast / Snackbar Notification System -->
+                <eco-chef-toast></eco-chef-toast>
+
             </div>
         `;
     }
@@ -1292,10 +1331,11 @@ export class EcoChef extends LitElement {
         this.addIngredientFromInput();
 
         if (this.ingredientChips.length === 0 && !this.capturedImage) {
-            alert("Bitte gib zuerst ein paar Zutaten ein oder mache ein Foto von deinem Kühlschrank!");
+            showToast('Bitte gib zuerst Zutaten ein oder mache ein Foto deines Kühlschranks!', 'warning');
             return;
         }
         this.isLoading = true;
+        this.lastError = null;
         this.recipe = null;
         this.recipeImage = null;
         this.srAnnouncement = "Rezept wird von der Künstlichen Intelligenz generiert. Bitte warten Sie einen moment.";
@@ -1401,12 +1441,23 @@ export class EcoChef extends LitElement {
 
             } catch (parseError) {
                 console.error("Fehler beim Auswerten der KI-Antwort:", parseError);
-                alert("Upsi! Die KI hat das Rezept-Format etwas durcheinandergebracht. Bitte klicke nochmal auf 'Rezept Zaubern'!");
+                this.lastError = 'parse';
+                showToast('Die KI-Antwort konnte nicht verarbeitet werden. Bitte versuche es nochmal!', 'error', { duration: 5000 });
             }
 
         } catch (networkError: any) {
             console.error("API Verbindungsfehler:", networkError);
-            alert("Es gab ein Problem mit der Verbindung zu Google: " + networkError.message);
+            const errMsg: string = networkError?.message || '';
+            let userMsg = 'Verbindungsfehler – bitte Internetverbindung prüfen.';
+            if (errMsg.includes('API_KEY') || errMsg.includes('403')) {
+                userMsg = 'Ungültiger API-Key. Bitte in den Einstellungen prüfen.';
+            } else if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+                userMsg = 'API-Limit erreicht. Bitte kurz warten und dann erneut versuchen.';
+            } else if (errMsg.includes('timeout') || errMsg.includes('DEADLINE')) {
+                userMsg = 'Zeitüberschreitung – die KI hat zu lange gebraucht. Bitte nochmal versuchen.';
+            }
+            this.lastError = userMsg;
+            showToast(userMsg, 'error', { duration: 6000 });
         } finally {
             this.isLoading = false;
         }
@@ -1435,7 +1486,7 @@ export class EcoChef extends LitElement {
         if ((navigator as any).app) {
             (navigator as any).app.exitApp();
         } else {
-            alert("App beenden funktioniert nur auf dem echten Handy/Emulator!");
+            showToast('App beenden funktioniert nur auf dem echten Gerät!', 'info');
         }
     }
 
@@ -1450,7 +1501,7 @@ export class EcoChef extends LitElement {
             }
         } else {
             await navigator.clipboard.writeText(shareText);
-            alert("Rezept-Text in die Zwischenablage kopiert!");
+            showToast('Rezept-Text in die Zwischenablage kopiert!', 'success');
         }
     }
 
@@ -1465,7 +1516,7 @@ export class EcoChef extends LitElement {
         };
         saved.push(recipeToSave);
         StorageService.setSavedRecipes(saved);
-        alert(`✅ Rezept gespeichert${this.currentRating ? ` mit ${this.currentRating} ⭐` : ''}!`);
+        showToast(`Rezept gespeichert${this.currentRating ? ` mit ${this.currentRating} ⭐` : ''}!`, 'success');
         this.srAnnouncement = `Rezept "${this.recipe.title}" wurde gespeichert.`;
     }
 
@@ -1541,7 +1592,7 @@ export class EcoChef extends LitElement {
                 const imported = JSON.parse(content);
 
                 if (!Array.isArray(imported)) {
-                    alert('❌ Ungültiges Format. Erwartet wird ein JSON-Array von Rezepten.');
+                    showToast('Ungültiges Format. Erwartet wird ein JSON-Array von Rezepten.', 'error');
                     return;
                 }
 
@@ -1554,10 +1605,10 @@ export class EcoChef extends LitElement {
 
                 StorageService.setSavedRecipes(merged);
                 this.savedRecipesList = merged;
-                alert(`✅ ${imported.length} Rezept(e) erfolgreich importiert!`);
+                showToast(`${imported.length} Rezept(e) erfolgreich importiert!`, 'success');
                 this.srAnnouncement = `${imported.length} Rezepte importiert.`;
             } catch (err) {
-                alert('❌ Fehler beim Importieren. Stelle sicher, dass es sich um eine gültige EcoChef-JSON-Datei handelt.');
+                showToast('Fehler beim Importieren. Stelle sicher, dass es eine gültige EcoChef-JSON-Datei ist.', 'error');
                 console.error('Import error:', err);
             }
         };
@@ -1575,7 +1626,7 @@ export class EcoChef extends LitElement {
 
         StorageService.setSavedRecipes(merged);
         this.savedRecipesList = merged;
-        alert(`✅ ${recipes.length} Rezept(e) erfolgreich importiert!`);
+        showToast(`${recipes.length} Rezept(e) erfolgreich importiert!`, 'success');
         this.srAnnouncement = `${recipes.length} Rezepte importiert.`;
     }
 
@@ -1602,19 +1653,25 @@ export class EcoChef extends LitElement {
     }
 
     clearAllData() {
-        if (confirm("Möchtest du wirklich alle lokalen Daten (gespeicherte Rezepte, Einkaufsliste, Einstellungen) löschen? Diese Aktion kann nicht rückgängig gemacht werden.")) {
+        showConfirmToast(
+            'Alle lokalen Daten (Rezepte, Einkaufsliste, Einstellungen) wirklich löschen? Diese Aktion ist unwiderruflich!',
+            '🗑️ Alles löschen',
+            'Abbrechen'
+        ).then(confirmed => {
+            if (!confirmed) return;
             StorageService.clearAll();
             this.srAnnouncement = "Alle Anwendungsdaten wurden gelöscht. Die App wird neu geladen.";
+            showToast('Alle Daten gelöscht. App wird neu geladen...', 'warning', { duration: 2500 });
             setTimeout(() => {
                 location.reload();
-            }, 1000);
-        }
+            }, 2500);
+        });
     }
 
     exportRecipes() {
         const saved = StorageService.getSavedRecipes();
         if (saved.length === 0) {
-            alert("Du hast noch keine Rezepte gespeichert, die exportiert werden können.");
+            showToast('Du hast noch keine Rezepte gespeichert.', 'warning');
             return;
         }
         
@@ -1662,7 +1719,7 @@ export class EcoChef extends LitElement {
         this.shoppingList = this.shoppingList.filter(item => !item.checked);
         this.saveShoppingList();
 
-        alert(`🎉 ${addedCount} abgehakte Zutat(en) wurden in deine Reste-Kammer übernommen!`);
+        showToast(`${addedCount} Zutat(en) in die Reste-Kammer übernommen!`, 'success');
         this.srAnnouncement = `${addedCount} Zutaten in Reste-Kammer übernommen.`;
         this.autoSyncPush();
     }
@@ -1745,11 +1802,11 @@ export class EcoChef extends LitElement {
             const newItem = BarcodeService.createPantryItemFromBarcode(res, barcode);
             this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, newItem];
             StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
-            alert(`🎉 "${res.name}" erfolgreich aus Barcode hinzugefügt!`);
+            showToast(`"${res.name}" erfolgreich per Barcode hinzugefügt!`, 'success');
             this.srAnnouncement = `${res.name} aus Barcode hinzugefügt.`;
             this.autoSyncPush();
         } else {
-            alert(`❌ ${res.rawMessage || 'Produkt nicht gefunden.'}`);
+            showToast(res.rawMessage || 'Produkt nicht gefunden.', 'error');
         }
     }
 
@@ -1762,7 +1819,7 @@ export class EcoChef extends LitElement {
 
     importFullBackup(payload: any) {
         if (!payload || typeof payload !== 'object') {
-            alert("❌ Ungültiges Backup-Format.");
+            showToast('Ungültiges Backup-Format.', 'error');
             return;
         }
 
@@ -1796,13 +1853,13 @@ export class EcoChef extends LitElement {
                 this.ingredientChips = payload.ingredientChips;
             }
 
-            alert("🎉 Gesamtes EcoChef-Backup erfolgreich wiederhergestellt!");
+            showToast('EcoChef-Backup erfolgreich wiederhergestellt!', 'success', { duration: 4500 });
             this.srAnnouncement = "Gesamtdaten erfolgreich importiert.";
             this.requestUpdate();
             this.autoSyncPush();
         } catch (e) {
             console.error("Failed to restore full backup", e);
-            alert("❌ Fehler beim Wiederherstellen des Backups.");
+            showToast('Fehler beim Wiederherstellen des Backups.', 'error');
         }
     }
 
@@ -2018,7 +2075,7 @@ export class EcoChef extends LitElement {
         const { name, expiryDate, quantity, unit, location } = e.detail;
         const exists = this.pantryItemsAdvanced.some(item => item.name.toLowerCase() === name.toLowerCase());
         if (exists) {
-            alert("Diese Zutat existiert bereits in deiner Reste-Kammer!");
+            showToast(`"${name}" ist bereits in der Reste-Kammer vorhanden!`, 'warning');
             return;
         }
         const item: PantryItemAdvanced = {
@@ -2063,7 +2120,7 @@ export class EcoChef extends LitElement {
                     ach.unlocked = true;
                     this.achievementsList = list;
                     StorageService.setAchievements(this.achievementsList);
-                    alert("🏆 Erfolg freigeschaltet: MHD-Retter! Du hast eine Zutat verwendet, die bald abläuft.");
+                    showToast('🏆 Erfolg freigeschaltet: MHD-Retter! Zutat kurz vor Ablauf verwendet.', 'success', { duration: 5000 });
                 }
             }
         }
@@ -2126,13 +2183,13 @@ export class EcoChef extends LitElement {
                 this.achievementsList = list;
                 StorageService.setAchievements(this.achievementsList);
 
-                alert(`🎉 Kassenzettel erfolgreich gescannt! ${items.length} Zutaten hinzugefügt.`);
+                showToast(`Kassenzettel gescannt! ${items.length} Zutaten hinzugefügt.`, 'success');
             } else {
-                alert("Es konnten keine Lebensmittel auf dem Foto erkannt werden.");
+                showToast('Es konnten keine Lebensmittel auf dem Foto erkannt werden.', 'warning');
             }
         } catch (e) {
             console.error("Receipt scan failed", e);
-            alert("Fehler beim Scannen des Kassenzettels.");
+            showToast('Fehler beim Scannen des Kassenzettels.', 'error');
         } finally {
             this.capturedImage = null;
             this.isScanningReceipt = false;
@@ -2165,12 +2222,12 @@ export class EcoChef extends LitElement {
                     ach.unlocked = true;
                     this.achievementsList = list;
                     StorageService.setAchievements(this.achievementsList);
-                    alert("🏆 Erfolg freigeschaltet: Meal-Prep-King! Du hast die Wochenplanung im Meal-Prep Modus optimiert.");
+                    showToast('🏆 Erfolg freigeschaltet: Meal-Prep-King!', 'success', { duration: 5000 });
                 }
             }
         } catch (e) {
             console.error("Failed to generate weekly plan", e);
-            alert("Fehler beim Generieren des Wochenplans.");
+            showToast('Fehler beim Generieren des Wochenplans. Bitte erneut versuchen.', 'error');
         } finally {
             this.isGeneratingPlan = false;
         }
@@ -2187,7 +2244,7 @@ export class EcoChef extends LitElement {
     handleAddPlanShopping(e: CustomEvent) {
         const { title } = e.detail;
         this.addManualShoppingItem(title);
-        alert(`🛒 Gericht "${title}" wurde als Zutat auf die Einkaufsliste gesetzt!`);
+        showToast(`"${title}" zur Einkaufsliste hinzugefügt!`, 'success');
     }
 
     async handleGenerateSyncCode() {
@@ -2223,7 +2280,7 @@ export class EcoChef extends LitElement {
             }
         } catch (e) {
             console.error("Generate sync code failed", e);
-            alert("Fehler beim Verbinden mit dem Cloud-Server.");
+            showToast('Fehler beim Verbinden mit dem Cloud-Server.', 'error');
         }
     }
 
@@ -2261,16 +2318,16 @@ export class EcoChef extends LitElement {
                     }
                     this.syncCode = code;
                     localStorage.setItem('ecoChef_syncCode', code);
-                    alert("🎉 Daten erfolgreich synchronisiert!");
+                    showToast('Daten erfolgreich synchronisiert!', 'success');
                     this.srAnnouncement = "Synchronisation abgeschlossen.";
                     this.requestUpdate();
                 }
             } else {
-                alert("Ungültiger oder abgelaufener Sync-Schlüssel.");
+                showToast('Ungültiger oder abgelaufener Sync-Schlüssel.', 'error');
             }
         } catch (err) {
             console.error("Apply sync code failed", err);
-            alert("Fehler beim Abrufen der Synchronisationsdaten.");
+            showToast('Fehler beim Abrufen der Synchronisationsdaten.', 'error');
         }
     }
 
@@ -2339,14 +2396,14 @@ export class EcoChef extends LitElement {
                 };
                 this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, newItem];
                 StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
-                alert(`🎉 Produkt "${newItem.name}" erfolgreich erkannt und der Vorratskammer hinzugefügt! (MHD: ${newItem.expiryDate})`);
+                showToast(`"${newItem.name}" erkannt und zur Vorratskammer hinzugefügt! (MHD: ${newItem.expiryDate})`, 'success', { duration: 5000 });
                 this.autoSyncPush();
             } else {
-                alert("Produkt konnte nicht eindeutig identifiziert werden.");
+                showToast('Produkt konnte nicht eindeutig identifiziert werden.', 'warning');
             }
         } catch (e) {
             console.error("Product scan failed", e);
-            alert("Fehler beim Scannen des Produkts.");
+            showToast('Fehler beim Scannen des Produkts.', 'error');
         } finally {
             this.capturedImage = null;
             this.isScanningProduct = false;
@@ -2378,7 +2435,7 @@ export class EcoChef extends LitElement {
 
     exportCookbookPdf() {
         if (this.savedRecipesList.length === 0) {
-            alert("Du hast noch keine gespeicherten Rezepte im Kochbuch.");
+            showToast('Du hast noch keine gespeicherten Rezepte im Kochbuch.', 'warning');
             return;
         }
         PdfService.printCookbook(this.savedRecipesList, this.selectedAvatar);
@@ -2409,7 +2466,7 @@ export class EcoChef extends LitElement {
 
     triggerMysteryBox() {
         if (this.pantryItemsAdvanced.length === 0) {
-            alert("Deine Vorratskammer ist leer! Füge zuerst ein paar Zutaten hinzu.");
+            showToast('Deine Vorratskammer ist leer! Füge zuerst Zutaten hinzu.', 'warning');
             return;
         }
         const sorted = [...this.pantryItemsAdvanced].sort((a, b) => {

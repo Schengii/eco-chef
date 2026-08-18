@@ -112,3 +112,21 @@ export function getLocalDateString(d: Date = new Date()): string {
     return `${year}-${month}-${day}`;
 }
 
+/**
+ * Groups a flat ShoppingItem array by category.
+ * Returns an object mapping category names to arrays of {item, originalIndex} pairs.
+ * Shared between eco-chef.ts and eco-chef-shopping-list.ts to avoid code duplication.
+ */
+export function getGroupedShoppingList(
+    shoppingList: ShoppingItem[]
+): { [category: string]: { item: ShoppingItem; originalIndex: number }[] } {
+    const groups: { [key: string]: { item: ShoppingItem; originalIndex: number }[] } = {};
+    shoppingList.forEach((item, index) => {
+        const cat = item.category || 'Sonstiges';
+        if (!groups[cat]) {
+            groups[cat] = [];
+        }
+        groups[cat].push({ item, originalIndex: index });
+    });
+    return groups;
+}
