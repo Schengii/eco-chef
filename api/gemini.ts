@@ -1,9 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { GoogleGenAI } from '@google/genai';
 
-export const config = {
-    maxDuration: 60, // seconds – requires Vercel Pro; Hobby tier caps at 10s
-};
+export const config = { maxDuration: 60 };
+
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+
+type Part = { text: string } | { inlineData: { data: string; mimeType: string } };
+
+function toRestContents(contents: unknown[]): unknown[] {
+    const parts: Part[] = contents.map(item =>
+        typeof item === 'string' ? { text: item } : (item as Part)
+    );
+    return [{ role: 'user', parts }];
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
@@ -17,33 +25,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
     }
 
-    const { action, model, contents, config: geminiConfig, prompt, params } = req.body ?? {};
+    const { action, model, contents, config: geminiConfig, prompt } = (req.body ?? {}) as Record<string, unknown>;
 
     if (!action) {
-        return res.status(400).json({ error: 'Fehlender Parameter: action erforderlich.' });
+        return res.status(400).json({ error: 'Fehlender Parameter: action' });
     }
 
     try {
-        const ai = new GoogleGenAI({ apiKey });
-
         if (action === 'generateContent') {
-            if (!model || !contents) {
-                return res.status(400).json({ error: 'Für generateContent sind model und contents erforderlich.' });
+            if (!model || !Array.isArray(contents)) {
+                return res.status(400).json({ error: 'Für generateContent sind model und contents (Array) erforderlich.' });
             }
-            const response = await ai.models.generateContent({ model, contents, config: geminiConfig });
-            return res.json({ text: response.text ?? '' });
+
+            const body: Record<string, unknown> = {
+                contents: toRestContents(contents as unknown[])
+            };
+            if (geminiConfig) body.generationConfig = geminiConfig;
+
+            const response = await fetch(
+                `${GEMINI_BASE}/models/${model}:generateContent?key=${apiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                }
+            );
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`Gemini API ${response.status}: ${errText.slice(0, 300)}`);
+            }
+
+            const data = await response.json() as {
+                candidates?: { content?: { parts?: { text?: string }[] } }[];
+            };
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+            return res.json({ text });
         }
 
         if (action === 'generateImages') {
-            if (!model || !prompt) {
-                return res.status(400).json({ error: 'Für generateImages sind model und prompt erforderlich.' });
-            }
-            const response = await ai.models.generateImages({
-                model,
-                prompt,
-                config: params?.config ?? geminiConfig
+            // Imagen requires Vertex AI credentials – not available in Hobby proxy.
+            // The client already has a loremflickr fallback for this case.
+            return res.status(501).json({
+                error: 'generateImages nicht im Proxy verfügbar – Fallback wird verwendet.',
+                generatedImages: []
             });
-            return res.json({ generatedImages: response.generatedImages ?? [] });
         }
 
         return res.status(400).json({ error: `Unbekannte Aktion: ${action}` });
@@ -51,8 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (error: unknown) {
         const err = error as { status?: number; message?: string };
         console.error('Gemini proxy error:', err);
-        const status = typeof err.status === 'number' && err.status >= 400 && err.status < 600
-            ? err.status : 500;
+        const status = typeof err.status === 'number' && err.status >= 400 ? err.status : 500;
         return res.status(status).json({ error: err.message ?? 'Interner Proxy-Fehler' });
     }
 }
