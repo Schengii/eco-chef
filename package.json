@@ -21,7 +21,8 @@
     "plugins": {
       "cordova-plugin-camera": {
         "ANDROIDX_CORE_VERSION": "1.6.+"
-      }
+      },
+      "cordova-plugin-network-information": {}
     }
   },
   "devDependencies": {
@@ -43,7 +44,8 @@
     "url-loader": "^4.1.1",
     "webpack": "5.101.1",
     "webpack-cli": "6.0.1",
-    "webpack-dev-server": "5.2.2"
+    "webpack-dev-server": "5.2.2",
+    "cordova-plugin-network-information": "^3.0.0"
   },
   "dependencies": {
     "@google/genai": "^1.20.0",
