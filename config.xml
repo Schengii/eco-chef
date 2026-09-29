@@ -2,21 +2,68 @@
 <widget id="com.schenk.ecochef" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
     <name>EcoChef</name>
     <description>Dein intelligenter KI-Rezept-Zauberer. Koche nachhaltig mit deinen Kühlschrankzutaten.</description>
-    <author email="maximilian.schenk.ext@dfg.de" href="https://github.com/DFG-DEV/eco-chef">
-        Max Schenk
+    <author email="schemaxi02@gmail.com" href="https://github.com/Schengii/eco-chef">
+        Maximilian Schenk
     </author>
     <content src="index.html" />
+
+    <!-- Network access: allow all HTTPS -->
     <access origin="*" />
+    <allow-navigation href="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
-    
+    <allow-intent href="tel:*" />
+    <allow-intent href="mailto:*" />
+
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self' data: blob:;
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval';
+                   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+                   font-src 'self' https://fonts.gstatic.com data:;
+                   img-src 'self' data: blob: https: content:;
+                   connect-src 'self'
+                       https://generativelanguage.googleapis.com
+                       https://eco-chef-schengii.vercel.app
+                       https://world.openfoodfacts.org
+                       https://loremflickr.com
+                       https://fonts.googleapis.com
+                       https://fonts.gstatic.com;
+                   media-src *;
+                   worker-src 'self';" />
+
+    <!-- App icons -->
+    <icon src="ui-src/assets/icon-512.png" />
+    <icon src="ui-src/assets/icon-192.png" width="192" height="192" />
+
+    <!-- Android -->
     <platform name="android">
-        <preference name="android-minSdkVersion" value="22" />
-        <preference name="android-targetSdkVersion" value="34" />
+        <preference name="android-minSdkVersion" value="24" />
+        <preference name="android-targetSdkVersion" value="36" />
+        <preference name="AndroidInsecureFileModeEnabled" value="false" />
+        <preference name="AndroidXEnabled" value="true" />
+        <preference name="Scheme" value="https" />
+        <preference name="Hostname" value="localhost" />
         <allow-intent href="market:*" />
+        <icon src="ui-src/assets/icon-192.png" density="mdpi" />
+        <icon src="ui-src/assets/icon-512.png" density="xxxhdpi" />
     </platform>
-    
+
+    <!-- iOS -->
+    <platform name="ios">
+        <preference name="WKWebViewOnly" value="true" />
+        <preference name="EnableViewportScale" value="true" />
+        <preference name="AllowInlineMediaPlayback" value="true" />
+        <preference name="MediaPlaybackRequiresUserAction" value="false" />
+        <allow-intent href="itms:*" />
+        <allow-intent href="itms-apps:*" />
+        <icon src="ui-src/assets/icon-192.png" width="192" height="192" />
+        <icon src="ui-src/assets/icon-512.png" width="512" height="512" />
+    </platform>
+
+    <!-- Plugins -->
     <plugin name="cordova-plugin-camera" spec="^8.0.0">
         <variable name="ANDROIDX_CORE_VERSION" value="1.6.+" />
     </plugin>
+    <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
 </widget>
