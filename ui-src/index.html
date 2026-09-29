@@ -49,7 +49,8 @@
     <body>
         <eco-chef></eco-chef>
 
-        <script src="cordova.js"></script>
+        <!-- cordova.js is only present in the native Android build; onerror suppresses the 404 in web/PWA -->
+        <script src="cordova.js" onerror="void 0"></script>
         <script>
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', () => {

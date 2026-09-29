@@ -4,6 +4,7 @@ import HtmlWebpackPlugin from 'html-webpack-plugin';
 import { fileURLToPath } from 'url';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import fs from 'fs';
+import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 
 // Load .env file if it exists (API key security)
 const envFile = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '.env');
@@ -20,14 +21,15 @@ if (fs.existsSync(envFile)) {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default (_env, {mode}) => {
+export default (env, {mode}) => {
+    const analyze = Boolean(env?.analyze);
 
     return {
         mode: mode,
         entry: {
             index: './ui-src/index.ts',
         },
-        devtool: 'inline-source-map',
+        devtool: mode === 'production' ? false : 'inline-source-map',
         devServer: {
             static: './dist',
             host: 'localhost',
@@ -52,6 +54,7 @@ export default (_env, {mode}) => {
             new webpack.DefinePlugin({
                 'process.env.ECOCHEF_GEMINI_API_KEY': JSON.stringify(dotenvVars['GEMINI_API_KEY'] || '')
             }),
+            ...(analyze ? [new BundleAnalyzerPlugin()] : []),
             {
                 apply: (compiler) => {
                     compiler.hooks.afterEmit.tap('CopyAssetsPlugin', () => {
@@ -95,7 +98,7 @@ export default (_env, {mode}) => {
         },
         output: {
             path: path.resolve(__dirname, 'www'),
-            filename: 'bundle.js',
+            filename: mode === 'production' ? 'bundle.[contenthash:8].js' : 'bundle.js',
             clean: true
         },
         optimization: {

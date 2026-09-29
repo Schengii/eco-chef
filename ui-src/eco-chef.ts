@@ -13,21 +13,13 @@ import { QrService } from './services/qr.service';
 import { PdfService } from './services/pdf.service';
 import { showToast, showConfirmToast } from './components/eco-chef-toast';
 
-// Import subcomponents so they are registered
+// Always-needed components loaded eagerly
 import './components/eco-chef-welcome';
 import './components/eco-chef-gdpr-banner';
 import './components/eco-chef-privacy-modal';
 import './components/eco-chef-timer-expired-modal';
-import './components/eco-chef-settings';
-import './components/eco-chef-shopping-list';
-import './components/eco-chef-recipe-view';
-import './components/eco-chef-cooking-mode';
-import './components/eco-chef-pantry';
-import './components/eco-chef-meal-planner';
-import './components/eco-chef-achievements';
-import './components/eco-chef-regional-map';
-import './components/eco-chef-dashboard';
 import './components/eco-chef-toast';
+// Tab-specific and recipe components are loaded lazily via _loadTabComponent()
 
 @customElement('eco-chef')
 export class EcoChef extends LitElement {
@@ -761,34 +753,35 @@ export class EcoChef extends LitElement {
                      <p class="subtitle">Dein KI-Rezept-Zauberer</p>
                      
                      <div class="header-actions">
-                         <button class="saved-btn ${this.currentTab === 'zauberer' ? 'active' : ''}" @click="${() => { this.currentTab = 'zauberer'; this.showSavedRecipes = false; }}" aria-label="Rezept-Generator">
+                         <button class="saved-btn ${this.currentTab === 'zauberer' ? 'active' : ''}" @click="${() => this._switchTab('zauberer')}" aria-label="Rezept-Generator">
                              ✨ Zauberer
                          </button>
-                         <button class="saved-btn ${this.currentTab === 'pantry' ? 'active' : ''}" @click="${() => { this.currentTab = 'pantry'; }}" aria-label="Vorratskammer">
+                         <button class="saved-btn ${this.currentTab === 'pantry' ? 'active' : ''}" @click="${() => this._switchTab('pantry')}" aria-label="Vorratskammer">
                              🥫 Vorrat
                          </button>
-                         <button class="saved-btn ${this.currentTab === 'mealplan' ? 'active' : ''}" @click="${() => { this.currentTab = 'mealplan'; }}" aria-label="Wochenplan">
+                         <button class="saved-btn ${this.currentTab === 'mealplan' ? 'active' : ''}" @click="${() => this._switchTab('mealplan')}" aria-label="Wochenplan">
                              📅 Wochenplan
                          </button>
-                         <button class="saved-btn ${this.currentTab === 'shopping' ? 'active' : ''}" @click="${() => { this.currentTab = 'shopping'; }}" aria-label="Einkaufsliste">
+                         <button class="saved-btn ${this.currentTab === 'shopping' ? 'active' : ''}" @click="${() => this._switchTab('shopping')}" aria-label="Einkaufsliste">
                              🛒 Einkäufe
                          </button>
-                         <button class="saved-btn ${this.currentTab === 'regional' ? 'active' : ''}" @click="${() => { this.currentTab = 'regional'; }}" aria-label="Wochenmärkte">
+                         <button class="saved-btn ${this.currentTab === 'regional' ? 'active' : ''}" @click="${() => this._switchTab('regional')}" aria-label="Wochenmärkte">
                              🌾 Regio Markt
                          </button>
-                         <button class="saved-btn ${this.currentTab === 'achievements' ? 'active' : ''}" @click="${() => { this.currentTab = 'achievements'; }}" aria-label="Erfolge">
+                         <button class="saved-btn ${this.currentTab === 'achievements' ? 'active' : ''}" @click="${() => this._switchTab('achievements')}" aria-label="Erfolge">
                              🏆 Erfolge
                          </button>
-                         <button class="saved-btn ${this.currentTab === 'dashboard' ? 'active' : ''}" @click="${() => { this.currentTab = 'dashboard'; }}" aria-label="Analytics Dashboard">
+                         <button class="saved-btn ${this.currentTab === 'dashboard' ? 'active' : ''}" @click="${() => this._switchTab('dashboard')}" aria-label="Analytics Dashboard">
                              📊 Analytics
                          </button>
-                         <button class="saved-btn ${this.currentTab === 'settings' ? 'active' : ''}" @click="${() => { this.currentTab = 'settings'; }}" aria-label="Einstellungen">
+                         <button class="saved-btn ${this.currentTab === 'settings' ? 'active' : ''}" @click="${() => this._switchTab('settings')}" aria-label="Einstellungen">
                              ⚙️ Setup
                          </button>
                      </div>
                   </div>
 
-                  ${this.currentTab === 'settings' ? html`
+                  ${this.currentTab === 'settings' && !this._loadedTabs.has('settings') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
+                  ${this.currentTab === 'settings' && this._loadedTabs.has('settings') ? html`
                       <eco-chef-settings
                           .isLrsMode="${this.isLrsMode}"
                           .showReadingRuler="${this.showReadingRuler}"
@@ -838,7 +831,8 @@ export class EcoChef extends LitElement {
                       </eco-chef-settings>
                   ` : ''}
 
-                  ${this.currentTab === 'pantry' ? html`
+                  ${this.currentTab === 'pantry' && !this._loadedTabs.has('pantry') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
+                  ${this.currentTab === 'pantry' && this._loadedTabs.has('pantry') ? html`
                       <eco-chef-pantry
                           .pantryItems="${this.pantryItemsAdvanced}"
                           .isScanning="${this.isLoading && (this.isScanningReceipt || this.isScanningProduct)}"
@@ -853,7 +847,8 @@ export class EcoChef extends LitElement {
                       </eco-chef-pantry>
                   ` : ''}
 
-                  ${this.currentTab === 'dashboard' ? html`
+                  ${this.currentTab === 'dashboard' && !this._loadedTabs.has('dashboard') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
+                  ${this.currentTab === 'dashboard' && this._loadedTabs.has('dashboard') ? html`
                       <eco-chef-dashboard
                           .stats="${this.stats}"
                           .calorieGoal="${this.calorieGoal}"
@@ -861,13 +856,15 @@ export class EcoChef extends LitElement {
                       </eco-chef-dashboard>
                   ` : ''}
 
-                  ${this.currentTab === 'regional' ? html`
+                  ${this.currentTab === 'regional' && !this._loadedTabs.has('regional') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
+                  ${this.currentTab === 'regional' && this._loadedTabs.has('regional') ? html`
                       <eco-chef-regional-map
                           @add-shopping-item="${(e: CustomEvent) => this.addManualShoppingItem(e.detail.name)}">
                       </eco-chef-regional-map>
                   ` : ''}
 
-                  ${this.currentTab === 'mealplan' ? html`
+                  ${this.currentTab === 'mealplan' && !this._loadedTabs.has('mealplan') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
+                  ${this.currentTab === 'mealplan' && this._loadedTabs.has('mealplan') ? html`
                       <eco-chef-meal-planner
                           .mealPlan="${this.mealPlan}"
                           .isGeneratingPlan="${this.isGeneratingPlan}"
@@ -877,7 +874,8 @@ export class EcoChef extends LitElement {
                       </eco-chef-meal-planner>
                   ` : ''}
 
-                  ${this.currentTab === 'achievements' ? html`
+                  ${this.currentTab === 'achievements' && !this._loadedTabs.has('achievements') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
+                  ${this.currentTab === 'achievements' && this._loadedTabs.has('achievements') ? html`
                       <eco-chef-achievements
                           .achievements="${this.achievementsList}"
                           .stats="${this.stats}">
@@ -1019,7 +1017,8 @@ export class EcoChef extends LitElement {
                       </div>
                   ` : ''}
 
-                  ${this.currentTab === 'shopping' ? html`
+                  ${this.currentTab === 'shopping' && !this._loadedTabs.has('shopping') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
+                  ${this.currentTab === 'shopping' && this._loadedTabs.has('shopping') ? html`
                       <eco-chef-shopping-list
                           .shoppingList="${this.shoppingList}"
                           .budgetSettings="${this.budgetSettings}"
@@ -1104,7 +1103,8 @@ export class EcoChef extends LitElement {
                       </div>
                   ` : ''}
 
-                  ${this.currentTab === 'zauberer' && this.recipe ? html`
+                  ${this.currentTab === 'zauberer' && this.recipe && !this._loadedTabs.has('recipe-view') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
+                  ${this.currentTab === 'zauberer' && this.recipe && this._loadedTabs.has('recipe-view') ? html`
                       <eco-chef-recipe-view
                           .recipe="${this.recipe}"
                           .recipeImage="${this.recipeImage}"
@@ -1144,7 +1144,7 @@ export class EcoChef extends LitElement {
                   ` : ''}
                </div>
 
-               ${this.isCookingMode && this.recipe ? html`
+               ${this.isCookingMode && this.recipe && this._loadedTabs.has('cooking-mode') ? html`
                    <eco-chef-cooking-mode
                        .recipe="${this.recipe}"
                        .currentCookingStep="${this.currentCookingStep}"
@@ -1334,6 +1334,11 @@ export class EcoChef extends LitElement {
             showToast('Bitte gib zuerst Zutaten ein oder mache ein Foto deines Kühlschranks!', 'warning');
             return;
         }
+
+        // Preload recipe-view and cooking-mode while Gemini generates the recipe
+        void this._loadTabComponent('recipe-view');
+        void this._loadTabComponent('cooking-mode');
+
         this.isLoading = true;
         this.lastError = null;
         this.recipe = null;
@@ -2492,5 +2497,40 @@ export class EcoChef extends LitElement {
         this.soundEffectsEnabled = enabled;
         StorageService.setSoundEffectsEnabled(enabled);
         this.srAnnouncement = `Soundeffekte wurden ${enabled ? 'aktiviert' : 'deaktiviert'}.`;
+    }
+
+    // ── Lazy Tab Loading ─────────────────────────────────────────────────────
+    @state() private _loadedTabs = new Set<string>();
+
+    private async _switchTab(tab: string): Promise<void> {
+        if (tab === 'zauberer') {
+            this.currentTab = 'zauberer';
+            this.showSavedRecipes = false;
+            return;
+        }
+        this.currentTab = tab; // Switch immediately so header highlights; content shows after load
+        if (!this._loadedTabs.has(tab)) {
+            await this._loadTabComponent(tab);
+        }
+    }
+
+    async _loadTabComponent(tab: string): Promise<void> {
+        if (this._loadedTabs.has(tab)) return;
+        const loaders: Record<string, () => Promise<unknown>> = {
+            settings:     () => import('./components/eco-chef-settings'),
+            pantry:       () => import('./components/eco-chef-pantry'),
+            shopping:     () => import('./components/eco-chef-shopping-list'),
+            mealplan:     () => import('./components/eco-chef-meal-planner'),
+            achievements: () => import('./components/eco-chef-achievements'),
+            regional:     () => import('./components/eco-chef-regional-map'),
+            dashboard:    () => import('./components/eco-chef-dashboard'),
+            'recipe-view':   () => import('./components/eco-chef-recipe-view'),
+            'cooking-mode':  () => import('./components/eco-chef-cooking-mode'),
+        };
+        const loader = loaders[tab];
+        if (loader) {
+            await loader();
+            this._loadedTabs = new Set([...this._loadedTabs, tab]);
+        }
     }
 }

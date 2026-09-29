@@ -1,9 +1,10 @@
 const CACHE_NAME = 'eco-chef-v2';
+// bundle.[hash].js is NOT listed here – its filename changes on every production build.
+// It will be cached automatically on first load via the fetch handler below.
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
     '/manifest.json',
-    '/bundle.js',
     '/favicon.ico',
     '/icon-192.png',
     '/icon-512.png'

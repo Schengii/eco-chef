@@ -51,5 +51,4 @@ node_modules/
 .vscode/
 
 
-### Lokale API Keys ###
-api-config.ts
+# api-config.ts contains NO secrets (reads from env vars at build time) – must be in git
