@@ -1,0 +1,35 @@
+# Claude Code Ignore Rules (.claudeignore)
+# Prevents Claude from indexing large build artifacts, dependencies, secrets and caches.
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+
+# Build outputs & Bundles
+dist/
+www/
+coverage/
+
+# Cordova Platform / Generated Native Code
+platforms/
+plugins/
+
+# IDE & Editor Configs
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Large media assets or binaries if needed
+ui-src/assets/*.mp3
+ui-src/assets/*.wav

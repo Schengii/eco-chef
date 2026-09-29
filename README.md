@@ -89,6 +89,9 @@ cordova run android
 EcoChef/
 ├── .env.example                # API-Key Konfigurationsvorlage (git-tracked)
 ├── .env                        # Lokaler API-Key (git-ignored!)
+├── CLAUDE.md                   # Richtlinien, Architektur & Befehle für Claude Code
+├── .claudeignore               # Token-Optimierung & Ignore-Regeln für Claude Code
+├── .claude.json                # Werkzeug- & Befehlsberechtigungen für Claude Code
 ├── ui-src/                     # TypeScript Quellcode (Lit Web Components)
 │   ├── api-config.ts           # API-Key Konfiguration (über .env / DefinePlugin)
 │   ├── eco-chef.ts             # Zentraler Controller & App-State
@@ -109,6 +112,16 @@ EcoChef/
 ├── FACHLICHE_DOKUMENTATION.md  # Architektur- & Entwickler-Dokumentation
 └── webpack.config.js           # Webpack Bündelungs-Konfiguration
 ```
+
+---
+
+## 🤖 KI-Entwicklerunterstützung (Claude Code)
+
+Das Projekt ist für den Einsatz von KI-Assistenten (insbesondere [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview)) vorkonfiguriert:
+
+- **[`CLAUDE.md`](./CLAUDE.md):** Enthält Kontextinformationen, Architekturdetails, Tech-Stack, Skripte (`npm run dev`, `npm test`, etc.) und Code-Konventionen (Shadow-DOM, Typisierung, API-Key-Sicherheit).
+- **[`.claudeignore`](./.claudeignore):** Schließt Build-Artefakte (`dist/`, `www/`, `platforms/`), Abhängigkeiten (`node_modules/`) und Secrets aus, um Tokens zu sparen und Build-Dateien vor unerwünschten Änderungen zu schützen.
+- **[`.claude.json`](./.claude.json):** Definiert Berechtigungen für Entwicklungsbefehle (z. B. Ausführen von Tests und Builds).
 
 ---
 
