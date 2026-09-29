@@ -6,32 +6,76 @@ Dieses Dokument bietet eine Übersicht über die technische Architektur, den Cod
 
 ## 1. Architektur und Code-Aufbau
 
-EcoChef ist als **Hybrid-App** konzipiert. Sie verwendet Standard-Webtechnologien für die Logik und Benutzeroberfläche und wird mithilfe von **Apache Cordova** in eine native Android-App verpackt.
+EcoChef ist als **Multi-Plattform Hybrid-App** konzipiert. Sie verwendet Standard-Webtechnologien für die Logik und Benutzeroberfläche und wird mithilfe von **Apache Cordova** in native Android- und iOS-Apps verpackt. Die Web-Version wird über **Vercel** gehostet und nutzt eine Serverless Function als sicheren KI-Proxy.
 
 ### Technologieschnittstellen
-1. **Frontend-Framework:** [Lit (LitElement)](https://lit.dev/) zur Erstellung leichtgewichtiger, wiederverwendbarer Web Components mit reaktivem State-Management.
-2. **Programmiersprache:** TypeScript zur Erhöhung der Typsicherheit und Code-Qualität.
-3. **Build-Tool:** Webpack bündelt TypeScript, Stylesheets und HTML aus dem Quellordner (`ui-src/`) in den Ausgabeordner (`www/`).
-4. **Hybrid-Wrapper:** Apache Cordova verpackt den `www/`-Ordner in ein natives Android-Projekt (`platforms/android/`) und bietet Zugriff auf native Hardware-Schnittstellen (Kamera).
+1. **Frontend-Framework:** [Lit (LitElement)](https://lit.dev/) zur Erstellung leichtgewichtiger, wiederverwendbarer Web Components mit reaktivem State-Management im Shadow DOM.
+2. **Programmiersprache:** TypeScript 5.x (`strict: true`) für vollständige Typsicherheit.
+3. **Build-Tool:** Webpack 5 bündelt TypeScript, Stylesheets und HTML aus dem Quellordner (`ui-src/`) in den Ausgabeordner (`www/`) mit Content-Hash-Dateinamen für Cache-Busting.
+4. **Hybrid-Wrapper:** Apache Cordova verpackt den `www/`-Ordner in ein natives Android-Projekt (`platforms/android/`) und iOS-Projekt (`platforms/ios/`) mit Zugriff auf native Hardware-Schnittstellen (Kamera).
+5. **Web-Hosting & API-Proxy:** Vercel hostet die statischen Dateien und stellt die Serverless Function `api/gemini.ts` als HTTPS-Endpunkt bereit.
 
 ### Verzeichnisstruktur
-* `/ui-src/` – Quellcode der Webanwendung.
-  * `index.html` – Einstiegspunkt, lädt Cordova und die gebündelten Web Components.
-  * `index.ts` – Importiert und initialisiert die App.
-  * `eco-chef.ts` – Hauptkomponente (Parent Component), fungiert als zentraler Controller/State Manager.
-  * `/components/` – Modulare UI-Komponenten (Welcome, Settings, Recipe View, Cooking Mode, etc.).
-  * `/services/` – Geschäftslogik und API-Dienste (Audio, Speech, Storage, Gemini).
-  * `/styles/` – Gemeinsames CSS-Design-System (`eco-chef.styles.ts`).
-  * `/models/` – TypeScript-Interfaces (`eco-chef.models.ts`).
-* `/www/` – Distribuierbarer Build-Ordner (wird von Cordova in die APK verpackt).
-* `/platforms/android/` – Generierter nativer Android-Code für Gradle.
-* `config.xml` – Zentrale Cordova-Konfigurationsdatei (Paket-ID, Name, Plugin-Deklarationen).
+```
+EcoChef/
+├── api/
+│   ├── gemini.ts           # Vercel Serverless Function (Gemini REST-Proxy)
+│   └── tsconfig.json       # TypeScript für NodeNext-Modul-Resolution
+├── ui-src/
+│   ├── index.html          # HTML-Einstiegspunkt (CSP-Meta, SW-Registrierung)
+│   ├── api-config.ts       # Build-Zeit API-Key-Injektion via Webpack DefinePlugin
+│   ├── eco-chef.ts         # Hauptkomponente: zentraler Controller & App-State
+│   ├── components/         # Modulare Lit-Komponenten (Views, Modals, Widgets)
+│   ├── services/           # Geschäftslogik & externe APIs
+│   ├── models/             # TypeScript-Interfaces & gemeinsame Hilfsfunktionen
+│   └── styles/             # Design Tokens & CSS-Variablen
+├── www/                    # Webpack Build-Output (Cordova-Root, Vercel-Static)
+├── platforms/
+│   ├── android/            # Generierter nativer Android-Code (Gradle)
+│   └── ios/                # Generierter nativer iOS-Code (Xcode)
+└── config.xml              # Zentrale Cordova-Konfiguration
+```
 
 ---
 
-## 2. Kommunikation: Wer kommuniziert mit wem?
+## 2. Deployment-Architektur
 
-Die Anwendung folgt dem Prinzip **„Data down, Events up“**.
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Vercel (Web-Hosting)                     │
+│  ┌────────────────────────────┐  ┌────────────────────────┐ │
+│  │  Static Files (www/)       │  │  /api/gemini           │ │
+│  │  - bundle.[hash].js        │  │  Serverless Function   │ │
+│  │  - index.html              │  │  Node.js, REST-Proxy   │ │
+│  │  - sw.js, manifest.json    │  └───────────┬────────────┘ │
+│  └────────────────────────────┘              │               │
+└──────────────────────────────────────────────│───────────────┘
+                                               │
+                                        GEMINI_API_KEY
+                                        (Server-Env-Var)
+                                               │
+                                               ▼
+                               ┌───────────────────────────┐
+                               │  Google Gemini REST API   │
+                               │  gemini-2.5-flash         │
+                               │  generativelanguage.      │
+                               │  googleapis.com/v1beta    │
+                               └───────────────────────────┘
+
+Clients → Proxy-Routing:
+  Browser (Web/PWA)  →  relative URL /api/gemini
+  Android (Cordova)  →  absolute https://eco-chef-schengii.vercel.app/api/gemini
+  iOS (Cordova)      →  absolute https://eco-chef-schengii.vercel.app/api/gemini
+```
+
+### Warum ein Proxy?
+Der Gemini API-Key darf nicht im Client-Bundle enthalten sein (Browser-DevTools sichtbar). Der Vercel-Proxy nimmt Anfragen ohne API-Key entgegen, ergänzt den Key serverseitig aus der Umgebungsvariable und leitet an die Gemini REST API weiter. Der Browser-Client erhält nur die fertige Antwort.
+
+---
+
+## 3. Kommunikation: Wer kommuniziert mit wem?
+
+Die Anwendung folgt dem Prinzip **„Data down, Events up"**.
 
 ### Kommunikationsfluss
 ```
@@ -52,100 +96,243 @@ Die Anwendung folgt dem Prinzip **„Data down, Events up“**.
 ```
 
 1. **Parent-to-Child (Datenfluss nach unten):**
-   Die Hauptkomponente `eco-chef.ts` hält den Anwendungszustand (z. B. `recipe`, `ingredients`, `shoppingList`, `isDarkMode`) und reicht diese Daten als Properties (`.property`) an die Subkomponenten weiter (z. B. `<eco-chef-recipe-view .recipe="${this.recipe}">`).
+   `eco-chef.ts` hält den Anwendungszustand (`recipe`, `ingredients`, `shoppingList`, `isDarkMode`, …) und reicht diese als Properties an Subkomponenten weiter.
 
 2. **Child-to-Parent (Events nach oben):**
-   Aktionen in Subkomponenten (z. B. Klick auf „Kochmodus starten“ in `recipe-view` oder Umschalten der Lesehilfe in `settings`) senden standardisierte **Custom Events** nach oben (z. B. `this.dispatchEvent(new CustomEvent('start-cooking'))`).
-   Die Hauptkomponente fängt diese Events ab, aktualisiert den State und veranlasst das Neu-Rendern der UI.
+   Aktionen in Subkomponenten senden **Custom Events** nach oben (`this.dispatchEvent(new CustomEvent('start-cooking'))`). Die Hauptkomponente fängt diese ab, aktualisiert den State und löst Neu-Rendering aus.
 
-3. **Services (Hilfsdienste):**
-   Services sind zustandslose Singleton-Klassen/Objekte, die von der Hauptkomponente aufgerufen werden, um Daten zu laden/speichern (`StorageService`), Text vorzulesen (`SpeechService`), Alarme abzuspielen (`AudioService`) oder die KI anzufragen (`GeminiService`).
-
----
-
-## 3. Schlüssel und Datenspeicher: Welcher Schlüssel ist wofür?
-
-### A. API-Schlüssel
-* **`GEMINI_API_KEY`** (in `ui-src/api-config.ts`):
-  Der Authentifizierungsschlüssel für die Google Gen AI API. Ermöglicht der Anwendung die Autorisierung und Nutzung der Gemini- und Imagen-Modelle.
-
-### B. LocalStorage-Schlüssel (StorageService)
-Die App speichert alle Einstellungen und Daten lokal auf dem Smartphone. Folgende Schlüssel werden verwendet:
-
-| Schlüssel | Datentyp | Zweck |
-| :--- | :--- | :--- |
-| `ecoChef_gdprConsent` | `string` (`'true'`/`'false'`) | Speichert, ob der Nutzer der Datenschutzerklärung (DSGVO) zugestimmt hat. |
-| `ecoChef_theme` | `string` (`'dark'`/`'light'`) | Speichert das gewählte Design-Farbschema. |
-| `ecoChef_lrsMode` | `string` (`'true'`/`'false'`) | Aktiviert/Deaktiviert die Lese-Rechtschreib-Schreibhilfe (Dyslexie-Modus). |
-| `ecoChef_fontScale` | `string` (Zahl z.B. `'1.2'`) | Skalierungsfaktor für die Textgröße in der App. |
-| `ecoChef_showRuler` | `string` (`'true'`/`'false'`) | Steuert, ob das verschiebbare Leselineal angezeigt wird. |
-| `ecoChef_pantry` | `JSON-String` (Objekt) | Vorhandene Grundzutaten in der Vorratskammer (z.B. Salz, Pfeffer, Öl). |
-| `ecoChef_shoppingList` | `JSON-String` (Array) | Alle Artikel auf der Einkaufsliste inklusive Status (erledigt/offen). |
-| `ecoChef_allergens` | `JSON-String` (Objekt) | Liste der aktiven Allergene, die im Rezept ausgeschlossen werden müssen. |
-| `ecoChef_stats` | `JSON-String` (Objekt) | Ernährungstagebuch (Kalorien, Proteine, CO2-Einsparung) gruppiert nach Datum. |
-| `ecoChef_ingredientChips` | `JSON-String` (Array) | Die aktuell eingetippten Zutaten auf der Hauptseite. |
-| `ecoChef_urgentIngredients` | `JSON-String` (Objekt) | Zutaten, die als „dringend zu verbrauchen“ markiert sind. |
-| `ecoChef_savedRecipes` | `JSON-String` (Array) | Sammlung der vom Benutzer permanent gespeicherten Rezepte inkl. Bewertung. |
-| `ecoChef_calorieGoal` | `string` (Zahl) | Tägliches Ziel für die Kalorienzufuhr. |
-| `ecoChef_proteinGoal` | `string` (Zahl) | Tägliches Ziel für die Proteinzufuhr. |
+3. **Services:**
+   Zustandslose Singleton-Objekte für Datenzugriff (`StorageService`), Sprachausgabe (`SpeechService`), Alarme (`AudioService`) und KI-Anfragen (`GeminiService`).
 
 ---
 
 ## 4. KI-Einbindung: Wie wird die KI genutzt?
 
-Die App nutzt die offizielle Google Gen AI SDK (`@google/genai`) zur Kommunikation mit den Google Vertex/Gemini APIs.
+### A. Gemini Service (`gemini.service.ts`)
 
-### A. Rezeptgenerierung
-* **Modell:** `gemini-flash-latest` (optimiert für schnelle, kostengünstige und strukturierte Antworten).
-* **Funktionsweise:**
-  Die App sendet einen kombinierten Multimodal-Prompt. Dieser enthält:
-  1. Die Zutatenliste als Text.
-  2. Falls vorhanden, das Kühlschrankfoto als Base64-kodierte Bilddaten (`inlineData`).
-  3. Die Vorratskammer-Basiszutaten (um unnötige Einkäufe zu vermeiden).
-  4. Die Allergen-Filter (um unverträgliche Zutaten explizit auszuschließen).
-  5. Ernährungsweise (vegetarisch/vegan), Portionsgrößen und Zubereitungszeit.
-* **Strukturierte Ausgabe:**
-  Der System-Prompt zwingt Gemini über eine strikte Anweisung, **ausschließlich ein valides JSON-Objekt** zurückzugeben. Dieses JSON wird im Frontend geparst und direkt in die Lit-Komponenten gerendert.
+Der Service enthält zwei Ausführungspfade:
 
-### B. Rezeptbild-Generierung
-* **Modell:** `imagen-4.0-generate-001`
-* **Funktionsweise:**
-  Sobald das Rezept generiert wurde, fragt die App Imagen mit dem Rezepttitel an (z. B. *"A beautiful, clean food photography of Pasta mit Tomatensauce..."*).
-* **Fallback-Strategie:**
-  Schlägt die Bildgenerierung fehl (z. B. durch API-Limits), bittet die App Gemini kurz darum, den deutschen Rezepttitel in 1–3 englische Suchbegriffe zu übersetzen. Daraus wird eine Bild-URL des öffentlichen Dienstes `loremflickr.com` generiert (z. B. `https://loremflickr.com/600/400/food,pasta,tomato/all`), um dem Nutzer in jedem Fall ein Bild anzuzeigen.
+**Pfad 1 – Server-Proxy (Standard):**
+Wenn kein direkter API-Key vorhanden ist (oder die App in Cordova läuft), sendet der Service HTTP-POST-Anfragen an den Vercel-Proxy.
+
+```typescript
+function getProxyUrl(): string {
+    // Cordova-Erkennung: file:// oder content:// Protokoll, oder window.cordova
+    if (window.location.protocol === 'file:' ||
+        window.location.protocol === 'content:' ||
+        (window as any).cordova) {
+        return 'https://eco-chef-schengii.vercel.app/api/gemini';
+    }
+    return '/api/gemini'; // relative URL im Web-Browser
+}
+```
+
+**Pfad 2 – Direkter API-Key (optional):**
+Falls der Nutzer in den Einstellungen einen eigenen Key eingetragen hat, ruft der Service die Gemini SDK direkt auf.
+
+### B. Vercel Serverless Function (`api/gemini.ts`)
+
+Die Function kommuniziert direkt mit der Gemini REST API – ohne das `@google/genai` SDK. Dies vermeidet den ESM/CJS-Konflikt (das SDK ist ESM-only, Vercel's `@vercel/node` kompiliert zu CommonJS).
+
+```
+POST /api/gemini
+Body: {
+  action: "generateContent",
+  model: "gemini-2.5-flash",
+  contents: [...],
+  config: { responseMimeType: "application/json" }
+}
+
+→ Proxy ruft auf:
+POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=<SERVER_KEY>
+
+→ Antwort:
+{ text: "<KI-Antwort>" }
+```
+
+### C. KI-Anwendungsfälle
+
+| Funktion | Modell | Eingabe | Ausgabe |
+|---|---|---|---|
+| **Rezeptgenerierung** | `gemini-2.5-flash` | Zutaten-Text + optionales Kühlschrankfoto (Base64) | JSON-Rezept mit Nährwerten, Eco-Score, Schritten |
+| **Kassenzettel-Scan** | `gemini-2.5-flash` | Bon-Foto (Base64) + Prompt | JSON-Array mit erkannten Lebensmitteln |
+| **Produkt-Scan** | `gemini-2.5-flash` | Produkt-Foto (Base64) + Prompt | JSON-Objekt (Name, Menge, MHD, Lagerort) |
+| **Kochassistent (Live)** | `gemini-2.5-flash` | Nutzerfrage + Rezeptname als Text | Kurze Antwort (1–2 Sätze) |
+| **Wochenplaner** | `gemini-2.5-flash` | Vorräte, Ernährungsweise, Aufwand, Personen | JSON-Objekt mit 7 Tageseinträgen |
+| **Bild-Generierung** | `imagen-3.0-generate-002` | Rezepttitel (englisch) | JPEG Base64 |
+| **Bild-Fallback** | `gemini-2.5-flash` + loremflickr | Rezepttitel → englische Keywords | `loremflickr.com`-URL |
+
+### D. Strukturierte JSON-Ausgabe
+
+Alle Rezept-Anfragen setzen `responseMimeType: 'application/json'` in der `generationConfig`. Das zwingt Gemini, ausschließlich valides JSON zurückzugeben, das direkt in die Lit-Komponenten gerendert werden kann.
 
 ---
 
-## 5. Eigenleistung im Projekt
+## 5. Cordova-Konfiguration (`config.xml`)
+
+### Android-Konfiguration
+```xml
+<platform name="android">
+    <preference name="android-minSdkVersion" value="24" />
+    <preference name="android-targetSdkVersion" value="36" />
+    <preference name="Scheme" value="https" />
+    <preference name="Hostname" value="localhost" />
+</platform>
+```
+
+Die Einstellungen `Scheme=https` + `Hostname=localhost` bewirken, dass die App intern unter `https://localhost/` statt `file:///` läuft. Dies erlaubt:
+- Relative URL-Auflösung (kein `file://`-Protokoll-Problem)
+- Service Worker Registrierung (nicht unterstützt auf `file://`)
+- Same-Origin-Policy für localStorage/IndexedDB
+
+> **Hinweis:** Da die Android-App intern `https://localhost` verwendet, erkennt `getProxyUrl()` dies als Web-Kontext und nutzt die relative URL `/api/gemini` – die jedoch auf `file://` verweisen würde. Daher prüft der Service zusätzlich `window.cordova` für eine zuverlässige Erkennung.
+
+### Content Security Policy
+Die CSP ist sowohl in `config.xml` als auch in `ui-src/index.html` definiert und erlaubt explizit:
+- `https://generativelanguage.googleapis.com` – direkte Gemini API (bei eigenem Key)
+- `https://eco-chef-schengii.vercel.app` – Vercel-Proxy
+- `https://world.openfoodfacts.org` – Barcode-Lookup
+- `https://loremflickr.com` – Bild-Fallback
+- `https://fonts.googleapis.com` / `https://fonts.gstatic.com` – Google Fonts
+
+### Service Worker
+```javascript
+var isCordova = window.location.protocol === 'file:' ||
+                window.location.protocol === 'content:' ||
+                !!window.cordova;
+if (!isCordova && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+}
+```
+Service Worker werden in Cordova-Apps nicht registriert, da `file://`-Protokoll dies nicht unterstützt. Im Web-Browser ermöglichen sie Offline-Fähigkeit und PWA-Installation.
+
+---
+
+## 6. Schlüssel und Datenspeicher
+
+### A. API-Schlüssel
+* **`GEMINI_API_KEY`** (Vercel-Umgebungsvariable, server-seitig):
+  Wird nie an den Client übertragen. Nur die Vercel Serverless Function hat Zugriff.
+* **Nutzer-Key** (`ecoChef_geminiApiKey` in LocalStorage):
+  Optional. Falls eingetragen, hat er Vorrang und der Client ruft Gemini direkt auf (ohne Proxy).
+
+### B. LocalStorage-Schlüssel (StorageService)
+
+| Schlüssel | Datentyp | Zweck |
+| :--- | :--- | :--- |
+| `ecoChef_gdprConsent` | `string` | DSGVO-Einwilligung |
+| `ecoChef_theme` | `string` | Dark/Light-Mode |
+| `ecoChef_lrsMode` | `string` | LRS/Dyslexie-Modus |
+| `ecoChef_fontScale` | `string` | Schriftgrößen-Skalierung |
+| `ecoChef_showRuler` | `string` | Leselineal anzeigen |
+| `ecoChef_pantry` | `JSON-String` | Vorratskammer-Grundzutaten |
+| `ecoChef_shoppingList` | `JSON-String` | Einkaufsliste |
+| `ecoChef_allergens` | `JSON-String` | Ausgeschlossene Allergene |
+| `ecoChef_stats` | `JSON-String` | Ernährungstagebuch (Datum → Kalorien/CO₂) |
+| `ecoChef_ingredientChips` | `JSON-String` | Aktuelle Zutaten-Chips |
+| `ecoChef_urgentIngredients` | `JSON-String` | Als „dringend" markierte Zutaten |
+| `ecoChef_savedRecipes` | `JSON-String` | Gespeicherte Rezepte mit Bewertung |
+| `ecoChef_calorieGoal` | `string` | Tägliches Kalorienziel |
+| `ecoChef_proteinGoal` | `string` | Tägliches Proteinziel |
+| `ecoChef_geminiApiKey` | `string` | Optionaler Nutzer-API-Key |
+
+---
+
+## 7. Android-Build-Anleitung
+
+### Voraussetzungen
+- Java JDK 17+ (`JAVA_HOME` gesetzt)
+- Android SDK mit folgenden Komponenten (via Android Studio SDK Manager):
+  - `cmdline-tools` (latest)
+  - `platform-tools`
+  - `build-tools;36.0.0` (oder aktueller)
+  - `platforms;android-36`
+- Apache Cordova: `npm install -g cordova`
+
+### Build-Schritte
+```bash
+# 1. Android-Plattform einmalig hinzufügen
+npx cordova platform add android
+
+# 2. Cordova-Anforderungen prüfen
+npx cordova requirements android
+
+# 3. Web-App bauen
+npm run build
+
+# 4. Debug-APK erzeugen
+npx cordova build android
+
+# APK-Pfad:
+# platforms/android/app/build/outputs/apk/debug/app-debug.apk
+
+# 5. Direkt auf angeschlossenes Gerät deployen (USB-Debugging aktiviert)
+npx cordova run android
+
+# 6. Release-APK (für Store-Veröffentlichung, erfordert Signierung)
+npx cordova build android --release
+```
+
+### iOS-Build-Anleitung (nur macOS)
+```bash
+# Xcode und Command Line Tools installieren
+xcode-select --install
+
+# iOS-Plattform einmalig hinzufügen
+npx cordova platform add ios
+
+# Web-App bauen
+npm run build
+
+# iOS-Build erstellen
+npx cordova build ios
+
+# Auf Simulator deployen
+npx cordova run ios --emulator
+```
+
+---
+
+## 8. Eigenleistung im Projekt
 
 Im Rahmen des Projekts wurden folgende Kernbereiche eigenständig konzipiert und implementiert:
 
-1. **Modulare Web-Component-Architektur:** 
-   Strukturierung der App als Single Page Application (SPA) auf Basis von Lit. Aufteilung der App in 9 spezialisierte Unterkomponenten für hohe Wartbarkeit und Wiederverwendbarkeit.
-2. **Datenpersistenz:** 
-   Implementierung des `StorageService` zur lokalen Datenhaltung, wodurch die App auch offline (ohne Internetverbindung) voll funktionsfähig bleibt (außer bei der Rezeptgenerierung).
-3. **Kamera-Integration (Hybrid/Web Hybrid):** 
-   Integration der nativen Gerätekamera über das `cordova-plugin-camera` mit einem automatischen Fallback auf die Web-Kamera-API (`navigator.mediaDevices.getUserMedia`) bei Ausführung in einem Standardbrowser.
-4. **Sprachsteuerung & Barrierefreiheit (Voice Assistant):** 
-   Implementierung einer Sprachsteuerung mit der Web Speech API (`SpeechRecognition` / `SpeechSynthesis`). Die App kann Sprachbefehle auf Deutsch verarbeiten, um freihändig zu navigieren, und liest Schritte laut vor.
-5. **Erweiterte Lesehilfen:** 
-   Entwicklung des LRS-Modus (Dyslexie-Schriftart, modifizierte Zeilenabstände) sowie eines per Drag-&-Drop verschiebbaren Leselineals (`reading-ruler`) zur Unterstützung sehbehinderter oder lesebeeinträchtigter Nutzer.
-6. **Nachhaltigkeits- und Ernährungstracker:** 
-   Einbindung eines Tracking-Systems für verbrauchte Kalorien/Proteine sowie Berechnung einer CO2-Ersparnis-Bilanz.
-7. **Premium-UI/UX (Styling & Animationen):** 
-   Erstellung eines HSL-basierten, barrierefreien CSS-Designsystems mit flüssigen Übergängen, ansprechendem Dark-Mode und Mikro-Animationen (z. B. pulsierender Mikrofon-Status, schwebende Icons).
-8. **Erweiterungen & Qualitätssicherung:**
-   - **Dynamische Portionsrekonstruktion:** Mathematisches Skalieren von Rezeptmengen und Nährwertparametern in Echtzeit.
-   - **Shopping ➔ Pantry Überführung:** Nahtloses Übertragen abgehakter Einkaufslisten-Objekte in den erweiterten Vorratsspeicher (`PantryItemAdvanced`).
-   - **OpenFoodFacts Barcode API (`BarcodeService`):** EAN-13 Produktabfrage zur automatischen Erfassung von Marken, Produkttiteln und Nutri-Scores (A-E).
-   - **Vektor QR-Code Sharing (`QrService`):** Vektor-basierte QR-Code Generierung zur Rezeptübertragung ohne externe Bibliotheken.
-   - **Regio-Markt Finder (`eco-chef-regional-map`):** Interaktive Web-Komponente für Wochenmärkte, Hofläden und Unverpackt-Geschäfte.
-   - **Budget & MHD-Ablauf-Tracking:** Visualisierung von Monatsbudgets, Spar-Kalkulation und automatischen MHD-Warnbannern ($\le 2$ Tage).
-   - **Lokales Datums-Handling (`getLocalDateString`):** Behebung von Zeitzonen-Offsets bei der Datumsgenerierung (`toISOString`).
-   - **Vollständiges Datensicherungs-System:** JSON-basiertes Komplett-Backup und Restore von Einstellungen, Rezepten, Vorräten und Erfolgen.
-   - **Automatisierte Unit-Test-Abdeckung:** Erweiterte Jest-Testsuite (`storage.service.spec.ts`, `barcode.service.spec.ts`, `qr.service.spec.ts`, `audio.service.spec.ts`, `pdf.service.spec.ts`, `dashboard.service.spec.ts`) mit 22 automatisierten Tests und 100 % Erfolgsquote.
-   - **Nährwert- & Klimaschutz-Analytics (`eco-chef-dashboard`):** Eigenständige Dashboard-Komponente zur Visualisierung von Makronährstoffzielen, Umwelt-Meilensteinen (Autofahrten, Bäume, Handy-Ladungen) und 7-Tage-Historien.
-   - **Globales Floating-Timer-Widget:** Permanenter, schwebender Countdown mit Pausierungs- und Schnellverlängerungs-Funktionalität.
-   - **"Mystery Box" Restekiste:** Algorithmus zur automatischen Selektion der am schnellsten ablaufenden Zutaten für 15-Minuten-Express-Rezepte.
-   - **Synthetisierte Web-Audio-Soundeffekte (`audio.service`):** Oszillator-basierte Akustiksignale für Erfolge, Timer und Zutateneingaben ohne externe Audio-Assets.
+1. **Multi-Plattform-Architektur (Web + Android + iOS):**
+   Einheitliche Codebasis für alle drei Plattformen über Cordova mit plattformspezifischer Proxy-Erkennung und Service-Worker-Verwaltung.
 
+2. **Vercel Serverless Proxy (ESM/CJS-Problem gelöst):**
+   Da `@google/genai` v1.x ESM-only ist und Vercels `@vercel/node` CommonJS erzeugt, wurde der Proxy komplett ohne SDK als direkter REST-API-Aufruf (`fetch`) implementiert.
+
+3. **Modulare Web-Component-Architektur:**
+   Strukturierung als SPA auf Basis von Lit. 9 spezialisierte Unterkomponenten für hohe Wartbarkeit und Wiederverwendbarkeit.
+
+4. **Datenpersistenz:**
+   `StorageService` zur lokalen Datenhaltung via LocalStorage. Die App funktioniert vollständig offline (außer bei KI-Anfragen).
+
+5. **Kamera-Integration (Hybrid):**
+   Native Gerätekamera über `cordova-plugin-camera` mit automatischem Fallback auf `navigator.mediaDevices.getUserMedia` im Browser.
+
+6. **Sprachsteuerung & Barrierefreiheit:**
+   Web Speech API (`SpeechRecognition` / `SpeechSynthesis`) für freihändige Navigation mit Graceful-Fallback wenn nicht unterstützt.
+
+7. **Erweiterte Lesehilfen:**
+   LRS-Modus (OpenDyslexic-Schriftart, modifizierte Zeilenabstände) und Drag-&-Drop-Leselineal.
+
+8. **Nachhaltigkeits- und Ernährungstracker:**
+   CO₂-Ersparnis-Berechnung mit Fallback-Schätzung basierend auf Eco-Score und Ernährungsweise.
+
+9. **Premium-UI/UX:**
+   HSL-basiertes, barrierefreies CSS-Designsystem mit Dark-Mode und Mikro-Animationen.
+
+10. **Erweiterungen & Qualitätssicherung:**
+    - Dynamische Portionsrekonstruktion (Echtzeit-Skalierung von Mengen und Nährwerten)
+    - OpenFoodFacts Barcode API (`BarcodeService`) für EAN-13 Produktabfragen
+    - Vektor QR-Code Sharing ohne externe Bibliotheken
+    - Regio-Markt Finder (`eco-chef-regional-map`)
+    - Budget- & MHD-Ablauf-Tracking
+    - Vollständiges JSON-Datensicherungs-System
+    - Automatisierte Jest-Unit-Tests (22 Tests, 100 % Erfolgsquote)
+    - Nährwert- & Klimaschutz-Dashboard
+    - Globales Floating-Timer-Widget
+    - „Mystery Box" Restekiste-Algorithmus
+    - Synthetisierte Web-Audio-Soundeffekte (Oszillator-basiert)
