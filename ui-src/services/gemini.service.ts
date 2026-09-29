@@ -49,7 +49,7 @@ export const GeminiService = {
         contents.push(promptText);
 
         const payload = {
-            model: 'gemini-flash-latest',
+            model: 'gemini-2.5-flash',
             contents,
             config: { responseMimeType: 'application/json' }
         };
@@ -109,14 +109,14 @@ Antworte AUSSCHLIESSLICH mit diesen kommagetrennten englischen Wörtern in Klein
                 let kwText = '';
                 if (!hasDirectKey()) {
                     const kwResult = await callProxy('generateContent', {
-                        model: 'gemini-flash-latest',
+                        model: 'gemini-2.5-flash',
                         contents: [kwPrompt]
                     });
                     kwText = (kwResult as { text?: string }).text ?? '';
                 } else {
                     const ai = new GoogleGenAI({ apiKey: getApiKey() });
                     const kwResponse = await ai.models.generateContent({
-                        model: 'gemini-flash-latest',
+                        model: 'gemini-2.5-flash',
                         contents: [kwPrompt]
                     });
                     kwText = kwResponse.text ?? '';
@@ -156,7 +156,7 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Array aus Objekten in deutscher 
 Gib keine Markdown-Formatierung wie \`\`\`json zurück, sondern NUR das reine Array.`;
 
         const contents = [buildImageContents(capturedImage), prompt];
-        const payload = { model: 'gemini-flash-latest', contents, config: { responseMimeType: 'application/json' } };
+        const payload = { model: 'gemini-2.5-flash', contents, config: { responseMimeType: 'application/json' } };
 
         let text = '';
         if (!hasDirectKey()) {
@@ -228,7 +228,7 @@ Der Speiseplan soll als JSON-Objekt zurückgegeben werden. Jeder Wochentag (Mont
 
 Gib AUSSCHLIESSLICH dieses JSON-Objekt zurück, ohne zusätzlichen Text und ohne \`\`\`json Formatierung.`;
 
-        const payload = { model: 'gemini-flash-latest', contents: [prompt], config: { responseMimeType: 'application/json' } };
+        const payload = { model: 'gemini-2.5-flash', contents: [prompt], config: { responseMimeType: 'application/json' } };
 
         let text = '';
         if (!hasDirectKey()) {
@@ -267,7 +267,7 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt, ohne Markdown-Formatieru
 }`;
 
         const contents = [buildImageContents(capturedImage), prompt];
-        const payload = { model: 'gemini-flash-latest', contents, config: { responseMimeType: 'application/json' } };
+        const payload = { model: 'gemini-2.5-flash', contents, config: { responseMimeType: 'application/json' } };
 
         let text = '';
         if (!hasDirectKey()) {
