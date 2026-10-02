@@ -26,11 +26,11 @@ EcoChef ist auf drei Wegen nutzbar:
 
 | Plattform | URL / Installation | Besonderheiten |
 |---|---|---|
-| **Web-App (PWA)** | https://eco-chef-schengii.vercel.app | Läuft im Browser, installierbar als PWA (Chrome → „Zum Startbildschirm hinzufügen") |
+| **Web-App (PWA)** | https://eco-chef-theta.vercel.app | Läuft im Browser, installierbar als PWA (Chrome → „Zum Startbildschirm hinzufügen") |
 | **Android-App** | APK via `npx cordova build android` | Kamera-Zugriff über native Cordova-API |
 | **iOS-App** | Xcode-Build auf macOS erforderlich | WKWebView, Inline-Medienwiedergabe |
 
-> **Für Endnutzer:** Öffne einfach https://eco-chef-schengii.vercel.app in deinem Smartphone-Browser und füge die Seite als App zum Startbildschirm hinzu – kein App-Store nötig.
+> **Für Endnutzer:** Öffne einfach https://eco-chef-theta.vercel.app in deinem Smartphone-Browser und füge die Seite als App zum Startbildschirm hinzu – kein App-Store nötig.
 
 **Gemini API-Key konfigurieren:**
 Beim ersten Start ohne hinterlegten API-Key erscheint automatisch ein Hinweis. Gehe zu **⚙️ Einstellungen** und trage dort deinen [Gemini API-Key](https://aistudio.google.com/apikey) ein. Ohne API-Key oder Vercel-Proxy ist keine KI-Funktion verfügbar.

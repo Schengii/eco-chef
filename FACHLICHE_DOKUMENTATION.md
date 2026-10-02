@@ -64,8 +64,8 @@ EcoChef/
 
 Clients → Proxy-Routing:
   Browser (Web/PWA)  →  relative URL /api/gemini
-  Android (Cordova)  →  absolute https://eco-chef-schengii.vercel.app/api/gemini
-  iOS (Cordova)      →  absolute https://eco-chef-schengii.vercel.app/api/gemini
+  Android (Cordova)  →  absolute https://eco-chef-theta.vercel.app/api/gemini
+  iOS (Cordova)      →  absolute https://eco-chef-theta.vercel.app/api/gemini
 ```
 
 ### Warum ein Proxy?
@@ -121,7 +121,7 @@ function getProxyUrl(): string {
     if (window.location.protocol === 'file:' ||
         window.location.protocol === 'content:' ||
         (window as any).cordova) {
-        return 'https://eco-chef-schengii.vercel.app/api/gemini';
+        return 'https://eco-chef-theta.vercel.app/api/gemini';
     }
     return '/api/gemini'; // relative URL im Web-Browser
 }
@@ -190,7 +190,7 @@ Die Einstellungen `Scheme=https` + `Hostname=localhost` bewirken, dass die App i
 ### Content Security Policy
 Die CSP ist sowohl in `config.xml` als auch in `ui-src/index.html` definiert und erlaubt explizit:
 - `https://generativelanguage.googleapis.com` – direkte Gemini API (bei eigenem Key)
-- `https://eco-chef-schengii.vercel.app` – Vercel-Proxy
+- `https://eco-chef-theta.vercel.app` – Vercel-Proxy
 - `https://world.openfoodfacts.org` – Barcode-Lookup
 - `https://loremflickr.com` – Bild-Fallback
 - `https://fonts.googleapis.com` / `https://fonts.gstatic.com` – Google Fonts

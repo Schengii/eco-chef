@@ -187,8 +187,8 @@ EcoChef/
 
 Clients:
   Browser (Web-PWA)  →  relative URL /api/gemini
-  Android-App        →  absolute URL https://eco-chef-schengii.vercel.app/api/gemini
-  iOS-App            →  absolute URL https://eco-chef-schengii.vercel.app/api/gemini
+  Android-App        →  absolute URL https://eco-chef-theta.vercel.app/api/gemini
+  iOS-App            →  absolute URL https://eco-chef-theta.vercel.app/api/gemini
 ```
 
 ---

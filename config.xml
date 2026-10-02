@@ -24,7 +24,7 @@
                    img-src 'self' data: blob: https: content:;
                    connect-src 'self'
                        https://generativelanguage.googleapis.com
-                       https://eco-chef-schengii.vercel.app
+                       https://eco-chef-theta.vercel.app
                        https://world.openfoodfacts.org
                        https://loremflickr.com
                        https://fonts.googleapis.com
