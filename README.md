@@ -1,5 +1,13 @@
 # EcoChef 🧑‍🍳 - Dein intelligenter KI-Rezept-Zauberer
 
+> **In short (EN):** AI kitchen assistant that turns leftover ingredients into recipes with Google Gemini. Includes barcode scanning (OpenFoodFacts), expiry alerts, a voice-controlled cooking mode, budget tracking and WCAG-oriented accessibility features. Runs as a web app and as an Android app via Cordova.
+> **Stack:** TypeScript · Lit Web Components · Google GenAI SDK (Gemini 2.5 Flash) · Webpack · Jest · Apache Cordova · Vercel
+> **Live demo:** [eco-chef-theta.vercel.app](https://eco-chef-theta.vercel.app)
+
+<!-- Screenshot: Datei unter docs/screenshots/rezept.png ablegen und die nächste Zeile einkommentieren -->
+<!-- ![Rezeptgenerierung aus Kühlschrankresten](docs/screenshots/rezept.png) -->
+
+
 **EcoChef** ist eine moderne, nachhaltige Hybrid-Web- & Mobile-App, die aus deinen vorhandenen Kühlschrankzutaten kreative, klimaschonende und leckere Gerichte zaubert. Mit Fokus auf Resteverwertung, Barrierefreiheit (LRS-Modus, Leselineal, Screenreader), Sprachsteuerung, Wochenmärkte-Finder, OpenFoodFacts Barcode-Scanner und umfassendem Budget- & Umwelt-Tracking.
 
 ---
@@ -26,7 +34,7 @@
 ## 🌐 Live-App
 
 Die Web-App ist unter folgendem Link verfügbar:
-**https://eco-chef-schengii.vercel.app**
+**https://eco-chef-theta.vercel.app**
 
 ---
 
