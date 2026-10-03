@@ -14,7 +14,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      # package-lock.json lacks cordova-plugin-network-information; switch back to `npm ci` after `npm install`
-      - run: npm install --no-audit --no-fund
+      - run: npm ci
       - run: npm test
       - run: npm run build
