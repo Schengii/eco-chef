@@ -34,6 +34,7 @@ describe('QrService Tests', () => {
         const svg = QrService.generateQrSvgMarkup('test-payload');
         expect(svg).toContain('<svg');
         expect(svg).toContain('viewBox');
+        expect(svg).toContain('<rect');
         expect(svg).toContain('</svg>');
     });
 });

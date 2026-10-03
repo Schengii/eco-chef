@@ -15,15 +15,16 @@
 ## 🌟 Kernfunktionen & Features
 
 - 🪄 **KI-Rezept-Zauberer (Google Gemini 2.5 Flash & Imagen):** Generierung maßgeschneiderter Rezepte inkl. Nährwerten, Eco-Score, Wein-/Getränkeempfehlung & Gerichtsfoto.
-- 📱 **QR-Code Rezept-Sharing:** Generiere hochauflösende Vektor-QR-Codes für jedes Rezept, um Gerichte sekundenschnell auf andere Smartphones zu übertragen.
-- 🔍 **OpenFoodFacts EAN-Barcode-Scanner:** Scanne Barcodes von Lebensmittelverpackungen, um Name, Marke, Nutri-Score (A-E) und Haltbarkeit automatisch abzufragen und in die Reste-Kammer einzutragen.
+- 📱 **QR-Code Rezept-Sharing:** Generiere hochauflösende, fehlerkorrigierte Vektor-QR-Codes (ISO/IEC 18004) für jedes Rezept, direkt mit jeder Smartphone-Kamera scannbar.
+- 🔐 **Ende-zu-Ende verschlüsselte Cloud-Synchronisation:** Nahtlose Übertragung aller Rezepte und Vorräte zwischen Geräten via AES-GCM 256-Bit Verschlüsselung mit individuellem Sync-Code.
+- 🔍 **OpenFoodFacts EAN-Barcode-Scanner:** Scanne Barcodes von Lebensmittelverpackungen, um Name, Marke, Nutri-Score (A-E) und Haltbarkeit automatisch via konformer API-Schnittstelle abzufragen.
 - 🌾 **Regionalitäts- & Wochenmarkt-Finder:** Entdecke regionale Wochenmärkte, Hofläden & Unverpackt-Geschäfte in deiner Nähe inkl. Öffnungszeiten, Entfernung und Direktübernahme von Markt-Spezialitäten auf deine Einkaufsliste.
 - 💰 **Monatsbudget-Tracker & Spar-Kalkulator:** Lege dein monatliches Lebensmittelbudget fest, verfolge deine Ausgaben und berechne deine Ersparnis durch Resteverwertung.
 - 🚨 **MHD Ablauf-Erinnerungen & Warn-Banner:** Automatische Warnung auf dem Startbildschirm bei Zutaten mit Ablaufdatum in ≤ 2 Tagen inkl. 1-Klick-Rezeptverkochen.
 - 📸 **Kühlschrank- & Kassenzettel-Scan:** Scanne deine Einkäufe oder deinen Kühlschrank per Kamera/Upload.
 - 🍽️ **Dynamische Portionsskalierung:** Skaliere Mengenangaben & Nährwerte in Rezepten interaktiv von 1 bis 12 Personen in Echtzeit.
 - 🛒 **Einkaufsliste ➔ Vorratskammer Übernahme:** Übernehme abgehakte Einkaufsartikel mit einem Klick in die Reste-Kammer mit automatischer Haltbarkeitsberechnung.
-- ⏱️ **Kochmodus mit Sprachsteuerung & Custom-Timern:** Freihändiges Navigieren per Sprachbefehl, automatische Schritt-Timer sowie manuelle Schnell-Timer.
+- ⏱️ **Kochmodus mit Screen Wake Lock & Haptik:** Das Display bleibt während des Kochens automatisch aktiv (Screen Wake Lock API), freihändiges Navigieren per Sprachsteuerung, haptisches Feedback & Timer-Alarme.
 - 📦 **Vollständiges System-Backup (JSON):** Exportiere & Importiere dein gesamtes EcoChef-Profil (Rezepte, Vorratskammer, Einkäufe, Statistiken & Erfolge).
 - 🏆 **Gamification & Umwelt-Tracking:** Erfolge freischalten (Retter-König, Klimaschützer, MHD-Retter) und CO₂-Ersparnis visualisieren.
 - 👁️ **Barrierefreiheit (WCAG compliant & LRS-Modus):** OpenDyslexic-Schriftart, verschiebbares Leselineal, stufenlose Schriftvergrößerung, TalkBack / VoiceOver Support.
@@ -82,9 +83,13 @@ npm run dev
 ```
 Rufe anschließend `http://localhost:4444` im Browser auf.
 
-### 4. Tests ausführen
+### 4. Tests & Typprüfung ausführen
 ```bash
+# Unit-Tests mit Jest
 npm test
+
+# Strikte TypeScript-Prüfung (Frontend & Vercel Functions)
+npm run type-check
 ```
 
 ### 5. Production Web-Build
@@ -136,7 +141,7 @@ EcoChef/
 ├── .env.example                # API-Key Konfigurationsvorlage (git-tracked)
 ├── .env                        # Lokaler API-Key (git-ignored!)
 ├── api/
-│   ├── gemini.ts               # Vercel Serverless Function – Gemini REST-API Proxy
+│   ├── gemini.ts               # Vercel Serverless Function – Gemini REST-Proxy mit Rate-Limit & Whitelist
 │   └── tsconfig.json           # TypeScript-Konfiguration für Vercel Functions
 ├── CLAUDE.md                   # Richtlinien & Architektur für Claude Code
 ├── config.xml                  # Cordova-Konfiguration (Android, iOS, Plugins, CSP)
@@ -146,7 +151,8 @@ EcoChef/
 │   ├── index.html              # HTML-Einstiegspunkt (CSP, SW-Registrierung)
 │   ├── components/             # Modulare UI-Komponenten
 │   │   ├── eco-chef-recipe-view.ts       # Rezeptansicht & Portionsskalierer
-│   │   ├── eco-chef-cooking-mode.ts      # Kochmodus & Sprachsteuerung/Timer
+│   │   ├── eco-chef-saved-recipes.ts     # Ausgelagerte Rezeptbuch-Verwaltung & Suche
+│   │   ├── eco-chef-cooking-mode.ts      # Kochmodus mit Wake Lock, Sprachsteuerung & Timer
 │   │   ├── eco-chef-pantry.ts            # Vorratskammer & EAN Barcode / Bon-Scan
 │   │   ├── eco-chef-regional-map.ts      # Regio-Markt & Unverpackt Finder
 │   │   ├── eco-chef-shopping-list.ts     # Einkaufsliste & Budget-Tracker
@@ -154,14 +160,21 @@ EcoChef/
 │   │   ├── eco-chef-meal-planner.ts      # Wochenplaner
 │   │   ├── eco-chef-toast.ts             # Toast/Snackbar Benachrichtigungs-System
 │   │   └── eco-chef-achievements.ts      # Erfolge & SVG-Charts
-│   ├── services/               # Gemini API, Barcode, QR, Storage, Speech Services
+│   ├── services/               # Gemini API, Crypto, Barcode, QR, Storage, Speech Services
+│   │   ├── crypto.service.ts   # Clientseitige AES-GCM 256-Bit E2E-Verschlüsselung für Sync
+│   │   ├── qr.service.ts       # Standardkonforme Vektor-QR-Code-Generierung
+│   │   ├── storage.service.ts  # Quota-geschützte Persistenz & Bilddaten-Pruning
+│   │   ├── barcode.service.ts  # OpenFoodFacts API mit RFC-konformem User-Agent
+│   │   ├── gemini.service.ts   # Strukturierte Prompts & Proxy-Routing
+│   │   ├── speech.service.ts   # Sprachsteuerung mit Loop-Schutz & Backoff
+│   │   └── audio.service.ts    # Haptik & synthetisierte Alarme
 │   ├── models/                 # TypeScript Interfaces & gemeinsame Hilfsfunktionen
 │   └── styles/                 # Design System & CSS Tokens
 ├── www/                        # Webpack Build-Output (Cordova-Root)
 ├── platforms/android/          # Generierter Android-Code (nicht manuell bearbeiten)
 ├── BENUTZERANLEITUNG.md        # Ausführliche Anleitung für Anwender
 ├── FACHLICHE_DOKUMENTATION.md  # Architektur- & Entwickler-Dokumentation
-└── webpack.config.js           # Webpack Bündelungs-Konfiguration
+└── webpack.config.js           # Webpack Bündelungs-Konfiguration mit Code-Splitting & Hashing
 ```
 
 ---
@@ -204,6 +217,52 @@ Das Projekt ist für den Einsatz von KI-Assistenten (insbesondere [Claude Code](
 ---
 
 ## 📋 Changelog
+
+### v1.3.0 (2026-10-03) – Security, Quality & Architecture Optimizations
+
+#### ✅ Neu: Echte Vektor-QR-Codes (ISO/IEC 18004)
+- Echtes SVG-Generierungsmodul via `qrcode-generator` in `qr.service.ts` implementiert (Ersetzt Fake-SVG)
+- Automatische Wahl der optimalen QR-Code-Version (1–40) mit Error-Correction-Level L
+- Unmittelbar mit allen nativen Smartphone-Kameras (iOS & Android) sowie QR-Scannern lesbar
+
+#### ✅ Neu: Screen Wake Lock & Haptik im Kochmodus
+- Integration der `navigator.wakeLock` API in `eco-chef-cooking-mode.ts`: Display bleibt während des Kochens dauerhaft eingeschaltet (kein lästiges Display-Sperren mit nassen Händen)
+- Automatischer Re-Acquire bei Tab-Wechsel (`visibilitychange`) und sauberes Release beim Beenden
+- Haptisches Feedback via `navigator.vibrate` bei Schrittnavigation, Schnell-Timern und Alarmen
+
+#### ✅ Neu: Client-seitige E2E-Verschlüsselung für Cloud-Sync
+- Neuer `CryptoService` (`crypto.service.ts`) auf Basis der Web Crypto API
+- Verschlüsselt Rezept- und Vorratskammerdaten vor dem Cloud-Push mit **AES-GCM 256-Bit** und PBKDF2-abgeleitetem Schlüssel aus dem Sync-Code
+- Entschlüsselt Daten beim Sync-Pull sicher im Browser des Zielgeräts
+
+#### ✅ Neu: LocalStorage Quota-Schutz & Bild-Pruning
+- Robuste Speicherung via `safeSetItem` in `storage.service.ts`
+- Erkennt `QuotaExceededError` automatisch und entfernt speicherintensive historische Base64-Vorschaubilder, um Datenverlust von Rezepten und Vorräten zu verhindern
+
+#### ✅ Neu: Vercel Proxy-Härtung & Rate-Limiting
+- Per-IP Rate Limiting (In-Memory Sliding Window, max. 30 Req/Min) in `api/gemini.ts`
+- Whitelist für erlaubte Gemini-Modelle (`ALLOWED_MODELS`), um Missbrauch und Denial-of-Service abzuwehren
+
+#### ✅ Neu: Modernisierte PWA Caching-Strategie
+- Service Worker `eco-chef-v3`:
+  - **Network-First** für HTML/Navigation (stets aktuelle App-Version)
+  - **Stale-While-Revalidate** für statische JS/CSS/Font-Assets (blitzschneller Offline-Start)
+  - Vollständiger Cache-Bypass für API-Routen (`/api/`)
+
+#### ✅ Neu: Webpack Code-Splitting & Hashing
+- `splitChunks: { chunks: 'all' }` und `runtimeChunk: 'single'` in `webpack.config.js`
+- Bessere Bündelgrößen und optimiertes Browser-Caching durch `[name].[contenthash:8].js`
+
+#### ✅ Verbessert: OpenFoodFacts API-Compliance
+- Konformer `User-Agent: EcoChef/1.2.0 (https://github.com/Schengii/eco-chef; support@eco-chef.app)` und `Accept: application/json` Header in allen Barcode-Anfragen
+
+#### ✅ Verbessert: Speech Recognition Loop-Schutz
+- Failsafe-Wiederanlaufschutz mit 600ms Throttling, maximal 5 Wiederholungsversuchen und automatischem Reset bei Nutzerinteraktion
+
+#### ✅ Refactoring & Modularisierung
+- Auslagerung der Rezeptsammlung in eine eigenständige Lit-Komponente `eco-chef-saved-recipes.ts`
+- Strukturierte Optionen `generateRecipeFromOptions` in `gemini.service.ts`
+- Typ-Sicherheits-Check via `npm run type-check` und CI-Integration via GitHub Actions
 
 ### v1.2.0 (2026-09-29) – Mobile & Deployment
 

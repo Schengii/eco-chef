@@ -92,6 +92,9 @@ Nach dem Klick auf **✨ Rezept Zaubern** erstellt Gemini 2.5 Flash ein maßgesc
 
 Klicke im Rezept auf **Kochmodus starten**, um eine ablenkungsfreie Schritt-für-Schritt-Ansicht zu öffnen.
 
+* **💡 Dauerhaft aktiver Bildschirm (Screen Wake Lock):** Während du im Kochmodus bist, verhindert die App automatisch, dass sich der Bildschirm deines Smartphones oder Tablets ausschaltet oder abdunkelt. So musst du das Display nicht mit mehligen oder nassen Händen berühren.
+* **📳 Haptisches Feedback:** Bei Schrittwechseln, beim Starten von Schnell-Timern sowie beim Ablauf eines Timers gibt dein Smartphone sanftes Vibrations-Feedback.
+
 ### A. Der automatische & manuelle Timer ⏱️
 Enthält ein Kochschritt eine Zeitangabe (z. B. „15 Minuten köcheln lassen"), erkennt die App dies automatisch.
 * Tippe auf **Timer starten**, um den Countdown zu aktivieren.
@@ -108,7 +111,7 @@ Enthält ein Kochschritt eine Zeitangabe (z. B. „15 Minuten köcheln lassen"),
    * **„stopp"** oder **„anhalten"** – Stoppt die Sprachausgabe oder den Timer-Alarm.
    * **„hilfe"** – Listet alle Befehle per Sprachausgabe auf.
 
-> **Hinweis:** Die Sprachsteuerung nutzt die Web Speech API. Falls sie auf deinem Gerät nicht verfügbar ist, wird ein Hinweis angezeigt und die manuelle Navigation bleibt vollständig nutzbar.
+> **Hinweis:** Die Sprachsteuerung nutzt die Web Speech API mit integrierter Loop- und Verbindungs-Absicherung. Falls sie auf deinem Gerät nicht verfügbar ist, wird ein Hinweis angezeigt und die manuelle Navigation bleibt vollständig nutzbar.
 
 ---
 
@@ -128,7 +131,8 @@ Jedes generierte Rezept kann dauerhaft gesichert werden:
 * **Speichern:** Klicke nach dem Kochen auf das Schließen-Symbol (X) und wähle **💾 Speichern**. Du kannst dem Gericht eine Sternebewertung (1–5 ⭐) geben.
 * **Rezeptbuch öffnen:** Über **📚 Meine Rezepte** im Hauptmenü kannst du alle Kreationen durchsuchen, nach Bewertung filtern oder löschen.
 * **Voll-Backup (JSON) 📦:** In den **Einstellungen** kannst du dein gesamtes EcoChef-Profil (Rezepte, Vorratskammer, Einkäufe, Statistiken & Erfolge) als JSON exportieren und auf anderen Geräten wiederherstellen.
-* **QR-Code Teilen 📱:** Tippe beim Verlassen eines Rezeptes auf **„📱 QR-Code anzeigen"**, um einen QR-Code zu generieren, den Freunde mit ihrer Handy-Kamera scannen können.
+* **QR-Code Teilen 📱:** Tippe beim Verlassen eines Rezeptes auf **„📱 QR-Code anzeigen"**, um einen standardkonformen Vektor-QR-Code (ISO/IEC 18004) zu generieren. Dieser kann direkt mit jeder Smartphone-Kamera-App (iOS & Android) oder einem QR-Scanner gelesen werden.
+* **🔐 Ende-zu-Ende verschlüsselte Cloud-Synchronisation:** In den **Einstellungen** kannst du einen 6-stelligen Sync-Code generieren. Deine Daten werden lokal mit **AES-GCM 256-Bit** verschlüsselt und sicher in die Cloud synchronisiert, sodass du deine Rezepte und Vorratskammer nahtlos auf mehreren Geräten nutzen kannst.
 
 ---
 

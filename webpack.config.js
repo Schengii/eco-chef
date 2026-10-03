@@ -98,11 +98,23 @@ export default (env, {mode}) => {
         },
         output: {
             path: path.resolve(__dirname, 'www'),
-            filename: mode === 'production' ? 'bundle.[contenthash:8].js' : 'bundle.js',
+            filename: mode === 'production' ? '[name].[contenthash:8].js' : '[name].js',
+            chunkFilename: mode === 'production' ? '[name].[chunkhash:8].js' : '[name].chunk.js',
             clean: true
         },
         optimization: {
             usedExports: false,
+            runtimeChunk: 'single',
+            splitChunks: {
+                chunks: 'all',
+                cacheGroups: {
+                    vendor: {
+                        test: /[\\/]node_modules[\\/]/,
+                        name: 'vendors',
+                        chunks: 'all',
+                    },
+                },
+            },
         },
     }
 };

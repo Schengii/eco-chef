@@ -5,6 +5,7 @@
   "description": "EcoChef - Dein intelligenter KI-Rezept-Zauberer. Koche nachhaltig mit deinen Kühlschrankzutaten.",
   "scripts": {
     "test": "jest",
+    "type-check": "tsc --noEmit && tsc -p api/tsconfig.json --noEmit",
     "dev": "kill-port --port 4444 && webpack serve --mode=development",
     "build": "webpack --mode=production",
     "analyze": "webpack --mode=production --env analyze"
@@ -49,6 +50,8 @@
   },
   "dependencies": {
     "@google/genai": "^1.20.0",
-    "lit": "3.3.1"
+    "@types/qrcode-generator": "^0.0.16",
+    "lit": "3.3.1",
+    "qrcode-generator": "^2.0.4"
   }
 }

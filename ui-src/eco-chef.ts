@@ -11,6 +11,7 @@ import { GeminiService } from './services/gemini.service';
 import { BarcodeService } from './services/barcode.service';
 import { QrService } from './services/qr.service';
 import { PdfService } from './services/pdf.service';
+import { CryptoService } from './services/crypto.service';
 import { showToast, showConfirmToast } from './components/eco-chef-toast';
 
 // Always-needed components loaded eagerly
@@ -1032,75 +1033,15 @@ export class EcoChef extends LitElement {
                   ` : ''}
 
                   ${this.currentTab === 'zauberer' && this.showSavedRecipes && !this.recipe ? html`
-                      <div class="saved-recipes-container">
-                          <h3 class="recipe-subheading">📚 Deine gespeicherten Rezepte</h3>
-
-                          <div class="search-box">
-                              <input type="text"
-                                     placeholder="🔍 Rezepte durchsuchen..."
-                                     .value="${this.searchQuery}"
-                                     @input="${(e: Event) => this.searchQuery = (e.target as HTMLInputElement).value}"
-                                     style="margin-bottom: 0;"
-                                     aria-label="Gespeicherte Rezepte durchsuchen" />
-                          </div>
-
-                          <div style="display: flex; gap: 6px; margin-top: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-                              <button class="chip ${this.savedFilterRating === 0 ? 'active' : ''}" @click="${() => this.savedFilterRating = 0}">Alle</button>
-                              <button class="chip ${this.savedFilterRating === 4 ? 'active' : ''}" @click="${() => this.savedFilterRating = 4}">⭐ 4+ Sterne</button>
-                              <button class="chip ${this.savedFilterRating === 5 ? 'active' : ''}" @click="${() => this.savedFilterRating = 5}">⭐ 5 Sterne</button>
-                          </div>
-
-                          <div style="display: flex; gap: 10px; margin-top: 10px; margin-bottom: 16px; flex-wrap: wrap;">
-                              <input type="file" id="import-file" accept=".json" style="display: none;" @change="${this.handleImportFile}" />
-                              <button class="secondary-btn" @click="${() => (this.shadowRoot?.querySelector('#import-file') as HTMLInputElement)?.click()}" style="border-color: #8b5cf6; color: #6d28d9;" aria-label="Rezepte aus JSON-Datei importieren">
-                                  📂 Rezepte importieren (JSON)
-                              </button>
-                              <button class="secondary-btn" @click="${this.exportCookbookPdf}" style="border-color: #10b981; color: #047857;" aria-label="Kochbuch als PDF/Druck ausgeben">
-                                  📖 Kochbuch als PDF / Drucken
-                              </button>
-                          </div>
-
-                          ${this.savedRecipesList.length === 0 ? html`
-                              <p class="empty-state">Du hast noch keine Rezepte gespeichert. Zaubere dein erstes Gericht!</p>
-                          ` : html`
-                              ${(() => {
-                                  const filtered = this.getFilteredSavedRecipes();
-                                  if (filtered.length === 0) {
-                                      return html`<p class="empty-state">Keine Rezepte gefunden für "${this.searchQuery}"</p>`;
-                                  }
-                                  return html`
-                                      <p class="subtitle" style="margin-bottom: 12px;">${filtered.length} von ${this.savedRecipesList.length} Rezept(en)</p>
-                                      <div class="saved-list">
-                                          ${filtered.map((item: any) => html`
-                                              <div class="saved-card" @click="${() => this.openSavedRecipe(item)}">
-                                                  <div class="saved-card-content">
-                                                      <h4>${item.title}</h4>
-                                                      <div class="saved-meta">
-                                                          <span>📊 ${item.difficulty || '?'}</span>
-                                                          <span>🕒 ${item.prepTime || '?'}</span>
-                                                          ${item.savedAt ? html`<span>📅 ${new Date(item.savedAt).toLocaleDateString('de-DE')}</span>` : ''}
-                                                      </div>
-                                                      <div class="rating-stars" @click="${(e: Event) => e.stopPropagation()}">
-                                                          ${[1, 2, 3, 4, 5].map(star => html`
-                                                              <button class="star-btn ${star <= (item.rating || 0) ? 'filled' : ''}"
-                                                                      @click="${(e: Event) => this.updateSavedRecipeRating(this.savedRecipesList.indexOf(item), star, e)}"
-                                                                      aria-label="${star} Sterne"
-                                                              >${star <= (item.rating || 0) ? '⭐' : '☆'}</button>
-                                                          `)}
-                                                      </div>
-                                                  </div>
-                                                  <button class="delete-btn" @click="${(e: Event) => this.deleteSavedRecipe(this.savedRecipesList.indexOf(item), e)}" aria-label="${item.title} löschen">🗑️</button>
-                                              </div>
-                                          `)}
-                                      </div>
-                                  `;
-                              })()}
-                          `}
-                          
-                          <button class="secondary-btn" @click="${() => this.showSavedRecipes = false}" style="margin-top: 16px;">
-                              🔙 Zurück zum Generator
-                          </button>
-                      </div>
+                      <eco-chef-saved-recipes
+                          .savedRecipesList="${this.savedRecipesList}"
+                          @open-recipe="${(e: CustomEvent) => this.openSavedRecipe(e.detail.recipe)}"
+                          @delete-recipe="${(e: CustomEvent) => this.deleteSavedRecipe(e.detail.index, e)}"
+                          @update-rating="${(e: CustomEvent) => this.updateSavedRecipeRating(e.detail.index, e.detail.rating, e)}"
+                          @import-recipes="${(e: CustomEvent) => this.importRecipesSuccess(e.detail.recipes)}"
+                          @export-pdf="${this.exportCookbookPdf}"
+                          @back-to-generator="${() => this.showSavedRecipes = false}">
+                      </eco-chef-saved-recipes>
                   ` : ''}
 
                   ${this.currentTab === 'zauberer' && this.recipe && !this._loadedTabs.has('recipe-view') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
@@ -1345,110 +1286,28 @@ export class EcoChef extends LitElement {
         this.recipeImage = null;
         this.srAnnouncement = "Rezept wird von der Künstlichen Intelligenz generiert. Bitte warten Sie einen moment.";
 
-        const portions = this.persons || 2;
-        const textIngredients = this.ingredientChips.join(', ');
-        const pantryKeys = Object.keys(this.selectedPantry).filter(key => this.selectedPantry[key]);
-        const pantryText = pantryKeys.length > 0 ? `\nGrundzutaten in der Vorratskammer (bereits vorhanden und nutzbar): ${pantryKeys.join(', ')}` : '';
-        
-        const urgentList = Object.keys(this.urgentIngredients).filter(k => this.urgentIngredients[k] && this.ingredientChips.includes(k));
-        const urgentText = urgentList.length > 0 ? `\n🚨 DRINGEND ZU VERBRAUCHEN (diese Zutaten MÜSSEN zwingend im Rezept verwendet werden, um Lebensmittelverschwendung zu vermeiden): ${urgentList.join(', ')}` : '';
-        
-        const activeAllergens = Object.keys(this.selectedAllergens).filter(k => this.selectedAllergens[k]);
-        const allergenText = activeAllergens.length > 0 ? `\n⚠️ ALLERGIE- & UNVERTRÄGLICHKEITS-EINSCHRÄNKUNGEN: Das Rezept MUSS absolut frei von folgenden Allergenen sein (entsprechende Zutaten ausschließen oder durch sichere Alternativen ersetzen): ${activeAllergens.join(', ')}` : '';
-        
-        const combinedIngredients = textIngredients + pantryText + urgentText + allergenText;
-
-        const strictIngredientRule = this.allowExtraIngredients
-            ? "- Zutaten: Du darfst das Rezept mit passenden, zusätzlichen Zutaten aufwerten (z.B. Gemüse, Beilagen, Saucen), damit es perfekt wird."
-            : `- Zutaten-Regel (EXTREM WICHTIG): Du darfst AUSSCHLIESSLICH die exakt vom Nutzer angegebenen Zutaten oder auf dem Bild erkennbaren Zutaten verwenden.
-               
-               Füge KEINE EINZIGE weitere Hauptzutat zur Zutatenliste hinzu. Basis-Gewürze (Salz, Pfeffer) sowie Öl und Wasser sind okay.
-               Sei kreativ und erfinde ein neues Gericht, das wirklich NUR aus diesen vorhandenen Zutaten besteht!`;
-
-        const promptText = `
-            Du bist ein professioneller Sternekoch und Ernährungsexperte. Der Nutzer schickt dir Zutaten als Text und/oder ein Foto seines Kühlschranks/seiner Zutaten.
-            
-            Text-Eingabe des Nutzers (inklusive eventueller Vorratskammer-Grundzutaten, Resteverwerter-Modus und Allergenen): ${combinedIngredients}
-            
-            Falls ein Bild beigefügt ist: Analysiere das Bild GANZ GENAU und erkenne alle essbaren Zutaten darauf. Kombiniere sie mit der Text-Eingabe.
-            
-            VORGABEN:
-            - Ernährungsweise: ${this.selectedDiet && this.selectedDiet !== 'egal' ? this.selectedDiet : 'Keine'}
-            - Zeitaufwand: ${this.selectedEffort && this.selectedEffort !== 'egal' ? this.selectedEffort : 'Normal'}
-            - Portionen: 
-            Berechne die Zutatenmengen für exakt ${portions} Person(en).
-            ${strictIngredientRule}
-            
-            ${this.recipeChatHistory.length > 0 ? `🚨 ÄNDERUNGSWÜNSCHE (alle vorherigen und der aktuelle müssen berücksichtigt werden):
-            ${this.recipeChatHistory.map((p, idx) => `${idx + 1}. "${p}"`).join('\n')}` : ''}
-            
-            Antworte AUSSCHLIESSLICH mit einem gültigen JSON-Objekt. Das JSON MUSS diese exakte Struktur haben:
-            {
-              "title": "Name des Gerichts",
-              "difficulty": "Leicht, Mittel oder Schwer",
-              "prepTime": "z.B. 25 Min.",
-              "ecoScore": "Bewerte die Nachhaltigkeit/Regionalität des Gerichts von 1 bis 5 Blättern (Gib NUR diese Emojis zurück: z.B. '🍃🍃🍃🍃')",
-              "ecoScoreDetails": "Ausführliche, ansprechende Begründung des Eco-Scores (z.B. Saisonalität, CO2-Einsparung, regionale Zutaten)",
-              "co2Footprint": "Niedrig, Mittel oder Hoch (Einschätzung des CO2-Fußabdrucks)",
-              "co2SavedKg": 1.2, // geschätzte CO2-Ersparnis in kg gegenüber einem fleischbasierten Vergleichsgericht (als Zahl!)
-              "beverage": "Kurze Empfehlung für ein passendes Getränk (Wein, Bier oder was Alkoholfreies)",
-              "storageTip": "Kurzer Tipp zur Aufbewahrung oder Resteverwertung",
-              "nutrition": { "calories": "z.B. 450 kcal", "protein": "z.B. 25g", "carbs": "z.B. 40g", "fat": "z.B. 15g" },
-              "ingredientsList": [
-                { "item": "Menge und Zutat, z.B. 250g Kirschtomaten", "category": "Kategorie aus: 'Obst & Gemüse', 'Milchprodukte & Eier', 'Fleisch & Fisch', 'Vorrat & Gewürze', 'Bäckerei', 'Sonstiges'" }
-              ],
-              "instructions": ["Schritt 1...", "Schritt 2..."],
-              "tip": "Tipp..."
-            }
-        `;
-
         try {
-            const text = await GeminiService.generateRecipe(this.capturedImage, promptText);
-            try {
-                const startIndex = text.indexOf('{');
-                const endIndex = text.lastIndexOf('}');
+            const urgentList = Object.keys(this.urgentIngredients).filter(k => this.urgentIngredients[k] && this.ingredientChips.includes(k));
+            const activeAllergens = Object.keys(this.selectedAllergens).filter(k => this.selectedAllergens[k]);
+            const pantryKeys = Object.keys(this.selectedPantry).filter(key => this.selectedPantry[key]);
 
-                if (startIndex === -1 || endIndex === -1) {
-                    throw new Error("Kein JSON-Format in der Antwort gefunden.");
-                }
+            this.recipe = await GeminiService.generateRecipeFromOptions({
+                ingredientChips: this.ingredientChips,
+                pantryKeys,
+                urgentIngredients: urgentList,
+                activeAllergens,
+                allowExtraIngredients: this.allowExtraIngredients,
+                diet: this.selectedDiet,
+                effort: this.selectedEffort,
+                portions: this.persons || 2,
+                chatHistory: this.recipeChatHistory,
+                capturedImage: this.capturedImage
+            });
 
-                const jsonString = text.substring(startIndex, endIndex + 1);
-                const parsedData = JSON.parse(jsonString);
+            this.srAnnouncement = `Rezept erfolgreich geladen: ${this.recipe.title}. Bild wird generiert.`;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
 
-                if (!parsedData.title || !parsedData.ingredientsList || !parsedData.instructions) {
-                    throw new Error("Wichtige Rezeptdaten fehlen.");
-                }
-
-                const fallbackNutrition = { calories: "? kcal", protein: "?g", carbs: "?g", fat: "?g" };
-
-                this.recipe = {
-                    title: parsedData.title,
-                    difficulty: parsedData.difficulty || "Unbekannt",
-                    prepTime: parsedData.prepTime || "Unbekannt",
-                    ecoScore: parsedData.ecoScore || "🍃🍃🍃",
-                    ecoScoreDetails: parsedData.ecoScoreDetails || "",
-                    co2Footprint: parsedData.co2Footprint || "Mittel",
-                    co2SavedKg: typeof parsedData.co2SavedKg === 'number' ? parsedData.co2SavedKg : parseFloat(parsedData.co2SavedKg) || 0,
-                    beverage: parsedData.beverage || "Ein frisches Glas Wasser passt wunderbar.",
-                    storageTip: parsedData.storageTip || "Am besten sofort genießen!",
-                    nutrition: parsedData.nutrition || fallbackNutrition,
-                    ingredientsList: Array.isArray(parsedData.ingredientsList) 
-                        ? this.normalizeIngredients(parsedData.ingredientsList) 
-                        : [{ item: "Zutaten konnten nicht geladen werden.", category: "Sonstiges" }],
-                    instructions: Array.isArray(parsedData.instructions) ? parsedData.instructions : ["Zubereitung fehlt."],
-                    tip: parsedData.tip || "Lass es dir schmecken!"
-                };
-
-                this.srAnnouncement = `Rezept erfolgreich geladen: ${this.recipe.title}. Bild wird generiert.`;
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-
-                this.generateRecipeImage(this.recipe.title);
-
-            } catch (parseError) {
-                console.error("Fehler beim Auswerten der KI-Antwort:", parseError);
-                this.lastError = 'parse';
-                showToast('Die KI-Antwort konnte nicht verarbeitet werden. Bitte versuche es nochmal!', 'error', { duration: 5000 });
-            }
+            this.generateRecipeImage(this.recipe.title);
 
         } catch (networkError: any) {
             console.error("API Verbindungsfehler:", networkError);
@@ -1460,9 +1319,11 @@ export class EcoChef extends LitElement {
                 userMsg = 'API-Limit erreicht. Bitte kurz warten und dann erneut versuchen.';
             } else if (errMsg.includes('timeout') || errMsg.includes('DEADLINE')) {
                 userMsg = 'Zeitüberschreitung – die KI hat zu lange gebraucht. Bitte nochmal versuchen.';
+            } else if (errMsg.includes('JSON') || errMsg.includes('Rezeptdaten')) {
+                userMsg = 'Die KI-Antwort konnte nicht verarbeitet werden. Bitte versuche es nochmal!';
             }
             this.lastError = userMsg;
-            showToast(userMsg, 'error', { duration: 6000 });
+            showToast(userMsg, 'error', { duration: 5000 });
         } finally {
             this.isLoading = false;
         }
@@ -1528,6 +1389,7 @@ export class EcoChef extends LitElement {
     toggleSavedView() {
         this.showSavedRecipes = !this.showSavedRecipes;
         if (this.showSavedRecipes) {
+            void this._loadTabComponent('saved-recipes');
             this.showShoppingList = false;
             this.showSettings = false;
             const parsed = StorageService.getSavedRecipes();
@@ -2270,10 +2132,11 @@ export class EcoChef extends LitElement {
         };
 
         try {
+            const encryptedPayload = await CryptoService.encryptData(payload, code);
             const res = await fetch(`https://kvdb.io/ecochefsyncbucket_${code}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ enc: encryptedPayload })
             });
             if (res.ok) {
                 this.syncCode = code;
@@ -2295,29 +2158,33 @@ export class EcoChef extends LitElement {
         try {
             const res = await fetch(`https://kvdb.io/ecochefsyncbucket_${code}`);
             if (res.ok) {
-                const data = await res.json();
+                const rawJson = await res.json();
+                const data = (rawJson && rawJson.enc)
+                    ? await CryptoService.decryptData(rawJson.enc, code)
+                    : rawJson;
+
                 if (data) {
-                    if (data.pantryItemsAdvanced) {
+                    if (data.pantryItemsAdvanced && Array.isArray(data.pantryItemsAdvanced)) {
                         this.pantryItemsAdvanced = data.pantryItemsAdvanced;
                         StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
                     }
-                    if (data.shoppingList) {
+                    if (data.shoppingList && Array.isArray(data.shoppingList)) {
                         this.shoppingList = data.shoppingList;
                         this.saveShoppingList();
                     }
-                    if (data.achievementsList) {
+                    if (data.achievementsList && Array.isArray(data.achievementsList)) {
                         this.achievementsList = data.achievementsList;
                         StorageService.setAchievements(this.achievementsList);
                     }
-                    if (data.stats) {
+                    if (data.stats && typeof data.stats === 'object') {
                         this.stats = data.stats;
                         StorageService.setStats(this.stats);
                     }
-                    if (data.urgentIngredients) {
+                    if (data.urgentIngredients && typeof data.urgentIngredients === 'object') {
                         this.urgentIngredients = data.urgentIngredients;
                         StorageService.setUrgentIngredients(this.urgentIngredients);
                     }
-                    if (data.ingredientChips) {
+                    if (data.ingredientChips && Array.isArray(data.ingredientChips)) {
                         this.ingredientChips = data.ingredientChips;
                         this.saveChips();
                     }
@@ -2427,12 +2294,13 @@ export class EcoChef extends LitElement {
             ingredientChips: this.ingredientChips
         };
         try {
+            const encryptedPayload = await CryptoService.encryptData(payload, this.syncCode);
             await fetch(`https://kvdb.io/ecochefsyncbucket_${this.syncCode}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ enc: encryptedPayload })
             });
-            console.log("Auto-sync push completed successfully.");
+            console.log("Auto-sync push completed successfully (encrypted).");
         } catch (e) {
             console.warn("Auto-sync push failed", e);
         }
@@ -2526,6 +2394,7 @@ export class EcoChef extends LitElement {
             dashboard:    () => import('./components/eco-chef-dashboard'),
             'recipe-view':   () => import('./components/eco-chef-recipe-view'),
             'cooking-mode':  () => import('./components/eco-chef-cooking-mode'),
+            'saved-recipes': () => import('./components/eco-chef-saved-recipes'),
         };
         const loader = loaders[tab];
         if (loader) {

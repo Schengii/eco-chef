@@ -19,19 +19,23 @@
 - `ui-src/` - Quellcode der Frontend-Applikation
   - `eco-chef.ts` - Haupt-App-Komponente (Routing, Navigation, State-Management)
   - `components/` - Wiederverwendbare Lit-Komponenten (Views, Modals, Badges, etc.)
+    - `eco-chef-saved-recipes.ts`: Ausgelagerte Rezeptbuch-Verwaltung & Filter
+    - `eco-chef-cooking-mode.ts`: Kochmodus mit Screen Wake Lock & Haptik
   - `services/` - Geschäftslogik & externe APIs:
+    - `crypto.service.ts`: Clientseitige AES-GCM 256-Bit E2E-Verschlüsselung für Cloud-Sync
     - `gemini.service.ts`: Anbindung an Gemini API (Prompt-Engineering, Structured JSON Output, Bild-/Multimodal-Erkennung)
-    - `storage.service.ts`: Lokaler Speicher (IndexedDB / LocalStorage) für Rezepte, Vorräte, Verlauf
-    - `barcode.service.ts` & `qr.service.ts`: Barcode- und QR-Code-Scanning (OpenFoodFacts API Integration)
-    - `speech.service.ts` & `audio.service.ts`: Web Speech API & Soundeffekte
+    - `storage.service.ts`: Lokaler Speicher mit Quota-Schutz & automatischem Bild-Pruning
+    - `barcode.service.ts` & `qr.service.ts`: Barcode- (OpenFoodFacts mit User-Agent) und standardkonformes Vektor-QR-Code-Scanning/Sharing
+    - `speech.service.ts` & `audio.service.ts`: Web Speech API mit Loop-Schutz & Oszillator-Soundeffekte/Vibration
     - `pdf.service.ts`: Rezept-Export als PDF
     - `dashboard.service.ts`: Nachhaltigkeits-Metriken (CO₂, Food Waste)
   - `models/` - TypeScript-Interfaces & Datenmodelle (`recipe.model.ts`, etc.)
   - `styles/` - Design Tokens, Themes, globale CSS-Variablen
   - `api-config.ts` - Build-Time Injection des Gemini API Keys
+- `api/` - Vercel Serverless Function (`gemini.ts`) mit In-Memory Rate Limiting & Modell-Whitelist
 - `www/` - Webpack Build-Output (Cordova Root)
 - `platforms/` & `plugins/` - Cordova Native Artefakte (nicht manuell editieren)
-- `tests/` bzw. `*.spec.ts` - Jest Unit-Tests
+- `tests/` bzw. `*.spec.ts` - Jest Unit-Tests (27 Tests)
 
 ---
 
@@ -43,10 +47,16 @@ npm run dev
 # Startet webpack-dev-server auf Port 4444 (killt eventuelle alte Prozesse davor)
 ```
 
+### Type Checking
+```bash
+npm run type-check
+# Führt strikte TypeScript-Typprüfung für Frontend und API aus (tsc --noEmit)
+```
+
 ### Production Build
 ```bash
 npm run build
-# Bündelt via Webpack in www/ für Cordova und Web
+# Bündelt via Webpack in www/ für Cordova und Web mit Code-Splitting
 ```
 
 ### Testing
@@ -56,7 +66,7 @@ npm test
 ```
 Ein einzelner Test kann ausgeführt werden mit:
 ```bash
-npx jest ui-src/services/storage.service.spec.ts
+npx jest ui-src/services/crypto.service.spec.ts
 ```
 
 ---

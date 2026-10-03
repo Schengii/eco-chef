@@ -1,11 +1,43 @@
 import { Recipe, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan } from '../models/eco-chef.models';
 
+function safeSetItem(key: string, value: string): boolean {
+    try {
+        localStorage.setItem(key, value);
+        return true;
+    } catch (err: any) {
+        console.warn(`[StorageService] Failed to set ${key} in localStorage:`, err);
+        if (err?.name === 'QuotaExceededError' || err?.code === 22 || err?.number === -2147024882) {
+            // Attempt recovery if this is savedRecipes
+            if (key === 'ecoChef_savedRecipes') {
+                try {
+                    const recipes = JSON.parse(value);
+                    if (Array.isArray(recipes)) {
+                        // Strip image data from older recipes to reclaim space
+                        const pruned = recipes.map((r: any, idx: number) => {
+                            if (idx < recipes.length - 2 && r.image?.startsWith('data:image')) {
+                                return { ...r, image: undefined };
+                            }
+                            return r;
+                        });
+                        localStorage.setItem(key, JSON.stringify(pruned));
+                        console.info('[StorageService] Successfully recovered storage space by pruning old images.');
+                        return true;
+                    }
+                } catch {
+                    // Ignore parsing error on recovery attempt
+                }
+            }
+        }
+        return false;
+    }
+}
+
 export const StorageService = {
     getGdprConsent(): boolean {
         return localStorage.getItem('ecoChef_gdprConsent') === 'true';
     },
     setGdprConsent(consent: boolean): void {
-        localStorage.setItem('ecoChef_gdprConsent', String(consent));
+        safeSetItem('ecoChef_gdprConsent', String(consent));
     },
 
     getTheme(): 'dark' | 'light' | null {
@@ -14,14 +46,14 @@ export const StorageService = {
         return null;
     },
     setTheme(theme: 'dark' | 'light'): void {
-        localStorage.setItem('ecoChef_theme', theme);
+        safeSetItem('ecoChef_theme', theme);
     },
 
     getLrsMode(): boolean {
         return localStorage.getItem('ecoChef_lrsMode') === 'true';
     },
     setLrsMode(mode: boolean): void {
-        localStorage.setItem('ecoChef_lrsMode', String(mode));
+        safeSetItem('ecoChef_lrsMode', String(mode));
     },
 
     getFontScale(): number {
@@ -29,14 +61,14 @@ export const StorageService = {
         return val ? parseFloat(val) : 1.0;
     },
     setFontScale(scale: number): void {
-        localStorage.setItem('ecoChef_fontScale', scale.toFixed(1));
+        safeSetItem('ecoChef_fontScale', scale.toFixed(1));
     },
 
     getShowRuler(): boolean {
         return localStorage.getItem('ecoChef_showRuler') === 'true';
     },
     setShowRuler(show: boolean): void {
-        localStorage.setItem('ecoChef_showRuler', String(show));
+        safeSetItem('ecoChef_showRuler', String(show));
     },
 
     getPantry(): { [key: string]: boolean } {
@@ -51,7 +83,7 @@ export const StorageService = {
         return {};
     },
     setPantry(pantry: { [key: string]: boolean }): void {
-        localStorage.setItem('ecoChef_pantry', JSON.stringify(pantry));
+        safeSetItem('ecoChef_pantry', JSON.stringify(pantry));
     },
 
     getShoppingList(): ShoppingItem[] {
@@ -70,7 +102,7 @@ export const StorageService = {
         return [];
     },
     setShoppingList(list: ShoppingItem[]): void {
-        localStorage.setItem('ecoChef_shoppingList', JSON.stringify(list));
+        safeSetItem('ecoChef_shoppingList', JSON.stringify(list));
     },
 
     getAllergens(): { [key: string]: boolean } {
@@ -85,7 +117,7 @@ export const StorageService = {
         return {};
     },
     setAllergens(allergens: { [key: string]: boolean }): void {
-        localStorage.setItem('ecoChef_allergens', JSON.stringify(allergens));
+        safeSetItem('ecoChef_allergens', JSON.stringify(allergens));
     },
 
     getStats(): { [date: string]: DailyStat } {
@@ -100,7 +132,7 @@ export const StorageService = {
         return {};
     },
     setStats(stats: { [date: string]: DailyStat }): void {
-        localStorage.setItem('ecoChef_stats', JSON.stringify(stats));
+        safeSetItem('ecoChef_stats', JSON.stringify(stats));
     },
 
     getIngredientChips(): string[] {
@@ -115,7 +147,7 @@ export const StorageService = {
         return [];
     },
     setIngredientChips(chips: string[]): void {
-        localStorage.setItem('ecoChef_ingredientChips', JSON.stringify(chips));
+        safeSetItem('ecoChef_ingredientChips', JSON.stringify(chips));
     },
 
     getUrgentIngredients(): { [key: string]: boolean } {
@@ -130,7 +162,7 @@ export const StorageService = {
         return {};
     },
     setUrgentIngredients(urgent: { [key: string]: boolean }): void {
-        localStorage.setItem('ecoChef_urgentIngredients', JSON.stringify(urgent));
+        safeSetItem('ecoChef_urgentIngredients', JSON.stringify(urgent));
     },
 
     getSavedRecipes(): Recipe[] {
@@ -144,8 +176,8 @@ export const StorageService = {
         }
         return [];
     },
-    setSavedRecipes(recipes: Recipe[]): void {
-        localStorage.setItem('ecoChef_savedRecipes', JSON.stringify(recipes));
+    setSavedRecipes(recipes: Recipe[]): boolean {
+        return safeSetItem('ecoChef_savedRecipes', JSON.stringify(recipes));
     },
 
     getCalorieGoal(): number {
@@ -153,7 +185,7 @@ export const StorageService = {
         return val ? parseInt(val, 10) : 2000;
     },
     setCalorieGoal(goal: number): void {
-        localStorage.setItem('ecoChef_calorieGoal', String(goal));
+        safeSetItem('ecoChef_calorieGoal', String(goal));
     },
 
     getProteinGoal(): number {
@@ -161,14 +193,14 @@ export const StorageService = {
         return val ? parseInt(val, 10) : 80;
     },
     setProteinGoal(goal: number): void {
-        localStorage.setItem('ecoChef_proteinGoal', String(goal));
+        safeSetItem('ecoChef_proteinGoal', String(goal));
     },
 
     getGeminiApiKey(): string {
         return localStorage.getItem('ecoChef_geminiApiKey') || '';
     },
     setGeminiApiKey(key: string): void {
-        localStorage.setItem('ecoChef_geminiApiKey', key);
+        safeSetItem('ecoChef_geminiApiKey', key);
     },
 
     getPantryAdvanced(): PantryItemAdvanced[] {
@@ -183,7 +215,7 @@ export const StorageService = {
         return [];
     },
     setPantryAdvanced(pantry: PantryItemAdvanced[]): void {
-        localStorage.setItem('ecoChef_pantry_advanced', JSON.stringify(pantry));
+        safeSetItem('ecoChef_pantry_advanced', JSON.stringify(pantry));
     },
 
     getAchievements(): Achievement[] {
@@ -198,7 +230,7 @@ export const StorageService = {
         return [];
     },
     setAchievements(achievements: Achievement[]): void {
-        localStorage.setItem('ecoChef_achievements', JSON.stringify(achievements));
+        safeSetItem('ecoChef_achievements', JSON.stringify(achievements));
     },
 
     getMealPlan(): MealPlan {
@@ -213,7 +245,7 @@ export const StorageService = {
         return {};
     },
     setMealPlan(plan: MealPlan): void {
-        localStorage.setItem('ecoChef_mealplan', JSON.stringify(plan));
+        safeSetItem('ecoChef_mealplan', JSON.stringify(plan));
     },
 
     getBudgetSettings(): { monthlyBudget: number; currentSpent: number; savedEuro: number } {
@@ -228,14 +260,14 @@ export const StorageService = {
         return { monthlyBudget: 250, currentSpent: 0, savedEuro: 0 };
     },
     setBudgetSettings(budget: { monthlyBudget: number; currentSpent: number; savedEuro: number }): void {
-        localStorage.setItem('ecoChef_budget', JSON.stringify(budget));
+        safeSetItem('ecoChef_budget', JSON.stringify(budget));
     },
 
     getNotificationsEnabled(): boolean {
         return localStorage.getItem('ecoChef_notificationsEnabled') === 'true';
     },
     setNotificationsEnabled(enabled: boolean): void {
-        localStorage.setItem('ecoChef_notificationsEnabled', String(enabled));
+        safeSetItem('ecoChef_notificationsEnabled', String(enabled));
     },
 
     getSoundEffectsEnabled(): boolean {
@@ -243,7 +275,7 @@ export const StorageService = {
         return item === null ? true : item === 'true';
     },
     setSoundEffectsEnabled(enabled: boolean): void {
-        localStorage.setItem('ecoChef_soundEffectsEnabled', String(enabled));
+        safeSetItem('ecoChef_soundEffectsEnabled', String(enabled));
     },
 
     clearAll(): void {

@@ -1,6 +1,20 @@
 import { GoogleGenAI } from '@google/genai';
 import { GEMINI_API_KEY } from '../api-config';
 import { StorageService } from './storage.service';
+import { Recipe } from '../models/eco-chef.models';
+
+export interface RecipeGenerationOptions {
+    ingredientChips: string[];
+    pantryKeys?: string[];
+    urgentIngredients?: string[];
+    activeAllergens?: string[];
+    allowExtraIngredients?: boolean;
+    diet?: string;
+    effort?: string;
+    portions?: number;
+    chatHistory?: string[];
+    capturedImage?: string | null;
+}
 
 function getApiKey(): string {
     return StorageService.getGeminiApiKey() || GEMINI_API_KEY;
@@ -71,6 +85,98 @@ export const GeminiService = {
         const ai = new GoogleGenAI({ apiKey: getApiKey() });
         const response = await ai.models.generateContent(payload);
         return response.text ?? '';
+    },
+
+    async generateRecipeFromOptions(options: RecipeGenerationOptions): Promise<Recipe> {
+        const portions = options.portions || 2;
+        const textIngredients = options.ingredientChips.join(', ');
+        const pantryText = options.pantryKeys && options.pantryKeys.length > 0
+            ? `\nGrundzutaten in der Vorratskammer (bereits vorhanden und nutzbar): ${options.pantryKeys.join(', ')}`
+            : '';
+        const urgentText = options.urgentIngredients && options.urgentIngredients.length > 0
+            ? `\n🚨 DRINGEND ZU VERBRAUCHEN (diese Zutaten MÜSSEN zwingend im Rezept verwendet werden, um Lebensmittelverschwendung zu vermeiden): ${options.urgentIngredients.join(', ')}`
+            : '';
+        const allergenText = options.activeAllergens && options.activeAllergens.length > 0
+            ? `\n⚠️ ALLERGIE- & UNVERTRÄGLICHKEITS-EINSCHRÄNKUNGEN: Das Rezept MUSS absolut frei von folgenden Allergenen sein (ausschließen oder ersetzen): ${options.activeAllergens.join(', ')}`
+            : '';
+
+        const combinedIngredients = textIngredients + pantryText + urgentText + allergenText;
+
+        const strictIngredientRule = options.allowExtraIngredients
+            ? '- Zutaten: Du darfst das Rezept mit passenden, zusätzlichen Zutaten aufwerten (z.B. Gemüse, Beilagen, Saucen).'
+            : `- Zutaten-Regel (EXTREM WICHTIG): Du darfst AUSSCHLIESSLICH die exakt vom Nutzer angegebenen oder auf dem Bild erkennbaren Zutaten verwenden.
+               Füge KEINE EINZIGE weitere Hauptzutat hinzu. Basis-Gewürze (Salz, Pfeffer) sowie Öl und Wasser sind okay.`;
+
+        const chatHistoryText = options.chatHistory && options.chatHistory.length > 0
+            ? `\n🚨 ÄNDERUNGSWÜNSCHE (alle vorherigen und der aktuelle müssen berücksichtigt werden):\n${options.chatHistory.map((p, idx) => `${idx + 1}. "${p}"`).join('\n')}`
+            : '';
+
+        const promptText = `
+Du bist ein professioneller Sternekoch und Nachhaltigkeitsexperte. Der Nutzer schickt dir Zutaten als Text und/oder ein Foto seines Kühlschranks.
+
+Zutaten-Eingabe des Nutzers: ${combinedIngredients}
+
+Falls ein Bild beigefügt ist: Analysiere das Bild GANZ GENAU und erkenne alle essbaren Zutaten darauf. Kombiniere sie mit der Text-Eingabe.
+
+VORGABEN:
+- Ernährungsweise: ${options.diet && options.diet !== 'egal' ? options.diet : 'Keine Einschränkung'}
+- Zeitaufwand: ${options.effort && options.effort !== 'egal' ? options.effort : 'Normal'}
+- Portionen: Berechne die Zutatenmengen für exakt ${portions} Person(en).
+${strictIngredientRule}
+${chatHistoryText}
+
+Antworte AUSSCHLIESSLICH mit einem gültigen JSON-Objekt mit folgender Struktur:
+{
+  "title": "Name des Gerichts",
+  "difficulty": "Leicht, Mittel oder Schwer",
+  "prepTime": "z.B. 25 Min.",
+  "ecoScore": "Bewerte die Nachhaltigkeit von 1 bis 5 Blättern (z.B. '🍃🍃🍃🍃')",
+  "ecoScoreDetails": "Ausführliche Begründung des Eco-Scores",
+  "co2Footprint": "Niedrig, Mittel oder Hoch",
+  "co2SavedKg": 1.2,
+  "beverage": "Passende Getränkeempfehlung",
+  "storageTip": "Kurzer Tipp zur Aufbewahrung oder Resteverwertung",
+  "nutrition": { "calories": "450 kcal", "protein": "25g", "carbs": "40g", "fat": "15g" },
+  "ingredientsList": [
+    { "item": "250g Kirschtomaten", "category": "Obst & Gemüse" }
+  ],
+  "instructions": ["Schritt 1...", "Schritt 2..."],
+  "tip": "Küchen-Tipp..."
+}`;
+
+        const rawText = await this.generateRecipe(options.capturedImage || null, promptText);
+        const startIndex = rawText.indexOf('{');
+        const endIndex = rawText.lastIndexOf('}');
+        if (startIndex === -1 || endIndex === -1) {
+            throw new Error('Kein gültiges JSON in der KI-Antwort gefunden.');
+        }
+
+        const parsed = JSON.parse(rawText.substring(startIndex, endIndex + 1));
+        if (!parsed.title || !parsed.ingredientsList || !parsed.instructions) {
+            throw new Error('Wichtige Rezeptdaten fehlen in der KI-Antwort.');
+        }
+
+        return {
+            title: parsed.title,
+            difficulty: parsed.difficulty || 'Mittel',
+            prepTime: parsed.prepTime || '25 Min.',
+            ecoScore: parsed.ecoScore || '🍃🍃🍃',
+            ecoScoreDetails: parsed.ecoScoreDetails || '',
+            co2Footprint: parsed.co2Footprint || 'Mittel',
+            co2SavedKg: typeof parsed.co2SavedKg === 'number' ? parsed.co2SavedKg : parseFloat(parsed.co2SavedKg) || 0,
+            beverage: parsed.beverage || 'Ein frisches Glas Wasser passt wunderbar.',
+            storageTip: parsed.storageTip || 'Am besten sofort genießen!',
+            nutrition: parsed.nutrition || { calories: '? kcal', protein: '?g', carbs: '?g', fat: '?g' },
+            ingredientsList: Array.isArray(parsed.ingredientsList)
+                ? parsed.ingredientsList.map((ing: any) => {
+                    if (typeof ing === 'string') return { item: ing, category: 'Sonstiges' };
+                    if (ing && typeof ing === 'object' && 'item' in ing) return { item: ing.item, category: ing.category || 'Sonstiges' };
+                    return { item: String(ing), category: 'Sonstiges' };
+                })
+                : [{ item: 'Zutaten konnten nicht geladen werden.', category: 'Sonstiges' }],
+            instructions: Array.isArray(parsed.instructions) ? parsed.instructions : ['Zubereitung fehlt.'],
+            tip: parsed.tip || 'Lass es dir schmecken!'
+        };
     },
 
     async generateRecipeImage(title: string): Promise<string> {

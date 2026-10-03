@@ -19,14 +19,19 @@ EcoChef ist als **Multi-Plattform Hybrid-App** konzipiert. Sie verwendet Standar
 ```
 EcoChef/
 ├── api/
-│   ├── gemini.ts           # Vercel Serverless Function (Gemini REST-Proxy)
+│   ├── gemini.ts           # Vercel Serverless Function (Gemini REST-Proxy mit Rate-Limiting & Model-Whitelist)
 │   └── tsconfig.json       # TypeScript für NodeNext-Modul-Resolution
 ├── ui-src/
 │   ├── index.html          # HTML-Einstiegspunkt (CSP-Meta, SW-Registrierung)
 │   ├── api-config.ts       # Build-Zeit API-Key-Injektion via Webpack DefinePlugin
 │   ├── eco-chef.ts         # Hauptkomponente: zentraler Controller & App-State
 │   ├── components/         # Modulare Lit-Komponenten (Views, Modals, Widgets)
+│   │   └── eco-chef-saved-recipes.ts # Ausgelagerte Rezeptbuch-Verwaltung & Filter
 │   ├── services/           # Geschäftslogik & externe APIs
+│   │   ├── crypto.service.ts # Clientseitige E2E-Verschlüsselung (AES-GCM 256-Bit)
+│   │   ├── qr.service.ts   # Standardkonforme Vektor-QR-Codes (ISO/IEC 18004)
+│   │   ├── storage.service.ts # Quota-geschützte Persistenz & automatisches Bild-Pruning
+│   │   └── ...
 │   ├── models/             # TypeScript-Interfaces & gemeinsame Hilfsfunktionen
 │   └── styles/             # Design Tokens & CSS-Variablen
 ├── www/                    # Webpack Build-Output (Cordova-Root, Vercel-Static)
@@ -134,6 +139,11 @@ Falls der Nutzer in den Einstellungen einen eigenen Key eingetragen hat, ruft de
 
 Die Function kommuniziert direkt mit der Gemini REST API – ohne das `@google/genai` SDK. Dies vermeidet den ESM/CJS-Konflikt (das SDK ist ESM-only, Vercel's `@vercel/node` kompiliert zu CommonJS).
 
+**Sicherheits- & Härtungs-Maßnahmen:**
+- **In-Memory Rate Limiting:** Sliding-Window Drosselung auf maximal 30 Anfragen pro Minute je Client-IP. Überschreitungen werden mit HTTP 429 beantwortet.
+- **Modell-Whitelist (`ALLOWED_MODELS`):** Erlaubt ausschließlich verifizierte Modelle (`gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-1.5-flash`, `imagen-3.0-generate-002`). Unzulässige Modellbezeichner werden mit HTTP 400 abgewiesen.
+- **CORS-Restriktionen:** Zulassung der definierten Header `Content-Type` und `Authorization`.
+
 ```
 POST /api/gemini
 Body: {
@@ -165,6 +175,10 @@ POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:ge
 ### D. Strukturierte JSON-Ausgabe
 
 Alle Rezept-Anfragen setzen `responseMimeType: 'application/json'` in der `generationConfig`. Das zwingt Gemini, ausschließlich valides JSON zurückzugeben, das direkt in die Lit-Komponenten gerendert werden kann.
+
+### E. Prompt-Kapselung & Typisierte Optionen
+
+Zur Trennung von Präsentations- und Geschäftslogik kapselt `GeminiService.generateRecipeFromOptions(options: RecipeGenerationOptions)` das gesamte Prompt-Engineering. Die UI übergibt strukturierte Parameter (`ingredients`, `urgentIngredients`, `pantryItems`, `allergens`, `diet`, `time`, `servings`, `strictMode`, `imagePart`), während der Service den System-Prompt, Few-Shot-Anweisungen und JSON-Rückgabespezifikationen konsolidiert.
 
 ---
 
@@ -236,6 +250,14 @@ Service Worker werden in Cordova-Apps nicht registriert, da `file://`-Protokoll 
 | `ecoChef_proteinGoal` | `string` | Tägliches Proteinziel |
 | `ecoChef_geminiApiKey` | `string` | Optionaler Nutzer-API-Key |
 
+### C. Clientseitige Ende-zu-Ende-Verschlüsselung (`CryptoService`)
+Zur sicheren geräteübergreifenden Synchronisation nutzt die App die native Web Crypto API (`window.crypto.subtle`):
+- **Schlüsselableitung:** Der 6-stellige alphanumerische Sync-Code dient als Basis. Mittels PBKDF2 (100.000 Iterationen, SHA-256) und einem 16-Byte Salt wird ein 256-Bit symmetrischer AES-GCM-Schlüssel abgeleitet.
+- **Payload-Verschlüsselung:** JSON-Payloads (Vorratskammer, Rezepte) werden mit AES-GCM (12-Byte random IV) verschlüsselt. Die Cloud speichert ausschließlich Base64-Chiffrate (`{ iv, salt, data }`). Ohne den Sync-Code ist die Entschlüsselung unmöglich (Zero-Knowledge-Prinzip).
+
+### D. Speicher-Quota-Schutz & Bilddaten-Pruning
+`StorageService.safeSetItem()` fängt `QuotaExceededError`-Ausnahmen bei vollem `localStorage` ab. In diesem Fall führt der Service eine Bereinigung historischer Rezepte durch, indem speicherintensive Base64-Bilddaten entfernt werden, während Kochanleitungen und Zutatenlisten erhalten bleiben. Anschließend wird der Schreibversuch erfolgreich wiederholt.
+
 ---
 
 ## 7. Android-Build-Anleitung
@@ -304,16 +326,20 @@ Im Rahmen des Projekts wurden folgende Kernbereiche eigenständig konzipiert und
    Da `@google/genai` v1.x ESM-only ist und Vercels `@vercel/node` CommonJS erzeugt, wurde der Proxy komplett ohne SDK als direkter REST-API-Aufruf (`fetch`) implementiert.
 
 3. **Modulare Web-Component-Architektur:**
-   Strukturierung als SPA auf Basis von Lit. 9 spezialisierte Unterkomponenten für hohe Wartbarkeit und Wiederverwendbarkeit.
+   Strukturierung als SPA auf Basis von Lit. 10 spezialisierte Unterkomponenten (inkl. ausgelagerter Rezeptverwaltung `eco-chef-saved-recipes`) für hohe Wartbarkeit und Wiederverwendbarkeit.
 
-4. **Datenpersistenz:**
-   `StorageService` zur lokalen Datenhaltung via LocalStorage. Die App funktioniert vollständig offline (außer bei KI-Anfragen).
+4. **Datenpersistenz & Sicherheit:**
+   - `StorageService` mit automatischem LocalStorage Quota-Schutz und Pruning
+   - Clientseitige Ende-zu-Ende-Verschlüsselung (`CryptoService`) via Web Crypto API (AES-GCM 256-Bit) für Cloud-Synchronisation
+   - Vollständige Offline-Fähigkeit mit modernisierter Service Worker PWA-Strategie (Network-First für HTML, Stale-While-Revalidate für statische Assets)
 
 5. **Kamera-Integration (Hybrid):**
    Native Gerätekamera über `cordova-plugin-camera` mit automatischem Fallback auf `navigator.mediaDevices.getUserMedia` im Browser.
 
-6. **Sprachsteuerung & Barrierefreiheit:**
-   Web Speech API (`SpeechRecognition` / `SpeechSynthesis`) für freihändige Navigation mit Graceful-Fallback wenn nicht unterstützt.
+6. **Kochmodus & Sprachsteuerung:**
+   - Screen Wake Lock API: Verhindert automatisches Abschalten des Bildschirms beim Kochen mit nassen Händen
+   - Haptisches Feedback via `navigator.vibrate` bei Navigation, Schnell-Timern und Alarmen
+   - Web Speech API (`SpeechRecognition` / `SpeechSynthesis`) für freihändige Navigation mit 5-Retry Loop-Schutz und Backoff
 
 7. **Erweiterte Lesehilfen:**
    LRS-Modus (OpenDyslexic-Schriftart, modifizierte Zeilenabstände) und Drag-&-Drop-Leselineal.
@@ -322,16 +348,18 @@ Im Rahmen des Projekts wurden folgende Kernbereiche eigenständig konzipiert und
    CO₂-Ersparnis-Berechnung mit Fallback-Schätzung basierend auf Eco-Score und Ernährungsweise.
 
 9. **Premium-UI/UX:**
-   HSL-basiertes, barrierefreies CSS-Designsystem mit Dark-Mode und Mikro-Animationen.
+   HSL-basiertes, barrierefreies CSS-Designsystem mit Dark-Mode, Mikro-Animationen und Webpack Code-Splitting mit Content-Hashing.
 
 10. **Erweiterungen & Qualitätssicherung:**
+    - Standardkonforme Vektor-QR-Codes (ISO/IEC 18004) für Rezept-Sharing via beliebiger Kamera-App
+    - OpenFoodFacts Barcode API (`BarcodeService`) mit RFC-konformen User-Agent & Accept Headern
+    - API-Proxy-Härtung mit Per-IP Rate Limiting (30 Req/Min) und Gemini Modell-Whitelist
     - Dynamische Portionsrekonstruktion (Echtzeit-Skalierung von Mengen und Nährwerten)
-    - OpenFoodFacts Barcode API (`BarcodeService`) für EAN-13 Produktabfragen
-    - Vektor QR-Code Sharing ohne externe Bibliotheken
     - Regio-Markt Finder (`eco-chef-regional-map`)
     - Budget- & MHD-Ablauf-Tracking
     - Vollständiges JSON-Datensicherungs-System
-    - Automatisierte Jest-Unit-Tests (22 Tests, 100 % Erfolgsquote)
+    - Automatisierte Jest-Unit-Tests (27 Tests über 8 Test-Suites, 100 % Erfolgsquote)
+    - Strikte TypeScript-Prüfung (`npm run type-check`) in lokaler Entwicklung und GitHub Actions CI
     - Nährwert- & Klimaschutz-Dashboard
     - Globales Floating-Timer-Widget
     - „Mystery Box" Restekiste-Algorithmus

@@ -4,6 +4,31 @@ export const config = { maxDuration: 60 };
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+const ALLOWED_MODELS = new Set([
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro'
+]);
+
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 Minute
+const MAX_REQUESTS_PER_WINDOW = 30; // Max 30 Anfragen pro Minute pro IP
+
+function isRateLimited(ip: string): boolean {
+    const now = Date.now();
+    const record = rateLimitMap.get(ip);
+    if (!record || now > record.resetTime) {
+        rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+        return false;
+    }
+    if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+        return true;
+    }
+    record.count++;
+    return false;
+}
+
 type Part = { text: string } | { inlineData: { data: string; mimeType: string } };
 
 function toRestContents(contents: unknown[]): unknown[] {
@@ -16,6 +41,11 @@ function toRestContents(contents: unknown[]): unknown[] {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    if (isRateLimited(clientIp)) {
+        return res.status(429).json({ error: 'Zu viele Anfragen. Bitte warte einen Moment.' });
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -33,8 +63,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         if (action === 'generateContent') {
-            if (!model || !Array.isArray(contents)) {
-                return res.status(400).json({ error: 'Für generateContent sind model und contents (Array) erforderlich.' });
+            if (!model || typeof model !== 'string' || !ALLOWED_MODELS.has(model)) {
+                return res.status(400).json({ error: `Ungültiges oder nicht autorisiertes Modell: ${String(model)}` });
+            }
+            if (!Array.isArray(contents)) {
+                return res.status(400).json({ error: 'Für generateContent ist contents (Array) erforderlich.' });
             }
 
             const body: Record<string, unknown> = {

@@ -22,7 +22,12 @@ export const BarcodeService = {
         }
 
         try {
-            const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(cleanBarcode)}.json`);
+            const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(cleanBarcode)}.json`, {
+                headers: {
+                    'User-Agent': 'EcoChef/1.2.0 (https://github.com/Schengii/eco-chef; support@eco-chef.app)',
+                    'Accept': 'application/json'
+                }
+            });
             if (!response.ok) {
                 return {
                     found: false,

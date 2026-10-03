@@ -74,4 +74,24 @@ describe('StorageService Tests', () => {
     StorageService.setMealPlan(testPlan);
     expect(StorageService.getMealPlan()).toEqual(testPlan);
   });
+
+  test('should store and retrieve Saved Recipes safely', () => {
+    expect(StorageService.getSavedRecipes()).toEqual([]);
+    const testRecipes = [{
+      title: 'Curry',
+      difficulty: 'Leicht',
+      prepTime: '15 Min',
+      ecoScore: 'A',
+      beverage: 'Tee',
+      storageTip: 'Kühl lagern',
+      nutrition: { calories: '300', protein: '10g', carbs: '40g', fat: '5g' },
+      ingredientsList: [{ item: 'Reis', category: 'Vorrat' }],
+      instructions: ['Kochen'],
+      tip: 'Guten Appetit'
+    }];
+    const success = StorageService.setSavedRecipes(testRecipes as any);
+    expect(success).toBe(true);
+    expect(StorageService.getSavedRecipes().length).toBe(1);
+    expect(StorageService.getSavedRecipes()[0].title).toBe('Curry');
+  });
 });

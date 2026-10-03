@@ -183,6 +183,63 @@ export class EcoChefCookingMode extends LitElement {
     @property({ type: String }) assistantAnswer = '';
 
     @state() private questionInput = '';
+    private wakeLock: any = null;
+
+    override connectedCallback() {
+        super.connectedCallback();
+        this._requestWakeLock();
+        if (typeof document !== 'undefined') {
+            document.addEventListener('visibilitychange', this._handleVisibilityChange);
+        }
+    }
+
+    override disconnectedCallback() {
+        super.disconnectedCallback();
+        this._releaseWakeLock();
+        if (typeof document !== 'undefined') {
+            document.removeEventListener('visibilitychange', this._handleVisibilityChange);
+        }
+    }
+
+    private async _requestWakeLock() {
+        if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+            try {
+                this.wakeLock = await (navigator as any).wakeLock.request('screen');
+                this.wakeLock.addEventListener('release', () => {
+                    this.wakeLock = null;
+                });
+            } catch (err) {
+                console.warn('Wake Lock request failed:', err);
+            }
+        }
+    }
+
+    private _releaseWakeLock() {
+        if (this.wakeLock) {
+            try {
+                this.wakeLock.release();
+            } catch (err) {
+                console.warn('Wake Lock release error:', err);
+            }
+            this.wakeLock = null;
+        }
+    }
+
+    private _handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible' && !this.wakeLock) {
+            this._requestWakeLock();
+        }
+    };
+
+    private _vibrate(pattern: number | number[] = 50) {
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            try {
+                navigator.vibrate(pattern);
+            } catch {
+                // Ignore if blocked
+            }
+        }
+    }
 
     private _askAssistant() {
         if (!this.questionInput.trim()) return;
@@ -201,14 +258,17 @@ export class EcoChefCookingMode extends LitElement {
     }
 
     private _close() {
+        this._releaseWakeLock();
         this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
     }
 
     private _prevStep() {
+        this._vibrate(40);
         this.dispatchEvent(new CustomEvent('prev-step', { bubbles: true, composed: true }));
     }
 
     private _nextStep() {
+        this._vibrate(50);
         this.dispatchEvent(new CustomEvent('next-step', { bubbles: true, composed: true }));
     }
 
@@ -217,10 +277,12 @@ export class EcoChefCookingMode extends LitElement {
     }
 
     private _toggleVoice() {
+        this._vibrate(60);
         this.dispatchEvent(new CustomEvent('toggle-voice', { bubbles: true, composed: true }));
     }
 
     private _startTimer(minutes?: number, label?: string) {
+        this._vibrate([80, 40, 80]);
         this.dispatchEvent(new CustomEvent('start-timer', {
             detail: {
                 minutes: typeof minutes === 'number' ? minutes : this.currentStepTimeMinutes,

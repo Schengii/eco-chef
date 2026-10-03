@@ -25,6 +25,13 @@ class AudioServiceClass {
 
     playAlarm(): void {
         this.alarmActive = true;
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            try {
+                navigator.vibrate([400, 200, 400, 200, 400]);
+            } catch {
+                // Ignore if blocked
+            }
+        }
         const ctx = this.initContext();
         if (!ctx) return;
 
