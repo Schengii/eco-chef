@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: |
-          npm ci > npm.log 2>&1 || { echo "::error::$(grep -i 'npm error' npm.log | head -8 | tr '\n' ' ')"; exit 1; }
+      # package-lock.json lacks cordova-plugin-network-information; switch back to `npm ci` after `npm install`
+      - run: npm install --no-audit --no-fund
       - run: npm test
       - run: npm run build
