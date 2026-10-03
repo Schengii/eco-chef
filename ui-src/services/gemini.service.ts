@@ -14,7 +14,7 @@ function getProxyUrl(): string {
     // In Cordova (file:// or content:// protocol), use the absolute Vercel proxy URL
     if (typeof window !== 'undefined' &&
         (window.location.protocol === 'file:' || window.location.protocol === 'content:' || (window as any).cordova)) {
-        return 'https://eco-chef-schengii.vercel.app/api/gemini';
+        return 'https://eco-chef-theta.vercel.app/api/gemini';
     }
     return '/api/gemini';
 }
