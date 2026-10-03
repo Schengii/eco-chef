@@ -83,6 +83,7 @@ export class EcoChefRecipeView extends LitElement {
     }
 
     private _printRecipe() {
+        window.print();
         this.dispatchEvent(new CustomEvent('print-recipe', { bubbles: true, composed: true }));
     }
 

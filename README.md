@@ -15,9 +15,12 @@
 ## 🌟 Kernfunktionen & Features
 
 - 🪄 **KI-Rezept-Zauberer (Google Gemini 2.5 Flash & Imagen):** Generierung maßgeschneiderter Rezepte inkl. Nährwerten, Eco-Score, Wein-/Getränkeempfehlung & Gerichtsfoto.
+- 📷 **Live-Kamera-Barcodescanner & EAN-Lookup:** Erkennt Barcodes (EAN-13, EAN-8, UPC) direkt live im Kamerasucher via nativer `BarcodeDetector`-API und importiert Produktdaten und Nutri-Score von OpenFoodFacts.
+- 📅 **Wochenplan Kalender-Export (.ics):** Generiere einen personalisierten Wochenplan und exportiere ihn mit einem Klick als standardkonforme iCalendar-Datei (.ics) für Google Kalender, Apple Kalender oder Outlook.
+- 🖨️ **Print-CSS für Einzelrezepte:** Perfekt formatiertes DIN-A4-Drucklayout für jedes Rezept auf Knopfdruck (blendet Navigation, Chat und Buttons aus).
+- 🗄️ **Duales IndexedDB & Quota-Speichersystem:** Asynchrone, unbegrenzte Persistenz via IndexedDB (`ecoChef_db`) mit synchronem Fallback und Quota-Management in LocalStorage.
 - 📱 **QR-Code Rezept-Sharing:** Generiere hochauflösende, fehlerkorrigierte Vektor-QR-Codes (ISO/IEC 18004) für jedes Rezept, direkt mit jeder Smartphone-Kamera scannbar.
 - 🔐 **Ende-zu-Ende verschlüsselte Cloud-Synchronisation:** Nahtlose Übertragung aller Rezepte und Vorräte zwischen Geräten via AES-GCM 256-Bit Verschlüsselung mit individuellem Sync-Code.
-- 🔍 **OpenFoodFacts EAN-Barcode-Scanner:** Scanne Barcodes von Lebensmittelverpackungen, um Name, Marke, Nutri-Score (A-E) und Haltbarkeit automatisch via konformer API-Schnittstelle abzufragen.
 - 🌾 **Regionalitäts- & Wochenmarkt-Finder:** Entdecke regionale Wochenmärkte, Hofläden & Unverpackt-Geschäfte in deiner Nähe inkl. Öffnungszeiten, Entfernung und Direktübernahme von Markt-Spezialitäten auf deine Einkaufsliste.
 - 💰 **Monatsbudget-Tracker & Spar-Kalkulator:** Lege dein monatliches Lebensmittelbudget fest, verfolge deine Ausgaben und berechne deine Ersparnis durch Resteverwertung.
 - 🚨 **MHD Ablauf-Erinnerungen & Warn-Banner:** Automatische Warnung auf dem Startbildschirm bei Zutaten mit Ablaufdatum in ≤ 2 Tagen inkl. 1-Klick-Rezeptverkochen.
@@ -160,16 +163,17 @@ EcoChef/
 │   │   ├── eco-chef-meal-planner.ts      # Wochenplaner
 │   │   ├── eco-chef-toast.ts             # Toast/Snackbar Benachrichtigungs-System
 │   │   └── eco-chef-achievements.ts      # Erfolge & SVG-Charts
-│   ├── services/               # Gemini API, Crypto, Barcode, QR, Storage, Speech Services
+│   ├── services/               # Gemini API, Calendar, Crypto, Barcode, QR, Storage, Speech Services
+│   │   ├── calendar.service.ts # RFC 5545 iCalendar-Export (.ics) für Wochenpläne
 │   │   ├── crypto.service.ts   # Clientseitige AES-GCM 256-Bit E2E-Verschlüsselung für Sync
 │   │   ├── qr.service.ts       # Standardkonforme Vektor-QR-Code-Generierung
-│   │   ├── storage.service.ts  # Quota-geschützte Persistenz & Bilddaten-Pruning
+│   │   ├── storage.service.ts  # Duales IndexedDB- & Quota-Storage mit Bilddaten-Pruning
 │   │   ├── barcode.service.ts  # OpenFoodFacts API mit RFC-konformem User-Agent
 │   │   ├── gemini.service.ts   # Strukturierte Prompts & Proxy-Routing
 │   │   ├── speech.service.ts   # Sprachsteuerung mit Loop-Schutz & Backoff
 │   │   └── audio.service.ts    # Haptik & synthetisierte Alarme
 │   ├── models/                 # TypeScript Interfaces & gemeinsame Hilfsfunktionen
-│   └── styles/                 # Design System & CSS Tokens
+│   └── styles/                 # Design System & CSS Tokens inkl. Print-CSS
 ├── www/                        # Webpack Build-Output (Cordova-Root)
 ├── platforms/android/          # Generierter Android-Code (nicht manuell bearbeiten)
 ├── BENUTZERANLEITUNG.md        # Ausführliche Anleitung für Anwender
@@ -217,6 +221,26 @@ Das Projekt ist für den Einsatz von KI-Assistenten (insbesondere [Claude Code](
 ---
 
 ## 📋 Changelog
+
+### v1.3.1 (2026-10-03) – Pro Features & Full Verification
+
+#### ✅ Neu: Live-Kamera-Barcodescanner (BarcodeDetector API)
+- Hardware-beschleunigter Live-Sucher mit animierter Laser-Scanlinie in `eco-chef-pantry.ts`
+- Automatische Erkennung von EAN-13, EAN-8 und UPC mit akustischem Chime und haptischer Vibration
+- Direktes automatisches Nachschlagen bei OpenFoodFacts
+
+#### ✅ Neu: Wochenplan Kalender-Export (.ics)
+- Neuer `CalendarService` (`calendar.service.ts`) zur Generierung von RFC 5545 iCalendar-Dateien
+- Erzeugt Termine für geplante Gerichte mit Rezeptdetails, Kochzeit und CO₂-Ersparnis
+- 1-Klick-Export für Google Kalender, Apple Kalender und Microsoft Outlook (inkl. 4 Unit-Tests)
+
+#### ✅ Neu: Professionelles Print-CSS für Einzelrezepte
+- Schaltfläche „🖨️ Rezept drucken" in `eco-chef-recipe-view.ts`
+- Umfassendes `@media print`-Stylesheet in `eco-chef.styles.ts`: blendet Header, Navigation, Chat und Buttons aus und erzeugt ein sauberes DIN-A4-Rezeptblatt
+
+#### ✅ Neu: Duales IndexedDB- & Quota-Speichersystem
+- Asynchrone Persistierung aller Rezepte in IndexedDB (`ecoChef_db`) ohne Größenbeschränkungen
+- Nahtlose Kombination mit synchronem LocalStorage-Cache und automatischem Bilddaten-Pruning
 
 ### v1.3.0 (2026-10-03) – Security, Quality & Architecture Optimizations
 

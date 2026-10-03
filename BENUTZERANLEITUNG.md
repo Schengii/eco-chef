@@ -85,6 +85,7 @@ Nach dem Klick auf **✨ Rezept Zaubern** erstellt Gemini 2.5 Flash ein maßgesc
 * **Nährwertangaben & CO₂-Ersparnis:** Übersicht der Kalorien, Proteine, Kohlenhydrate, Fette sowie der geschätzten CO₂-Ersparnis gegenüber einem Fleischgericht.
 * **Getränkeempfehlung & Aufbewahrungstipp:** Vorschläge für passende Getränke und Lagerungshinweise.
 * **Dynamische Portionsskalierung (1–12 Personen):** Verändere direkt in der Rezeptansicht die Personenanzahl – alle Mengenangaben und Nährwerte werden in Echtzeit umgerechnet.
+* **🖨️ DIN-A4 Druckansicht:** Klicke auf **„🖨️ Rezept drucken"**, um das Gericht perfekt formatiert (ohne Menüleisten oder Buttons) auf Papier oder als PDF auszudrucken.
 
 ---
 
@@ -138,7 +139,8 @@ Jedes generierte Rezept kann dauerhaft gesichert werden:
 
 ## 8. Barcode-Scanner & Regio-Markt Finder
 
-* **EAN-Barcode Scanner 🔍:** In der Vorratskammer kannst du den 8- bis 14-stelligen Barcode von Lebensmittelverpackungen eingeben. Die App fragt automatisch Produktdaten, Nutri-Score (A-E) und geschätzte Haltbarkeit von OpenFoodFacts ab.
+* **📷 Live-Kamera Barcodescanner:** Tippe in der Vorratskammer auf **„📷 Live-Scan"**. Halte die Lebensmittelverpackung vor die Handykamera – der Barcode (EAN-13, EAN-8) wird in Sekundenbruchteilen im Kamerasucher erkannt, mit sanfter Vibration bestätigt und Produktdetails von OpenFoodFacts importiert.
+* **EAN-Barcode manuelle Suche 🔍:** Alternativ kannst du den Barcode auch von Hand in das Textfeld eintippen.
 * **Kassenzettel-Scan 🧾:** Fotografiere deinen Einkaufsbon – die KI extrahiert alle Lebensmittel automatisch mit Mengen und Lagerort.
 * **Regio-Markt Finder 🌾:** Wechsel im Hauptmenü auf **Regio Markt**, um Wochenmärkte, Hofläden und Unverpackt-Geschäfte in deiner Nähe zu entdecken. Mit einem Klick kannst du Frische-Spezialitäten direkt auf deine Einkaufsliste setzen.
 * **Monatsbudget & Spar-Calculator 💰:** Trage in den Einstellungen dein gewünschtes Lebensmittelbudget ein. Auf der Einkaufsliste siehst du deinen Budget-Fortschritt sowie deine Ersparnis durch das Verwenden ablaufender Reste.
@@ -159,8 +161,9 @@ EcoChef wurde im Hinblick auf Barrierefreiheit (WCAG compliant) entwickelt. In d
 ## 10. Neue Zusatz-Features
 
 * **📊 Nährwert- & Klimaschutz-Analytics:** Der Tab **📊 Analytics** visualisiert deine tägliche Kalorien- und Proteinaufnahme sowie Umwelt-Meilensteine (Autofahrt-Kilometer, gepflanzte Bäume, Handy-Ladungen) und einen 7-Tage-Verlauf.
+* **📅 Wochenplaner & Kalender-Export (.ics):** Generiere automatisch einen personalisierten Speiseplan (Mo–So). Mit einem Klick auf **„📅 In Kalender exportieren (.ics)"** wird der gesamte Wochenplan in deinen Kalender (Google, Apple, Outlook) übertragen.
+* **🗄️ Duales IndexedDB-Speichersystem:** Rezepte werden zusätzlich in IndexedDB gesichert, sodass deine Rezeptsammlung unbegrenzt viele Gerichte und Fotos fassen kann.
 * **⏱️ Globaler Mini-Timer (Floating Widget):** Wenn ein Koch-Timer läuft und du den Kochmodus verlässt, erscheint unten rechts ein schwebendes Timer-Widget. Es zeigt den Live-Countdown und lässt dich pausieren, um +1 Min. verlängern oder in den Kochmodus zurückspringen.
 * **🎲 „Mystery Box" Restekiste:** Ein Klick auf **🎲 Restekiste Zaubern** in der Reste-Kammer wählt automatisch die 3 am schnellsten ablaufenden Zutaten aus und startet sofort ein 15-Minuten-Express-Rezept.
 * **🥫 Vorratskammer-Sortierung & Ampel-System:** Filter nach Lagerort (*Kühlschrank, Vorratskammer, Gefrierfach, 🚨 Bald ablaufend*) und automatische MHD-Ampeln (Rot = abgelaufen/heute, Orange = 1–3 Tage, Grün = haltbar).
 * **🔊 Synthetisierte Web-Audio Soundeffekte:** Akustisches Feedback bei geschafften Erfolgen, hinzugefügten Zutaten und beendeten Timern (in den Einstellungen ein-/ausschaltbar).
-* **📅 Wochenplaner:** Generiere automatisch einen personalisierten Speiseplan (Mo–So) basierend auf deinen Vorräten, Ernährungsweise und Zeitaufwand. Unterstützt auch Meal-Prep-Optimierung.

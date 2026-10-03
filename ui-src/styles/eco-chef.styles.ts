@@ -1291,4 +1291,72 @@ export const ecoChefStyles = css`
             margin-top: 6px;
         }
     }
+
+    @media print {
+        header,
+        .tab-bar,
+        .mini-timer-widget,
+        .toast-container,
+        .reading-ruler,
+        .camera-overlay,
+        .modal-overlay,
+        .main-btn,
+        .secondary-btn,
+        .step-btn,
+        .icon-btn,
+        .regenerate-box,
+        .recipe-rating-box,
+        .share-btn,
+        button {
+            display: none !important;
+        }
+
+        body,
+        .app-wrapper {
+            background: #ffffff !important;
+            color: #000000 !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .recipe-paper {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            max-width: 100% !important;
+        }
+
+        .recipe-title {
+            color: #000000 !important;
+            font-size: 24pt !important;
+            margin-bottom: 8pt !important;
+        }
+
+        .recipe-meta,
+        .macros-box {
+            border: 1px solid #d1d5db !important;
+            background: #f9fafb !important;
+            color: #111827 !important;
+            box-shadow: none !important;
+            margin-bottom: 12pt !important;
+        }
+
+        .ingredients-list li,
+        .instructions-list li {
+            color: #111827 !important;
+            font-size: 11pt !important;
+            line-height: 1.6 !important;
+            page-break-inside: avoid;
+        }
+
+        .recipe-image-box img {
+            max-height: 220px !important;
+            object-fit: cover !important;
+            border-radius: 6px !important;
+            border: 1px solid #e5e7eb !important;
+        }
+    }
 `;

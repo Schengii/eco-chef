@@ -1,6 +1,8 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { MealPlan, MealPlanDay } from '../models/eco-chef.models';
+import { CalendarService } from '../services/calendar.service';
+import { showToast } from './eco-chef-toast';
 
 @customElement('eco-chef-meal-planner')
 export class EcoChefMealPlanner extends LitElement {
@@ -193,6 +195,15 @@ export class EcoChefMealPlanner extends LitElement {
         }));
     }
 
+    private exportCalendar() {
+        const success = CalendarService.downloadIcsFile(this.mealPlan);
+        if (success) {
+            showToast('Wochenplan als Kalenderdatei (.ics) exportiert!', 'success');
+        } else {
+            showToast('Fehler beim Exportieren des Kalenders.', 'error');
+        }
+    }
+
     override render() {
         const hasPlan = Object.keys(this.mealPlan).length > 0;
 
@@ -226,6 +237,9 @@ export class EcoChefMealPlanner extends LitElement {
                             Noch kein Wochenplan generiert. Lass die KI einen maßgeschneiderten Plan für dich erstellen!
                         </div>
                     ` : html`
+                        <button class="action-btn" style="width: 100%; padding: 12px; margin-bottom: 18px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px;" @click="${this.exportCalendar}">
+                            📅 In Kalender exportieren (.ics)
+                        </button>
                         <div class="days-container">
                             ${this.daysOfWeek.map(day => {
                                 const info: MealPlanDay = this.mealPlan[day] || {};

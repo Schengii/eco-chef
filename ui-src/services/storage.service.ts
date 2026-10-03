@@ -32,6 +32,25 @@ function safeSetItem(key: string, value: string): boolean {
     }
 }
 
+function openIndexedDb(): Promise<IDBDatabase | null> {
+    if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+    return new Promise((resolve) => {
+        try {
+            const request = indexedDB.open('ecoChef_db', 1);
+            request.onupgradeneeded = (event: any) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('recipes')) {
+                    db.createObjectStore('recipes', { keyPath: 'title' });
+                }
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => resolve(null);
+        } catch {
+            resolve(null);
+        }
+    });
+}
+
 export const StorageService = {
     getGdprConsent(): boolean {
         return localStorage.getItem('ecoChef_gdprConsent') === 'true';
@@ -177,7 +196,50 @@ export const StorageService = {
         return [];
     },
     setSavedRecipes(recipes: Recipe[]): boolean {
+        void this.saveRecipesToIndexedDb(recipes);
         return safeSetItem('ecoChef_savedRecipes', JSON.stringify(recipes));
+    },
+
+    async saveRecipesToIndexedDb(recipes: Recipe[]): Promise<boolean> {
+        const db = await openIndexedDb();
+        if (!db) return false;
+        return new Promise((resolve) => {
+            try {
+                const tx = db.transaction('recipes', 'readwrite');
+                const store = tx.objectStore('recipes');
+                store.clear();
+                recipes.forEach(r => store.put(r));
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => resolve(false);
+            } catch {
+                resolve(false);
+            }
+        });
+    },
+
+    async getRecipesFromIndexedDb(): Promise<Recipe[]> {
+        const db = await openIndexedDb();
+        if (!db) return [];
+        return new Promise((resolve) => {
+            try {
+                const tx = db.transaction('recipes', 'readonly');
+                const store = tx.objectStore('recipes');
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => resolve([]);
+            } catch {
+                resolve([]);
+            }
+        });
+    },
+
+    async restoreRecipesFromIndexedDb(): Promise<Recipe[]> {
+        const idbRecipes = await this.getRecipesFromIndexedDb();
+        if (idbRecipes.length > 0) {
+            safeSetItem('ecoChef_savedRecipes', JSON.stringify(idbRecipes));
+            return idbRecipes;
+        }
+        return this.getSavedRecipes();
     },
 
     getCalorieGoal(): number {

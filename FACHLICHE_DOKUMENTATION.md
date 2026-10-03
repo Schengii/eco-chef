@@ -28,9 +28,10 @@ EcoChef/
 │   ├── components/         # Modulare Lit-Komponenten (Views, Modals, Widgets)
 │   │   └── eco-chef-saved-recipes.ts # Ausgelagerte Rezeptbuch-Verwaltung & Filter
 │   ├── services/           # Geschäftslogik & externe APIs
+│   │   ├── calendar.service.ts # RFC 5545 iCalendar-Export (.ics) für Wochenpläne
 │   │   ├── crypto.service.ts # Clientseitige E2E-Verschlüsselung (AES-GCM 256-Bit)
 │   │   ├── qr.service.ts   # Standardkonforme Vektor-QR-Codes (ISO/IEC 18004)
-│   │   ├── storage.service.ts # Quota-geschützte Persistenz & automatisches Bild-Pruning
+│   │   ├── storage.service.ts # Duales IndexedDB- & Quota-Storage mit Bild-Pruning
 │   │   └── ...
 │   ├── models/             # TypeScript-Interfaces & gemeinsame Hilfsfunktionen
 │   └── styles/             # Design Tokens & CSS-Variablen
@@ -258,6 +259,11 @@ Zur sicheren geräteübergreifenden Synchronisation nutzt die App die native Web
 ### D. Speicher-Quota-Schutz & Bilddaten-Pruning
 `StorageService.safeSetItem()` fängt `QuotaExceededError`-Ausnahmen bei vollem `localStorage` ab. In diesem Fall führt der Service eine Bereinigung historischer Rezepte durch, indem speicherintensive Base64-Bilddaten entfernt werden, während Kochanleitungen und Zutatenlisten erhalten bleiben. Anschließend wird der Schreibversuch erfolgreich wiederholt.
 
+### E. Duales IndexedDB- & Quota-Speichersystem
+Zusätzlich zum synchronen LocalStorage implementiert `StorageService` eine asynchrone Persistenzebene auf Basis von nativem IndexedDB (`ecoChef_db`, ObjectStore `recipes`).
+- **Keine Größenbeschränkung:** Rezepte inklusive detaillierter Nährwerte, Zubereitungsschritte und hochauflösender Fotos werden in IndexedDB ohne die 5MB-Beschränkung des Browsers gesichert.
+- **Automatisches Wiederherstellen:** Über `restoreRecipesFromIndexedDb()` können Rezepte bei versehentlich gelöschtem Browserspeicher oder nach Quota-Bereinigungen nahtlos wieder in die UI geladen werden.
+
 ---
 
 ## 7. Android-Build-Anleitung
@@ -347,18 +353,20 @@ Im Rahmen des Projekts wurden folgende Kernbereiche eigenständig konzipiert und
 8. **Nachhaltigkeits- und Ernährungstracker:**
    CO₂-Ersparnis-Berechnung mit Fallback-Schätzung basierend auf Eco-Score und Ernährungsweise.
 
-9. **Premium-UI/UX:**
-   HSL-basiertes, barrierefreies CSS-Designsystem mit Dark-Mode, Mikro-Animationen und Webpack Code-Splitting mit Content-Hashing.
+9. **Premium-UI/UX & Druckoptimierung:**
+   HSL-basiertes, barrierefreies CSS-Designsystem mit Dark-Mode, Mikro-Animationen, Webpack Code-Splitting mit Content-Hashing und dediziertem Print-CSS (`@media print`) für sauberen DIN-A4-Rezeptdruck.
 
 10. **Erweiterungen & Qualitätssicherung:**
+    - Live-Kamera-Barcodescanner in `eco-chef-pantry` mit nativer `BarcodeDetector`-API, animierter Laserlinie und Audio/Haptik-Feedback
     - Standardkonforme Vektor-QR-Codes (ISO/IEC 18004) für Rezept-Sharing via beliebiger Kamera-App
+    - RFC 5545 iCalendar-Export (`CalendarService`) für den Wochenplaner (.ics für Apple, Google & Outlook)
     - OpenFoodFacts Barcode API (`BarcodeService`) mit RFC-konformen User-Agent & Accept Headern
     - API-Proxy-Härtung mit Per-IP Rate Limiting (30 Req/Min) und Gemini Modell-Whitelist
     - Dynamische Portionsrekonstruktion (Echtzeit-Skalierung von Mengen und Nährwerten)
     - Regio-Markt Finder (`eco-chef-regional-map`)
     - Budget- & MHD-Ablauf-Tracking
     - Vollständiges JSON-Datensicherungs-System
-    - Automatisierte Jest-Unit-Tests (27 Tests über 8 Test-Suites, 100 % Erfolgsquote)
+    - Automatisierte Jest-Unit-Tests (31 Tests über 9 Test-Suites, 100 % Erfolgsquote)
     - Strikte TypeScript-Prüfung (`npm run type-check`) in lokaler Entwicklung und GitHub Actions CI
     - Nährwert- & Klimaschutz-Dashboard
     - Globales Floating-Timer-Widget

@@ -1,6 +1,8 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { PantryItemAdvanced } from '../models/eco-chef.models';
+import { AudioService } from '../services/audio.service';
+import { showToast } from './eco-chef-toast';
 import './eco-chef-seasonal-calendar';
 import './eco-chef-fridge-guide';
 
@@ -246,6 +248,72 @@ export class EcoChefPantry extends LitElement {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .scanner-modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .scanner-container {
+            position: relative;
+            width: 100%;
+            max-width: 440px;
+            background: var(--surface);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            border: 2px solid var(--border);
+        }
+        .scanner-viewfinder {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background: #000;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .scanner-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .scanner-target-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 220px;
+            height: 130px;
+            border: 3px solid #10b981;
+            border-radius: 16px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+            pointer-events: none;
+        }
+        .scanner-laser-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            top: 50%;
+            animation: scanLaser 2s ease-in-out infinite alternate;
+        }
+        @keyframes scanLaser {
+            0% { transform: translateY(-45px); }
+            100% { transform: translateY(45px); }
+        }
     `;
 
     @property({ type: Array }) pantryItems: PantryItemAdvanced[] = [];
@@ -257,6 +325,11 @@ export class EcoChefPantry extends LitElement {
     @state() private newItemExpiry = '';
     @state() private newItemLocation: 'Kühlschrank' | 'Vorratskammer' | 'Gefrierfach' | 'Sonstiges' = 'Kühlschrank';
     @state() private barcodeInput = '';
+    @state() private showLiveScanner = false;
+    @state() private scannerErrorMessage = '';
+
+    private _cameraStream: MediaStream | null = null;
+    private _scannerTimer: any = null;
 
     @state() private selectedLocationFilter: string = 'all';
     @state() private sortBy: string = 'expiry';
@@ -292,6 +365,78 @@ export class EcoChefPantry extends LitElement {
                 Nutri-Score ${score.toUpperCase()}
             </span>
         `;
+    }
+
+    override disconnectedCallback() {
+        super.disconnectedCallback();
+        this.stopLiveScanner();
+    }
+
+    private async startLiveScanner() {
+        this.showLiveScanner = true;
+        this.scannerErrorMessage = '';
+        await this.updateComplete;
+
+        const videoEl = this.shadowRoot?.querySelector('#live-scanner-video') as HTMLVideoElement;
+        if (!videoEl) return;
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            });
+            this._cameraStream = stream;
+            videoEl.srcObject = stream;
+            await videoEl.play();
+
+            if ('BarcodeDetector' in window) {
+                const BarcodeDetectorClass = (window as any).BarcodeDetector;
+                const detector = new BarcodeDetectorClass({
+                    formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'qr_code']
+                });
+
+                this._scannerTimer = setInterval(async () => {
+                    if (!videoEl || videoEl.readyState < 2) return;
+                    try {
+                        const barcodes = await detector.detect(videoEl);
+                        if (barcodes && barcodes.length > 0) {
+                            const code = barcodes[0].rawValue;
+                            if (code) {
+                                if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+                                AudioService.playSuccessChime();
+                                showToast(`Barcode erkannt: ${code}`, 'success');
+                                this.stopLiveScanner();
+                                this.barcodeInput = code;
+                                this.handleBarcodeSearch();
+                            }
+                        }
+                    } catch (err) {
+                        // ignore frame error
+                    }
+                }, 200);
+            } else {
+                this.scannerErrorMessage = 'Live-Erkennung wird von diesem Browser nicht unterstützt. Bitte EAN manuell eingeben oder Kamera-Foto-Scan nutzen.';
+            }
+        } catch (err: any) {
+            console.error('Start camera failed:', err);
+            this.scannerErrorMessage = 'Kamera konnte nicht gestartet werden. Bitte Berechtigungen prüfen.';
+        }
+    }
+
+    private stopLiveScanner() {
+        if (this._scannerTimer) {
+            clearInterval(this._scannerTimer);
+            this._scannerTimer = null;
+        }
+        if (this._cameraStream) {
+            this._cameraStream.getTracks().forEach(t => t.stop());
+            this._cameraStream = null;
+        }
+        this.showLiveScanner = false;
+        this.scannerErrorMessage = '';
     }
 
     private handleBarcodeSearch() {
@@ -460,6 +605,9 @@ export class EcoChefPantry extends LitElement {
                         <button class="scan-btn" @click="${this.handleBarcodeSearch}" style="padding: 10px 14px; font-size: 12px;">
                             EAN Abfragen
                         </button>
+                        <button class="scan-btn" @click="${this.startLiveScanner}" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-color: #075985; padding: 10px 14px; font-size: 12px;" title="Barcode live mit der Kamera erfassen">
+                            📷 Live-Scan
+                        </button>
                     </div>
                     <button class="add-btn" @click="${this.handleAdd}">Manuell Hinzufügen</button>
                 </div>
@@ -538,6 +686,41 @@ export class EcoChefPantry extends LitElement {
 
             <eco-chef-seasonal-calendar></eco-chef-seasonal-calendar>
             <eco-chef-fridge-guide></eco-chef-fridge-guide>
+
+            ${this.showLiveScanner ? html`
+                <div class="scanner-modal-backdrop" @click="${this.stopLiveScanner}">
+                    <div class="scanner-container" @click="${(e: Event) => e.stopPropagation()}">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 2px solid var(--border);">
+                            <span style="font-weight: 850; font-size: 16px; color: var(--text-dark); display: flex; align-items: center; gap: 8px;">
+                                📷 Live-Barcode-Scanner
+                            </span>
+                            <button @click="${this.stopLiveScanner}" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); font-weight: bold;">✕</button>
+                        </div>
+
+                        <div class="scanner-viewfinder">
+                            <video id="live-scanner-video" class="scanner-video" playsinline muted autoplay></video>
+                            <div class="scanner-target-box">
+                                <div class="scanner-laser-line"></div>
+                            </div>
+                        </div>
+
+                        <div style="padding: 16px; text-align: center;">
+                            ${this.scannerErrorMessage ? html`
+                                <p style="font-size: 12px; color: #ef4444; font-weight: 700; margin-bottom: 12px;">
+                                    ⚠️ ${this.scannerErrorMessage}
+                                </p>
+                            ` : html`
+                                <p style="font-size: 13px; color: var(--text-muted); font-weight: 700; margin-bottom: 12px;">
+                                    Halte den Barcode mittig in den Rahmen. Er wird automatisch erfasst.
+                                </p>
+                            `}
+                            <button class="scan-btn" @click="${this.stopLiveScanner}" style="width: 100%; justify-content: center; background: var(--surface); color: var(--text-dark); border: 2px solid var(--border);">
+                                Abbrechen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
         `;
     }
 }
