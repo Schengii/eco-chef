@@ -12,6 +12,7 @@ import { BarcodeService } from './services/barcode.service';
 import { QrService } from './services/qr.service';
 import { PdfService } from './services/pdf.service';
 import { CryptoService } from './services/crypto.service';
+import { SyncService } from './services/sync.service';
 import { showToast, showConfirmToast } from './components/eco-chef-toast';
 
 // Always-needed components loaded eagerly
@@ -165,6 +166,11 @@ export class EcoChef extends LitElement {
         
         this.loadChips();
 
+        if (this.syncCode && !SyncService.normalizeCode(this.syncCode)) {
+            // Legacy 6-char code from an older version: no longer secure, drop it.
+            this.syncCode = '';
+            localStorage.removeItem('ecoChef_syncCode');
+        }
         if (this.syncCode) {
             this.handleApplySyncCode(new CustomEvent('apply-sync-code', { detail: { code: this.syncCode } }));
         }
@@ -2116,11 +2122,7 @@ export class EcoChef extends LitElement {
 
     async handleGenerateSyncCode() {
         this.srAnnouncement = "Generiere Synchronisations-Code...";
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let code = '';
-        for (let i = 0; i < 6; i++) {
-            code += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
+        const code = SyncService.generateCode();
 
         const payload = {
             pantryItemsAdvanced: this.pantryItemsAdvanced,
@@ -2133,7 +2135,7 @@ export class EcoChef extends LitElement {
 
         try {
             const encryptedPayload = await CryptoService.encryptData(payload, code);
-            const res = await fetch(`https://kvdb.io/ecochefsyncbucket_${code}`, {
+            const res = await fetch(await SyncService.bucketUrl(code), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ enc: encryptedPayload })
@@ -2153,10 +2155,14 @@ export class EcoChef extends LitElement {
     }
 
     async handleApplySyncCode(e: CustomEvent) {
-        const { code } = e.detail;
+        const code = SyncService.normalizeCode(e.detail?.code);
+        if (!code) {
+            showToast('Ungültiges Schlüssel-Format. Erwartet: XXXX-XXXX-XXXX-XXXX.', 'error');
+            return;
+        }
         this.srAnnouncement = "Verbinde und synchronisiere Daten...";
         try {
-            const res = await fetch(`https://kvdb.io/ecochefsyncbucket_${code}`);
+            const res = await fetch(await SyncService.bucketUrl(code));
             if (res.ok) {
                 const rawJson = await res.json();
                 const data = (rawJson && rawJson.enc)
@@ -2295,7 +2301,7 @@ export class EcoChef extends LitElement {
         };
         try {
             const encryptedPayload = await CryptoService.encryptData(payload, this.syncCode);
-            await fetch(`https://kvdb.io/ecochefsyncbucket_${this.syncCode}`, {
+            await fetch(await SyncService.bucketUrl(this.syncCode), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ enc: encryptedPayload })

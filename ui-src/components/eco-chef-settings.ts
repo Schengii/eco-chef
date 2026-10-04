@@ -445,7 +445,7 @@ export class EcoChefSettings extends LitElement {
                         ${this.syncCode ? html`
                             <div style="background: var(--bg-color); padding: 12px; border-radius: 12px; text-align: center; border: 2px solid var(--primary); margin-top: 8px;">
                                 <span style="font-size: 13px; font-weight: 700; color: var(--text-muted);">Dein Sync-Schlüssel (24 Std. gültig):</span>
-                                <div style="font-size: 22px; font-weight: 900; color: var(--primary-dark); margin-top: 4px; letter-spacing: 2px;">${this.syncCode}</div>
+                                <div style="font-size: 18px; font-weight: 900; color: var(--primary-dark); margin-top: 4px; letter-spacing: 1px;">${this.syncCode}</div>
                             </div>
                         ` : ''}
                         
@@ -455,7 +455,7 @@ export class EcoChefSettings extends LitElement {
                         <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
                             <input type="text" 
                                    id="sync-code-input" 
-                                   placeholder="Z.B. A1B2C3" 
+                                   placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19" autocomplete="off" autocapitalize="characters" spellcheck="false" 
                                    style="flex-grow: 1; margin-bottom: 0; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-dark);"
                                    aria-label="Sync Code eingeben" />
                             <button class="main-btn" @click="${this._applySyncCode}" style="margin: 0; padding: 10px 16px; width: auto; font-size: 13px; border-radius: 8px;">Verbinden</button>
