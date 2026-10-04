@@ -52,3 +52,38 @@ export function prepareSavedRecipe(recipe: Recipe): Recipe {
         ingredientsList: normalizeIngredients(recipe.ingredientsList)
     };
 }
+
+function scaleNumbers(text: string, ratio: number, format: (scaled: number) => string): string {
+    return text.replace(/(\d+(?:[.,]\d+)?)/g, match => {
+        const val = parseFloat(match.replace(',', '.'));
+        return isNaN(val) ? match : format(val * ratio);
+    });
+}
+
+/** Scales every number in the ingredient lines and the nutrition values by `ratio` (new portions / old portions). */
+export function scaleRecipePortions(recipe: Recipe, ratio: number): Recipe {
+    const scaleIngredient = (s: string) =>
+        scaleNumbers(s, ratio, scaled => Number.isInteger(scaled) ? scaled.toString() : scaled.toFixed(1).replace('.', ','));
+    const scaleNutrition = (s: string | undefined) =>
+        s ? scaleNumbers(s, ratio, scaled => Math.round(scaled).toString()) : '?';
+    return {
+        ...recipe,
+        nutrition: {
+            calories: scaleNutrition(recipe.nutrition?.calories),
+            protein: scaleNutrition(recipe.nutrition?.protein),
+            carbs: scaleNutrition(recipe.nutrition?.carbs),
+            fat: scaleNutrition(recipe.nutrition?.fat)
+        },
+        ingredientsList: recipe.ingredientsList.map(ing => ({ ...ing, item: scaleIngredient(ing.item) }))
+    };
+}
+
+/** User-facing message for a failed recipe request. */
+export function describeAiError(error: unknown): string {
+    const msg = error instanceof Error ? error.message : '';
+    if (msg.includes('API_KEY') || msg.includes('403')) return 'Ungültiger API-Key. Bitte in den Einstellungen prüfen.';
+    if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) return 'API-Limit erreicht. Bitte kurz warten und dann erneut versuchen.';
+    if (msg.includes('timeout') || msg.includes('DEADLINE')) return 'Zeitüberschreitung – die KI hat zu lange gebraucht. Bitte nochmal versuchen.';
+    if (msg.includes('JSON') || msg.includes('Rezeptdaten')) return 'Die KI-Antwort konnte nicht verarbeitet werden. Bitte versuche es nochmal!';
+    return 'Verbindungsfehler – bitte Internetverbindung prüfen.';
+}

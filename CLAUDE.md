@@ -18,7 +18,7 @@
 ## Directory Structure
 - `ui-src/` - Quellcode der Frontend-Applikation
   - `eco-chef.ts` - Haupt-App-Komponente (Routing, Navigation, State-Management); `render()` delegiert an `render<Bereich>()`-Methoden, lazy Tabs über `renderLazyTab()`
-  - `controllers/` - Lit `ReactiveController` (`sync.controller.ts`: verschlüsselter Haushalts-Sync; `timer.controller.ts`: Koch-Timer + Alarm; `shopping-list.controller.ts`: Einkaufsliste; `camera.controller.ts`: Cordova-/Web-Kamera; `voice.controller.ts`: Sprachbefehle; `achievements.controller.ts`: Erfolge; `pantry.controller.ts`: Vorratskammer, Barcode-/Kassenzettel-/Produkt-Scans; `recipe-book.controller.ts`: Kochbuch speichern/bewerten/Import/Export/Teilen). Neue Zustandslogik aus `eco-chef.ts` bevorzugt hier auslagern (Handler als Arrow-Properties, damit `this` im Template stimmt)
+  - `controllers/` - Lit `ReactiveController` (`sync.controller.ts`: verschlüsselter Haushalts-Sync; `timer.controller.ts`: Koch-Timer + Alarm; `shopping-list.controller.ts`: Einkaufsliste; `camera.controller.ts`: Cordova-/Web-Kamera; `voice.controller.ts`: Sprachbefehle; `achievements.controller.ts`: Erfolge; `pantry.controller.ts`: Vorratskammer, Barcode-/Kassenzettel-/Produkt-Scans; `recipe-book.controller.ts`: Kochbuch speichern/bewerten/Import/Export/Teilen; `recipe-generator.controller.ts`: Rezept-Generierung, Nachfrage-Chat, Bild, Portionen, Kochassistent). Neue Zustandslogik aus `eco-chef.ts` bevorzugt hier auslagern (Handler als Arrow-Properties, damit `this` im Template stimmt)
   - `components/` - Wiederverwendbare Lit-Komponenten (Views, Modals, Badges, etc.)
     - `eco-chef-saved-recipes.ts`: Ausgelagerte Rezeptbuch-Verwaltung & Filter
     - `eco-chef-cooking-mode.ts`: Kochmodus mit Screen Wake Lock & Haptik
@@ -35,7 +35,7 @@
     - `ai-json.ts`, `gemini-schemas.ts`, `prompt-safety.ts`: KI-JSON-Parsing, `responseSchema`s, Eingabe-Sanitizing (`<nutzerdaten>`)
     - `achievements.ts`: reine Erfolgs-Regeln (Defaults, Fortschritt, Kochen-Auswertung)
     - `pantry.ts`: reine Vorrats-Regeln (Items aus Scans/Einkaufsliste, MHD-Tage, Sortierung)
-    - `recipe-utils.ts`: reine Helfer (Nährwert-Parsing, CO₂-Fallback, Schrittdauer, Zutaten-Normalisierung)
+    - `recipe-utils.ts`: reine Helfer (Nährwert-Parsing, CO₂-Fallback, Schrittdauer, Zutaten-Normalisierung, Portions-Skalierung, KI-Fehlertexte)
     - `recipe-image.service.ts`: lokaler SVG-Platzhalter für Rezeptbilder; `sw.service.ts`: Service-Worker-Registrierung + Update-Hinweis; `logger.ts`: Debug-Log nur in Dev
   - `models/` - TypeScript-Interfaces (`eco-chef.models.ts`) und zod-Schemas (`schemas.ts`) für KI-Antworten, Imports, Backups und Sync-Daten
   - `styles/` - Design Tokens, Themes, globale CSS-Variablen, Print-CSS

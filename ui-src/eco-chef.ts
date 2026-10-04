@@ -19,6 +19,7 @@ import { VoiceController, VoiceHost } from './controllers/voice.controller';
 import { AchievementsController } from './controllers/achievements.controller';
 import { PantryController, PantryHost } from './controllers/pantry.controller';
 import { RecipeBookController, RecipeBookHost } from './controllers/recipe-book.controller';
+import { RecipeGeneratorController, RecipeGeneratorHost } from './controllers/recipe-generator.controller';
 import { sortByExpiry } from './services/pantry';
 import { parseNumericValue, estimateCo2Fallback, parseStepMinutes, prepareSavedRecipe } from './services/recipe-utils';
 import { showToast, showConfirmToast } from './components/eco-chef-toast';
@@ -46,8 +47,6 @@ export class EcoChef extends LitElement {
 
     @state() showExitDialog = false;
     @state() showSavedRecipes = false;
-    @state() additionalPrompt = '';
-    @state() recipeChatHistory: string[] = [];
 
     @state() isCookingMode = false;
     @state() currentCookingStep = 0;
@@ -77,7 +76,6 @@ export class EcoChef extends LitElement {
 
 
     @state() recipeImage: string | null = null;
-    @state() isGeneratingImage = false;
     @state() showWelcomeScreen = true;
 
     @state() currentRating = 0;
@@ -92,12 +90,10 @@ export class EcoChef extends LitElement {
     @state() soundEffectsEnabled = StorageService.getSoundEffectsEnabled();
     @state() showQrModal = false;
     @state() qrSvgMarkup = '';
-    @state() assistantAnswerText = '';
 
     @state() currentTab = 'zauberer';
     @state() mealPlan: MealPlan = {};
     @state() isGeneratingPlan = false;
-    @state() lastError: string | null = null;
 
     private readonly sync = new SyncController(this as unknown as SyncHost);
     readonly timers = new TimerController(this as unknown as TimerHost);
@@ -107,6 +103,7 @@ export class EcoChef extends LitElement {
     readonly achievements = new AchievementsController(this);
     readonly pantry = new PantryController(this as unknown as PantryHost);
     readonly book = new RecipeBookController(this as unknown as RecipeBookHost);
+    readonly generator = new RecipeGeneratorController(this as unknown as RecipeGeneratorHost);
 
     get syncCode(): string {
         return this.sync.code;
@@ -620,7 +617,7 @@ export class EcoChef extends LitElement {
                                   <div class="loader"></div>
                                   <p class="loader-text">KI kreiert dein Rezept...</p>`
                               : html`
-                                  <button class="main-btn" @click="${this.askGoogle}" aria-label="Rezept mit künstlicher Intelligenz generieren">✨ Rezept Zaubern</button>`
+                                  <button class="main-btn" @click="${this.generator.generate}" aria-label="Rezept mit künstlicher Intelligenz generieren">✨ Rezept Zaubern</button>`
                           }
                       </div>
         `;
@@ -648,25 +645,19 @@ export class EcoChef extends LitElement {
                       <eco-chef-recipe-view
                           .recipe="${this.recipe}"
                           .recipeImage="${this.recipeImage}"
-                          .isGeneratingImage="${this.isGeneratingImage}"
+                          .isGeneratingImage="${this.generator.isGeneratingImage}"
                           .persons="${this.persons}"
                           .currentRating="${this.currentRating}"
                           .isLoading="${this.isLoading}"
                           .pantryItems="${this.pantry.items}"
-                          .chatHistory="${this.recipeChatHistory}"
+                          .chatHistory="${this.generator.chatHistory}"
                           @add-to-shopping-list="${(e: CustomEvent) => this.shopping.add(e.detail.item)}"
                           @set-recipe-rating="${(e: CustomEvent) => this.setRecipeRating(e.detail.rating)}"
-                          @change-portions="${(e: CustomEvent) => this.handlePortionChange(e.detail.persons)}"
+                          @change-portions="${(e: CustomEvent) => this.generator.changePortions(e.detail.persons)}"
                           @mark-cooked="${this.markAsCooked}"
                           @start-cooking="${this.startCooking}"
                           @print-recipe="${this.printRecipe}"
-                          @regenerate-recipe="${(e: CustomEvent) => {
-                              this.additionalPrompt = e.detail.additionalPrompt;
-                              if (this.additionalPrompt.trim()) {
-                                  this.recipeChatHistory = [...this.recipeChatHistory, this.additionalPrompt];
-                              }
-                              this.askGoogle();
-                          }}"
+                          @regenerate-recipe="${(e: CustomEvent) => this.generator.regenerate(e.detail.additionalPrompt)}"
                           @update-recipe="${(e: CustomEvent) => {
                                if (this.recipe) {
                                    this.recipe = {
@@ -677,7 +668,7 @@ export class EcoChef extends LitElement {
                                }
                            }}"
                           @close="${() => {
-                              this.recipeChatHistory = [];
+                              this.generator.resetChat();
                               this.showExitDialog = true;
                           }}">
                       </eco-chef-recipe-view>
@@ -695,7 +686,7 @@ export class EcoChef extends LitElement {
                        .isVoiceControlActive="${this.voice.isActive}"
                        .voiceStatusText="${this.voice.statusText}"
                        .activeTimers="${this.timers.activeTimers}"
-                       .assistantAnswer="${this.assistantAnswerText}"
+                       .assistantAnswer="${this.generator.assistantAnswer}"
                        @close="${this.exitCookingMode}"
                        @prev-step="${this.prevStep}"
                        @next-step="${this.nextStep}"
@@ -703,7 +694,7 @@ export class EcoChef extends LitElement {
                        @toggle-voice="${this.voice.toggle}"
                        @start-timer="${this.timers.start}"
                        @stop-timer="${(e: CustomEvent) => this.timers.stop(e.detail?.id)}"
-                       @ask-cooking-assistant="${this.handleAskCookingAssistant}">
+                       @ask-cooking-assistant="${(e: CustomEvent) => this.generator.askAssistant(e.detail.question)}">
                    </eco-chef-cooking-mode>
         `;
     }
@@ -927,67 +918,6 @@ export class EcoChef extends LitElement {
         this.ingredients = (e.target as HTMLInputElement).value;
     }
 
-    async askGoogle() {
-        this.addIngredientFromInput();
-
-        if (this.ingredientChips.length === 0 && !this.capturedImage) {
-            showToast('Bitte gib zuerst Zutaten ein oder mache ein Foto deines Kühlschranks!', 'warning');
-            return;
-        }
-
-        // Preload recipe-view and cooking-mode while Gemini generates the recipe
-        void this._loadTabComponent('recipe-view');
-        void this._loadTabComponent('cooking-mode');
-
-        this.isLoading = true;
-        this.lastError = null;
-        this.recipe = null;
-        this.recipeImage = null;
-        this.srAnnouncement = "Rezept wird von der Künstlichen Intelligenz generiert. Bitte warten Sie einen moment.";
-
-        try {
-            const urgentList = Object.keys(this.urgentIngredients).filter(k => this.urgentIngredients[k] && this.ingredientChips.includes(k));
-            const activeAllergens = Object.keys(this.selectedAllergens).filter(k => this.selectedAllergens[k]);
-            const pantryKeys = this.pantry.activeStapleKeys();
-
-            this.recipe = await GeminiService.generateRecipeFromOptions({
-                ingredientChips: this.ingredientChips,
-                pantryKeys,
-                urgentIngredients: urgentList,
-                activeAllergens,
-                allowExtraIngredients: this.allowExtraIngredients,
-                diet: this.selectedDiet,
-                effort: this.selectedEffort,
-                portions: this.persons || 2,
-                chatHistory: this.recipeChatHistory,
-                capturedImage: this.capturedImage
-            });
-
-            this.srAnnouncement = `Rezept erfolgreich geladen: ${this.recipe.title}. Bild wird generiert.`;
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-
-            this.generateRecipeImage(this.recipe.title);
-
-        } catch (networkError: unknown) {
-            console.error("API Verbindungsfehler:", networkError);
-            const errMsg: string = networkError instanceof Error ? networkError.message : '';
-            let userMsg = 'Verbindungsfehler – bitte Internetverbindung prüfen.';
-            if (errMsg.includes('API_KEY') || errMsg.includes('403')) {
-                userMsg = 'Ungültiger API-Key. Bitte in den Einstellungen prüfen.';
-            } else if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED')) {
-                userMsg = 'API-Limit erreicht. Bitte kurz warten und dann erneut versuchen.';
-            } else if (errMsg.includes('timeout') || errMsg.includes('DEADLINE')) {
-                userMsg = 'Zeitüberschreitung – die KI hat zu lange gebraucht. Bitte nochmal versuchen.';
-            } else if (errMsg.includes('JSON') || errMsg.includes('Rezeptdaten')) {
-                userMsg = 'Die KI-Antwort konnte nicht verarbeitet werden. Bitte versuche es nochmal!';
-            }
-            this.lastError = userMsg;
-            showToast(userMsg, 'error', { duration: 5000 });
-        } finally {
-            this.isLoading = false;
-        }
-    }
-
     startNewRecipe() {
         this.recipe = null;
         this.recipeImage = null;
@@ -999,8 +929,7 @@ export class EcoChef extends LitElement {
         this.showExitDialog = false;
         this.showSavedRecipes = false;
         this.showShoppingList = false;
-        this.additionalPrompt = '';
-        this.recipeChatHistory = [];
+        this.generator.resetChat();
         this.isCookingMode = false;
         SpeechService.cancelSpeak();
         this.timers.stop();
@@ -1078,49 +1007,6 @@ export class EcoChef extends LitElement {
         showToast(`${addedCount} Zutat(en) in die Reste-Kammer übernommen!`, 'success');
         this.srAnnouncement = `${addedCount} Zutaten in Reste-Kammer übernommen.`;
         this.autoSyncPush();
-    }
-
-    handlePortionChange(newPersons: number) {
-        if (!this.recipe || newPersons === this.persons || newPersons < 1) return;
-        const ratio = newPersons / this.persons;
-        const oldPersons = this.persons;
-        this.persons = newPersons;
-
-        const scaledIngredients = this.recipe.ingredientsList.map(ing => {
-            const scaledItemStr = ing.item.replace(/(\d+(?:[.,]\d+)?)/g, (match) => {
-                const val = parseFloat(match.replace(',', '.'));
-                if (isNaN(val)) return match;
-                const scaled = val * ratio;
-                return Number.isInteger(scaled) ? scaled.toString() : scaled.toFixed(1).replace('.', ',');
-            });
-            return {
-                ...ing,
-                item: scaledItemStr
-            };
-        });
-
-        const scaleNutrVal = (strVal: string | undefined) => {
-            if (!strVal) return strVal || '?';
-            return strVal.replace(/(\d+(?:[.,]\d+)?)/g, (match) => {
-                const val = parseFloat(match.replace(',', '.'));
-                if (isNaN(val)) return match;
-                const scaled = val * ratio;
-                return Math.round(scaled).toString();
-            });
-        };
-
-        this.recipe = {
-            ...this.recipe,
-            nutrition: {
-                calories: scaleNutrVal(this.recipe.nutrition?.calories),
-                protein: scaleNutrVal(this.recipe.nutrition?.protein),
-                carbs: scaleNutrVal(this.recipe.nutrition?.carbs),
-                fat: scaleNutrVal(this.recipe.nutrition?.fat),
-            },
-            ingredientsList: scaledIngredients
-        };
-
-        this.srAnnouncement = `Portionsmenge von ${oldPersons} auf ${newPersons} Personen angepasst.`;
     }
 
     exportFullBackup() {
@@ -1267,25 +1153,6 @@ export class EcoChef extends LitElement {
         this.srAnnouncement = "Willkommen in der Küche von EcoChef. Du kannst jetzt Zutaten eingeben.";
     }
 
-    async generateRecipeImage(title: string) {
-        this.isGeneratingImage = true;
-        this.recipeImage = null;
-        try {
-            this.recipeImage = await GeminiService.generateRecipeImage(title);
-        } catch (e) {
-            console.error("Imagen failed", e);
-        } finally {
-            this.isGeneratingImage = false;
-            if (this.recipe) {
-                this.recipe = {
-                    ...this.recipe,
-                    image: this.recipeImage || undefined
-                };
-            }
-            this.requestUpdate();
-        }
-    }
-
     override updated(changedProperties: Map<string | number | symbol, unknown>) {
         super.updated(changedProperties);
         if (changedProperties.has('capturedImage') && this.capturedImage) {
@@ -1351,7 +1218,7 @@ export class EcoChef extends LitElement {
         this.ingredientChips = [title];
         this.saveChips();
         this.currentTab = 'zauberer';
-        this.askGoogle();
+        void this.generator.generate();
     }
 
     handleAddPlanShopping(e: CustomEvent) {
@@ -1419,6 +1286,11 @@ export class EcoChef extends LitElement {
         this.srAnnouncement = message;
     }
 
+    preloadRecipeComponents() {
+        void this._loadTabComponent('recipe-view');
+        void this._loadTabComponent('cooking-mode');
+    }
+
     setCapturedImage(dataUrl: string) {
         this.capturedImage = dataUrl;
     }
@@ -1433,20 +1305,6 @@ export class EcoChef extends LitElement {
 
     getPantryNames(): string[] {
         return this.pantry.names();
-    }
-
-    async handleAskCookingAssistant(e: CustomEvent) {
-        const { question } = e.detail;
-        if (!this.recipe || !question) return;
-        this.assistantAnswerText = 'Chef denkt nach...';
-        try {
-            const answer = await GeminiService.askCookingQuestion(question, this.recipe.title);
-            this.assistantAnswerText = answer;
-            SpeechService.speak(answer);
-        } catch (err) {
-            console.error("Cooking assistant query failed", err);
-            this.assistantAnswerText = 'Fehler bei der Antwort des Kochassistenten.';
-        }
     }
 
     triggerMysteryBox() {
@@ -1466,7 +1324,7 @@ export class EcoChef extends LitElement {
         this.currentTab = 'zauberer';
         this.srAnnouncement = `Mystery Box aktiviert mit den Zutaten: ${topItems.join(', ')}. Express-Rezept wird generiert.`;
         AudioService.playSuccessChime();
-        this.askGoogle();
+        void this.generator.generate();
     }
 
     toggleSoundEffects(enabled: boolean) {
