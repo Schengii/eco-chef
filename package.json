@@ -32,6 +32,7 @@
     "@playwright/test": "^1.63.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.3.5",
+    "@types/qrcode-generator": "^0.0.16",
     "@vercel/node": "^20.0.0",
     "baseline-browser-mapping": "^2.10.0",
     "cordova-android": "^15.1.0",
@@ -55,7 +56,6 @@
   },
   "dependencies": {
     "@google/genai": "^1.20.0",
-    "@types/qrcode-generator": "^0.0.16",
     "lit": "3.3.1",
     "qrcode-generator": "^2.0.4",
     "zod": "^4.6.5"
