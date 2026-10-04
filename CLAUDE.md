@@ -17,7 +17,7 @@
 
 ## Directory Structure
 - `ui-src/` - Quellcode der Frontend-Applikation
-  - `eco-chef.ts` - Haupt-App-Komponente (Routing, Navigation, State-Management)
+  - `eco-chef.ts` - Haupt-App-Komponente (Routing, Navigation, State-Management); `render()` delegiert an `render<Bereich>()`-Methoden, lazy Tabs über `renderLazyTab()`
   - `controllers/` - Lit `ReactiveController` (`sync.controller.ts`: verschlüsselter Haushalts-Sync; `timer.controller.ts`: Koch-Timer + Alarm; `shopping-list.controller.ts`: Einkaufsliste; `camera.controller.ts`: Cordova-/Web-Kamera; `voice.controller.ts`: Sprachbefehle; `achievements.controller.ts`: Erfolge; `pantry.controller.ts`: Vorratskammer, Barcode-/Kassenzettel-/Produkt-Scans; `recipe-book.controller.ts`: Kochbuch speichern/bewerten/Import/Export/Teilen). Neue Zustandslogik aus `eco-chef.ts` bevorzugt hier auslagern (Handler als Arrow-Properties, damit `this` im Template stimmt)
   - `components/` - Wiederverwendbare Lit-Komponenten (Views, Modals, Badges, etc.)
     - `eco-chef-saved-recipes.ts`: Ausgelagerte Rezeptbuch-Verwaltung & Filter
