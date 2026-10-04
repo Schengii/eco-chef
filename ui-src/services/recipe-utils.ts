@@ -1,3 +1,5 @@
+import type { IngredientItem, Recipe } from '../models/eco-chef.models';
+
 /** Pure helpers for recipe data (no DOM, no storage) so they can be unit-tested in isolation. */
 
 /** Extracts the first number from values like "450 kcal" or "12,5 g"; 0 if there is none. */
@@ -30,4 +32,23 @@ export function parseStepMinutes(stepText: string): number | null {
     if (hrMatch) total += parseInt(hrMatch[1], 10) * 60;
     if (minMatch) total += parseInt(minMatch[1], 10);
     return total > 0 ? total : null;
+}
+
+/** Ingredient lists from older saves/imports may contain plain strings; always return {item, category}. */
+export function normalizeIngredients(ingredients: Array<IngredientItem | string> | undefined): IngredientItem[] {
+    if (!ingredients) return [];
+    return ingredients.map(ing => {
+        if (typeof ing === 'string') return { item: ing, category: 'Sonstiges' };
+        if (ing && typeof ing === 'object' && 'item' in ing) return { item: ing.item, category: ing.category || 'Sonstiges' };
+        return { item: String(ing), category: 'Sonstiges' };
+    });
+}
+
+/** A stored recipe ready to be shown: numeric CO₂ value and normalized ingredients. */
+export function prepareSavedRecipe(recipe: Recipe): Recipe {
+    return {
+        ...recipe,
+        co2SavedKg: typeof recipe.co2SavedKg === 'number' ? recipe.co2SavedKg : (parseFloat(String(recipe.co2SavedKg)) || 0),
+        ingredientsList: normalizeIngredients(recipe.ingredientsList)
+    };
 }

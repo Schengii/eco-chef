@@ -1,7 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-import { Recipe, IngredientItem, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan, getLocalDateString } from './models/eco-chef.models';
+import { Recipe, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan, getLocalDateString } from './models/eco-chef.models';
 import { ecoChefStyles } from './styles/eco-chef.styles';
 
 import { StorageService } from './services/storage.service';
@@ -11,7 +11,6 @@ import { GeminiService } from './services/gemini.service';
 import { QrService } from './services/qr.service';
 import { PdfService } from './services/pdf.service';
 import { BackupService } from './services/backup.service';
-import { filterRecipes } from './services/recipe-filter';
 import { SyncController, SyncData, SyncHost } from './controllers/sync.controller';
 import { TimerController, TimerHost } from './controllers/timer.controller';
 import { ShoppingListController, ShoppingListHost } from './controllers/shopping-list.controller';
@@ -19,8 +18,9 @@ import { CameraController, CameraHost } from './controllers/camera.controller';
 import { VoiceController, VoiceHost } from './controllers/voice.controller';
 import { AchievementsController } from './controllers/achievements.controller';
 import { PantryController, PantryHost } from './controllers/pantry.controller';
+import { RecipeBookController, RecipeBookHost } from './controllers/recipe-book.controller';
 import { sortByExpiry } from './services/pantry';
-import { parseNumericValue, estimateCo2Fallback, parseStepMinutes } from './services/recipe-utils';
+import { parseNumericValue, estimateCo2Fallback, parseStepMinutes, prepareSavedRecipe } from './services/recipe-utils';
 import { showToast, showConfirmToast } from './components/eco-chef-toast';
 
 // Always-needed components loaded eagerly
@@ -46,7 +46,6 @@ export class EcoChef extends LitElement {
 
     @state() showExitDialog = false;
     @state() showSavedRecipes = false;
-    @state() savedRecipesList: Recipe[] = [];
     @state() additionalPrompt = '';
     @state() recipeChatHistory: string[] = [];
 
@@ -81,9 +80,7 @@ export class EcoChef extends LitElement {
     @state() isGeneratingImage = false;
     @state() showWelcomeScreen = true;
 
-    @state() searchQuery = '';
     @state() currentRating = 0;
-    @state() savedFilterRating = 0;
 
     @state() calorieGoal = 2000;
     @state() proteinGoal = 80;
@@ -109,6 +106,7 @@ export class EcoChef extends LitElement {
     readonly voice = new VoiceController(this as unknown as VoiceHost);
     readonly achievements = new AchievementsController(this);
     readonly pantry = new PantryController(this as unknown as PantryHost);
+    readonly book = new RecipeBookController(this as unknown as RecipeBookHost);
 
     get syncCode(): string {
         return this.sync.code;
@@ -256,19 +254,6 @@ export class EcoChef extends LitElement {
         };
         StorageService.setAllergens(this.selectedAllergens);
         this.srAnnouncement = `Allergenfilter ${allergen} wurde ${this.selectedAllergens[allergen] ? 'aktiviert' : 'deaktiviert'}.`;
-    }
-
-    normalizeIngredients(ingredients: Array<IngredientItem | string> | undefined): IngredientItem[] {
-        if (!ingredients) return [];
-        return ingredients.map(ing => {
-            if (typeof ing === 'string') {
-                return { item: ing, category: 'Sonstiges' };
-            }
-            if (ing && typeof ing === 'object' && 'item' in ing) {
-                return { item: ing.item, category: ing.category || 'Sonstiges' };
-            }
-            return { item: String(ing), category: 'Sonstiges' };
-        });
     }
 
     // Note: getGroupedShoppingList() is now the shared utility imported from eco-chef.models.ts
@@ -433,10 +418,10 @@ export class EcoChef extends LitElement {
                           @toggle-lrs-mode="${this.toggleLrsMode}"
                           @toggle-reading-ruler="${this.toggleReadingRuler}"
                           @toggle-privacy="${this.togglePrivacyDetails}"
-                          @export-recipes="${this.exportRecipes}"
+                          @export-recipes="${this.book.exportJson}"
                           @export-full-backup="${this.exportFullBackup}"
                           @import-full-backup="${(e: CustomEvent) => this.importFullBackup(e.detail.data)}"
-                          @import-recipes-success="${(e: CustomEvent) => this.importRecipesSuccess(e.detail.recipes)}"
+                          @import-recipes-success="${(e: CustomEvent) => this.book.importRaw(e.detail.recipes)}"
                           @clear-all-data="${this.clearAllData}">
                       </eco-chef-settings>
                   ` : ''}
@@ -643,12 +628,12 @@ export class EcoChef extends LitElement {
 
                   ${this.currentTab === 'zauberer' && this.showSavedRecipes && !this.recipe ? html`
                       <eco-chef-saved-recipes
-                          .savedRecipesList="${this.savedRecipesList}"
+                          .savedRecipesList="${this.book.saved}"
                           @open-recipe="${(e: CustomEvent) => this.openSavedRecipe(e.detail.recipe)}"
-                          @delete-recipe="${(e: CustomEvent) => this.deleteSavedRecipe(e.detail.index, e)}"
-                          @update-rating="${(e: CustomEvent) => this.updateSavedRecipeRating(e.detail.index, e.detail.rating, e)}"
-                          @import-recipes="${(e: CustomEvent) => this.importRecipesSuccess(e.detail.recipes)}"
-                          @export-pdf="${this.exportCookbookPdf}"
+                          @delete-recipe="${(e: CustomEvent) => { e.stopPropagation(); this.book.remove(e.detail.index); }}"
+                          @update-rating="${(e: CustomEvent) => { e.stopPropagation(); this.book.rate(e.detail.index, e.detail.rating); }}"
+                          @import-recipes="${(e: CustomEvent) => this.book.importRaw(e.detail.recipes)}"
+                          @export-pdf="${() => this.book.exportPdf(this.selectedAvatar)}"
                           @back-to-generator="${() => this.showSavedRecipes = false}">
                       </eco-chef-saved-recipes>
                   ` : ''}
@@ -721,12 +706,12 @@ export class EcoChef extends LitElement {
                            <h3>Was möchtest du tun?</h3>
                            <p>Dein Rezept ist fertig. Wie soll es weitergehen?</p>
                            <button class="modal-btn share" @click="${() => {
-                               this.shareRecipe();
+                               if (this.recipe) void this.book.share(this.recipe);
                                this.showExitDialog = false;
                            }}">📤 Teilen
                            </button>
                            <button class="modal-btn save" @click="${() => {
-                                this.saveRecipeWithRating();
+                                if (this.recipe) this.book.save(this.recipe, this.recipeImage, this.currentRating);
                                 this.showExitDialog = false;
                             }}">💾 Speichern${this.currentRating ? ` (${this.currentRating}⭐)` : ''}
                             </button>
@@ -965,120 +950,28 @@ export class EcoChef extends LitElement {
         }
     }
 
-    async shareRecipe() {
-        if (!this.recipe) return;
-        const shareText = `Schau mal, was ich mit EcoChef gekocht habe:\n\n${this.recipe.title}\n🔥 ${this.recipe.nutrition?.calories || ''} | 🌍 Eco-Score: ${this.recipe.ecoScore || ''}\n🍷 Dazu passt: ${this.recipe.beverage || ''}\n\nLade dir die EcoChef App herunter!`;
-        if (navigator.share) {
-            try {
-                await navigator.share({ title: this.recipe.title, text: shareText });
-            } catch (err) {
-                console.error("Fehler beim Teilen", err);
-            }
-        } else {
-            await navigator.clipboard.writeText(shareText);
-            showToast('Rezept-Text in die Zwischenablage kopiert!', 'success');
-        }
-    }
-
-    saveRecipeWithRating() {
-        if (!this.recipe) return;
-        const saved = StorageService.getSavedRecipes();
-        const recipeToSave = {
-            ...this.recipe,
-            image: this.recipeImage || undefined,
-            rating: this.currentRating || 0,
-            savedAt: new Date().toISOString()
-        };
-        saved.push(recipeToSave);
-        StorageService.setSavedRecipes(saved);
-        showToast(`Rezept gespeichert${this.currentRating ? ` mit ${this.currentRating} ⭐` : ''}!`, 'success');
-        this.srAnnouncement = `Rezept "${this.recipe.title}" wurde gespeichert.`;
-    }
-
     toggleSavedView() {
         this.showSavedRecipes = !this.showSavedRecipes;
         if (this.showSavedRecipes) {
             void this._loadTabComponent('saved-recipes');
             this.showShoppingList = false;
             this.showSettings = false;
-            const parsed = StorageService.getSavedRecipes();
-            this.savedRecipesList = parsed.map((r) => ({
-                ...r,
-                ingredientsList: this.normalizeIngredients(r.ingredientsList)
-            }));
+            this.book.load();
             this.recipe = null;
         }
     }
 
     openSavedRecipe(savedRecipe: Recipe) {
-        this.recipe = {
-            ...savedRecipe,
-            co2SavedKg: typeof savedRecipe.co2SavedKg === 'number' ? savedRecipe.co2SavedKg : (parseFloat(String(savedRecipe.co2SavedKg)) || 0),
-            ingredientsList: this.normalizeIngredients(savedRecipe.ingredientsList)
-        };
+        this.recipe = prepareSavedRecipe(savedRecipe);
         this.recipeImage = savedRecipe.image || null;
         this.showSavedRecipes = false;
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    deleteSavedRecipe(index: number, event: Event) {
-        event.stopPropagation();
-        this.savedRecipesList.splice(index, 1);
-        StorageService.setSavedRecipes(this.savedRecipesList);
-        this.requestUpdate();
-    }
-
-    updateSavedRecipeRating(index: number, rating: number, event: Event) {
-        event.stopPropagation();
-        if (this.savedRecipesList[index]) {
-            this.savedRecipesList[index].rating = rating;
-            StorageService.setSavedRecipes(this.savedRecipesList);
-            this.requestUpdate();
-
-            if (rating === 5) {
-                this.achievements.increment('sterneChef');
-            }
-
-            this.srAnnouncement = `Bewertung auf ${rating} Sterne aktualisiert.`;
-        }
     }
 
     printRecipe() {
         if (!this.recipe) return;
         PdfService.printCookbook([this.recipe], this.selectedAvatar);
         this.srAnnouncement = `Rezept "${this.recipe.title}" wird gedruckt.`;
-    }
-
-    handleImportFile(event: Event) {
-        const input = event.target as HTMLInputElement;
-        const file = input.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                this.importRecipesSuccess(JSON.parse(e.target?.result as string));
-            } catch (err) {
-                showToast('Fehler beim Importieren. Stelle sicher, dass es eine gültige EcoChef-JSON-Datei ist.', 'error');
-                console.error('Import error:', err);
-            }
-        };
-        reader.readAsText(file);
-        input.value = '';
-    }
-
-    importRecipesSuccess(raw: unknown) {
-        const parsed = BackupService.parseRecipeImport(raw);
-        if (!parsed || parsed.recipes.length === 0) {
-            showToast('Keine gültigen Rezepte in der Datei gefunden.', 'error');
-            return;
-        }
-        const merged = BackupService.mergeImportedRecipes(StorageService.getSavedRecipes(), parsed.recipes);
-        StorageService.setSavedRecipes(merged);
-        this.savedRecipesList = merged;
-        const skippedHint = parsed.skipped > 0 ? ` (${parsed.skipped} ungültige übersprungen)` : '';
-        showToast(`${parsed.recipes.length} Rezept(e) erfolgreich importiert!${skippedHint}`, 'success');
-        this.srAnnouncement = `${parsed.recipes.length} Rezepte importiert.`;
     }
 
     updateFontScaleStyle() {
@@ -1108,16 +1001,6 @@ export class EcoChef extends LitElement {
                 location.reload();
             }, 2500);
         });
-    }
-
-    exportRecipes() {
-        const saved = StorageService.getSavedRecipes();
-        if (saved.length === 0) {
-            showToast('Du hast noch keine Rezepte gespeichert.', 'warning');
-            return;
-        }
-        BackupService.downloadJson('ecoChef_rezepte.json', saved);
-        this.srAnnouncement = "Deine Rezepte wurden als Datei heruntergeladen.";
     }
 
     transferShoppingToPantry() {
@@ -1196,8 +1079,7 @@ export class EcoChef extends LitElement {
 
         try {
             if (payload.savedRecipes) {
-                StorageService.setSavedRecipes(payload.savedRecipes as Recipe[]);
-                this.savedRecipesList = payload.savedRecipes as Recipe[];
+                this.book.set(payload.savedRecipes as Recipe[]);
             }
             this.applySyncData({
                 pantryItemsAdvanced: payload.pantryItemsAdvanced as PantryItemAdvanced[] | undefined,
@@ -1303,10 +1185,6 @@ export class EcoChef extends LitElement {
 
         window.addEventListener('mousemove', onMouseMove);
         window.addEventListener('mouseup', onMouseUp);
-    }
-
-    getFilteredSavedRecipes() {
-        return filterRecipes(this.savedRecipesList, this.savedFilterRating, this.searchQuery);
     }
 
     setRecipeRating(rating: number) {
@@ -1490,14 +1368,6 @@ export class EcoChef extends LitElement {
 
     getPantryNames(): string[] {
         return this.pantry.names();
-    }
-
-    exportCookbookPdf() {
-        if (this.savedRecipesList.length === 0) {
-            showToast('Du hast noch keine gespeicherten Rezepte im Kochbuch.', 'warning');
-            return;
-        }
-        PdfService.printCookbook(this.savedRecipesList, this.selectedAvatar);
     }
 
     async handleAskCookingAssistant(e: CustomEvent) {

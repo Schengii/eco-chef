@@ -1,4 +1,5 @@
-import { estimateCo2Fallback, parseNumericValue, parseStepMinutes } from './recipe-utils';
+import { estimateCo2Fallback, normalizeIngredients, parseNumericValue, parseStepMinutes, prepareSavedRecipe } from './recipe-utils';
+import type { Recipe } from '../models/eco-chef.models';
 
 describe('parseNumericValue', () => {
     it('reads numbers, units and decimal commas', () => {
@@ -33,5 +34,27 @@ describe('parseStepMinutes', () => {
     });
     it('returns null if no duration is mentioned', () => {
         expect(parseStepMinutes('Gemüse schneiden')).toBeNull();
+    });
+});
+
+describe('normalizeIngredients', () => {
+    it('converts strings, fills missing categories and tolerates undefined', () => {
+        expect(normalizeIngredients(undefined)).toEqual([]);
+        expect(normalizeIngredients(['2 Eier', { item: 'Mehl', category: '' }, { item: 'Apfel', category: 'Obst & Gemüse' }])).toEqual([
+            { item: '2 Eier', category: 'Sonstiges' },
+            { item: 'Mehl', category: 'Sonstiges' },
+            { item: 'Apfel', category: 'Obst & Gemüse' }
+        ]);
+    });
+});
+
+describe('prepareSavedRecipe', () => {
+    it('coerces a string CO₂ value and normalizes ingredients', () => {
+        const r = prepareSavedRecipe({ title: 'x', co2SavedKg: '1,2 kg' as unknown as number, ingredientsList: ['Salz'] } as unknown as Recipe);
+        expect(r.co2SavedKg).toBe(1);
+        expect(r.ingredientsList).toEqual([{ item: 'Salz', category: 'Sonstiges' }]);
+    });
+    it('falls back to 0 for unparsable values', () => {
+        expect(prepareSavedRecipe({ title: 'x', co2SavedKg: 'viel' as unknown as number, ingredientsList: [] } as unknown as Recipe).co2SavedKg).toBe(0);
     });
 });
