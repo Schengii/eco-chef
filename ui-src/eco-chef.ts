@@ -1,7 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-import { Recipe, IngredientItem, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan, ActiveTimer, getLocalDateString, getGroupedShoppingList } from './models/eco-chef.models';
+import { Recipe, IngredientItem, ShoppingItem, DailyStat, PantryItemAdvanced, Achievement, MealPlan, getLocalDateString } from './models/eco-chef.models';
 import { ecoChefStyles } from './styles/eco-chef.styles';
 
 import { StorageService } from './services/storage.service';
@@ -15,6 +15,10 @@ import { Logger } from './services/logger';
 import { BackupService } from './services/backup.service';
 import { filterRecipes } from './services/recipe-filter';
 import { SyncController, SyncData, SyncHost } from './controllers/sync.controller';
+import { TimerController, TimerHost } from './controllers/timer.controller';
+import { ShoppingListController, ShoppingListHost } from './controllers/shopping-list.controller';
+import { CameraController, CameraHost } from './controllers/camera.controller';
+import { parseNumericValue, estimateCo2Fallback, parseStepMinutes } from './services/recipe-utils';
 import { showToast, showConfirmToast } from './components/eco-chef-toast';
 
 // Always-needed components loaded eagerly
@@ -48,13 +52,8 @@ export class EcoChef extends LitElement {
     @state() currentCookingStep = 0;
 
     @state() currentStepTimeMinutes: number | null = null;
-    @state() timerSecondsRemaining = 0;
-    @state() activeTimers: ActiveTimer[] = [];
-    @state() expiredTimerLabel = '';
-    private timerInterval: number | null = null;
 
     @state() showShoppingList = false;
-    @state() shoppingList: ShoppingItem[] = [];
 
     @state() capturedImage: string | null = null;
     @state() recipe: Recipe | null = null;
@@ -80,7 +79,6 @@ export class EcoChef extends LitElement {
     @state() isVoiceControlActive = false;
     @state() voiceStatusText = '';
 
-    @state() showTimerExpiredModal = false;
     @state() recipeImage: string | null = null;
     @state() isGeneratingImage = false;
     @state() showWelcomeScreen = true;
@@ -121,6 +119,9 @@ export class EcoChef extends LitElement {
     ];
 
     private readonly sync = new SyncController(this as unknown as SyncHost);
+    readonly timers = new TimerController(this as unknown as TimerHost);
+    readonly shopping = new ShoppingListController(this as unknown as ShoppingListHost);
+    readonly camera = new CameraController(this as unknown as CameraHost);
 
     get syncCode(): string {
         return this.sync.code;
@@ -145,7 +146,7 @@ export class EcoChef extends LitElement {
         this.fontScale = StorageService.getFontScale();
         this.showReadingRuler = StorageService.getShowRuler();
         this.selectedPantry = StorageService.getPantry();
-        this.shoppingList = StorageService.getShoppingList();
+        this.shopping.load();
         this.selectedAllergens = StorageService.getAllergens();
         this.stats = StorageService.getStats();
         this.calorieGoal = StorageService.getCalorieGoal();
@@ -183,7 +184,7 @@ export class EcoChef extends LitElement {
     override disconnectedCallback() {
         document.removeEventListener('backbutton', this.handleBackButton, false);
         SpeechService.cancelSpeak();
-        this.stopTimer();
+        this.timers.stop();
         AudioService.stopAlarm();
         this.stopVoiceRecognition();
         super.disconnectedCallback();
@@ -191,8 +192,8 @@ export class EcoChef extends LitElement {
 
     handleBackButton = (e: Event) => {
         e.preventDefault();
-        if (this.showTimerExpiredModal) {
-            this.closeTimerExpiredModal();
+        if (this.timers.showExpiredModal) {
+            this.timers.closeExpiredModal();
         } else if (this.isCookingMode) {
             this.exitCookingMode();
         } else if (this.showSettings) {
@@ -210,103 +211,6 @@ export class EcoChef extends LitElement {
         }
     };
 
-    @state() showWebcam = false;
-    private webcamStream: MediaStream | null = null;
-
-    async openCamera() {
-        // App-Kamera über Cordova
-        const camera = navigator.camera;
-        if (camera) {
-            const options = {
-                quality: 70,
-                destinationType: camera.DestinationType.DATA_URL,
-                encodingType: camera.EncodingType.JPEG,
-                mediaType: camera.MediaType.PICTURE,
-                correctOrientation: true,
-                targetWidth: 800,
-                targetHeight: 800
-            };
-
-            camera.getPicture(
-                (imageData: string) => {
-                    this.capturedImage = 'data:image/jpeg;base64,' + imageData;
-                    this.srAnnouncement = "Foto erfolgreich über App-Kamera aufgenommen.";
-                },
-                (error: string) => {
-                    console.error("Cordova Camera error:", error); 
-                    this.srAnnouncement = "Fehler bei der App-Kamera.";
-                },
-                options
-            );
-            return;
-        }
-
-        // Web-Kamera über getUserMedia
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            try {
-                this.showWebcam = true;
-                await this.updateComplete;
-                const video = this.shadowRoot?.querySelector('#webcam-video') as HTMLVideoElement;
-                this.webcamStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' } // Bevorzugt Rückkamera auf Mobilgeräten im Browser
-                });
-                if (video) {
-                    video.srcObject = this.webcamStream;
-                }
-                this.srAnnouncement = "Webcam-Vorschau gestartet.";
-            } catch (err) {
-                console.warn("Webcam access failed, falling back to file picker", err);
-                this.showWebcam = false;
-                this.triggerFilePicker();
-            }
-        } else {
-            this.triggerFilePicker();
-        }
-    }
-
-    triggerFilePicker() {
-        const fileInput = this.shadowRoot?.querySelector('#file-upload') as HTMLInputElement;
-        if (fileInput) fileInput.click();
-    }
-
-    captureWebcam() {
-        const video = this.shadowRoot?.querySelector('#webcam-video') as HTMLVideoElement;
-        const canvas = this.shadowRoot?.querySelector('#webcam-canvas') as HTMLCanvasElement;
-        if (video && canvas) {
-            const ctx = canvas.getContext('2d');
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
-            if (ctx) {
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                this.capturedImage = canvas.toDataURL('image/jpeg');
-                this.srAnnouncement = "Foto erfolgreich aufgenommen.";
-            }
-        }
-        this.closeWebcam();
-    }
-
-    closeWebcam() {
-        if (this.webcamStream) {
-            this.webcamStream.getTracks().forEach(track => track.stop());
-            this.webcamStream = null;
-        }
-        this.showWebcam = false;
-        this.srAnnouncement = "Kamera-Modus beendet.";
-    }
-
-    handleFileUpload(event: Event) {
-        const input = event.target as HTMLInputElement;
-        const file = input.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const result = e.target?.result as string;
-                this.capturedImage = result;
-            };
-            reader.readAsDataURL(file);
-        }
-    }
-
     toggleDarkMode() {
         this.isDarkMode = !this.isDarkMode;
         StorageService.setTheme(this.isDarkMode ? 'dark' : 'light');
@@ -320,82 +224,6 @@ export class EcoChef extends LitElement {
             this.showSettings = false;
             this.recipe = null;
         }
-    }
-
-    addToShoppingList(ingredient: IngredientItem | string) {
-        let cleanName = '';
-        let category = 'Sonstiges';
-        if (typeof ingredient === 'string') {
-            cleanName = ingredient.replace(/^(\*|\d+\.)\s*/, '').trim();
-        } else {
-            cleanName = ingredient.item.replace(/^(\*|\d+\.)\s*/, '').trim();
-            category = ingredient.category || 'Sonstiges';
-        }
-        
-        const cleanNameLower = cleanName.toLowerCase();
-        const isInPantry = this.pantryItemsAdvanced.some(p => {
-            const pClean = p.name.toLowerCase().trim();
-            return cleanNameLower.includes(pClean) || pClean.includes(cleanNameLower);
-        });
-
-        if (isInPantry) {
-            // Use async confirm toast - non-blocking
-            showConfirmToast(
-                `"${cleanName}" ist bereits in der Vorratskammer. Trotzdem zur Einkaufsliste?`,
-                'Hinzufügen',
-                'Abbrechen'
-            ).then(confirmed => {
-                if (!confirmed) return;
-                if (!this.shoppingList.some(item => item.name === cleanName)) {
-                    this.shoppingList.push({ name: cleanName, checked: false, category });
-                    this.saveShoppingList();
-                    showToast(`"${cleanName}" zur Einkaufsliste hinzugefügt`, 'success');
-                    this.requestUpdate();
-                }
-            });
-            return;
-        }
-
-        if (!this.shoppingList.some(item => item.name === cleanName)) {
-            this.shoppingList.push({ name: cleanName, checked: false, category });
-            this.saveShoppingList();
-            showToast(`"${cleanName}" zur Einkaufsliste hinzugefügt`, 'success');
-            this.requestUpdate();
-        } else {
-            showToast('Das steht bereits auf deiner Einkaufsliste!', 'warning');
-        }
-    }
-
-    addManualShoppingItem(name: string) {
-        const trimmed = name.trim();
-        if (trimmed !== '') {
-            this.shoppingList.push({ name: trimmed, checked: false, category: 'Sonstiges' });
-            this.saveShoppingList();
-            this.requestUpdate();
-        }
-    }
-
-    toggleShoppingItem(index: number) {
-        if (this.shoppingList[index]) {
-            this.shoppingList[index].checked = !this.shoppingList[index].checked;
-            this.saveShoppingList();
-            this.requestUpdate();
-        }
-    }
-
-    removeShoppingItem(index: number) {
-        this.shoppingList.splice(index, 1);
-        this.saveShoppingList();
-        this.requestUpdate();
-    }
-
-    clearCheckedShoppingItems() {
-        this.shoppingList = this.shoppingList.filter(item => !item.checked);
-        this.saveShoppingList();
-    }
-
-    saveShoppingList() {
-        StorageService.setShoppingList(this.shoppingList);
     }
 
     handleIngredientsKeypress(e: KeyboardEvent) {
@@ -473,90 +301,19 @@ export class EcoChef extends LitElement {
 
     // Note: getGroupedShoppingList() is now the shared utility imported from eco-chef.models.ts
 
-    async shareShoppingList() {
-        if (this.shoppingList.length === 0) return;
-        
-        const grouped = getGroupedShoppingList(this.shoppingList);
-        let text = `🛒 *Meine EcoChef Einkaufsliste*:\n`;
-        
-        const categoriesOrder = ['Obst & Gemüse', 'Milchprodukte & Eier', 'Fleisch & Fisch', 'Vorrat & Gewürze', 'Bäckerei', 'Sonstiges'];
-        categoriesOrder.forEach(cat => {
-            if (grouped[cat] && grouped[cat].length > 0) {
-                text += `\n*${cat}*:\n`;
-                grouped[cat].forEach(g => {
-                    const prefix = g.item.checked ? '✅ ' : '⬜ ';
-                    text += `${prefix}${g.item.name}\n`;
-                });
-            }
-        });
-        
-        text += `\nGeneriert mit EcoChef 🧑‍🍳`;
-
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: 'Meine Einkaufsliste',
-                    text: text
-                });
-            } catch (err) {
-                console.error("Fehler beim Teilen", err);
-            }
-        } else {
-            await navigator.clipboard.writeText(text);
-            showToast('Einkaufsliste in die Zwischenablage kopiert!', 'success');
-        }
-    }
-
-    parseVal(val: string | number | undefined): number {
-        if (val === undefined || val === null) return 0;
-        if (typeof val === 'number') return val;
-        const match = val.match(/([\d.,]+)/);
-        if (match) {
-            return parseFloat(match[1].replace(',', '.'));
-        }
-        return 0;
-    }
-
-    /**
-     * Estimates CO₂ savings based on eco-score and diet when the AI
-     * does not return an explicit co2SavedKg value.
-     * Eco-Score leaves: 🍃🍃🍃🍃🍃 → A (best) ... 🍃 → E (worst)
-     */
-    private estimateCo2Fallback(): number {
-        if (!this.recipe) return 0;
-        const ecoScore = this.recipe.ecoScore || '';
-        const leafCount = (ecoScore.match(/🍃/g) || []).length;
-
-        // Base CO₂ saving by eco-score (kg per meal vs. meat-based reference)
-        const baseByLeaf: { [k: number]: number } = {
-            5: 1.4,
-            4: 1.0,
-            3: 0.7,
-            2: 0.4,
-            1: 0.2
-        };
-        let base = baseByLeaf[leafCount] ?? 0.5;
-
-        // Multiply by diet factor
-        if (this.selectedDiet === 'vegan')        base *= 1.3;
-        else if (this.selectedDiet === 'vegetarisch') base *= 1.1;
-
-        return parseFloat(base.toFixed(2));
-    }
-
     markAsCooked() {
         if (!this.recipe) return;
         const today = getLocalDateString();
         
-        const cal = this.parseVal(this.recipe.nutrition.calories);
-        const prot = this.parseVal(this.recipe.nutrition.protein);
-        const carb = this.parseVal(this.recipe.nutrition.carbs);
-        const fat = this.parseVal(this.recipe.nutrition.fat);
+        const cal = parseNumericValue(this.recipe.nutrition.calories);
+        const prot = parseNumericValue(this.recipe.nutrition.protein);
+        const carb = parseNumericValue(this.recipe.nutrition.carbs);
+        const fat = parseNumericValue(this.recipe.nutrition.fat);
 
         // Use AI-provided value; if missing or zero, estimate from eco-score + diet
         const co2 = (this.recipe.co2SavedKg && this.recipe.co2SavedKg > 0)
             ? this.recipe.co2SavedKg
-            : this.estimateCo2Fallback();
+            : estimateCo2Fallback(this.recipe.ecoScore, this.selectedDiet);
 
         const currentStat: DailyStat = this.stats[today] || {
             calories: 0,
@@ -589,136 +346,7 @@ export class EcoChef extends LitElement {
         if (!this.recipe) return;
 
         const stepText = this.recipe.instructions[this.currentCookingStep];
-        const minMatch = stepText.match(/(\d+)\s*(Minuten|Minute|Min|Min\.|min|min\.)/i);
-        const hrMatch = stepText.match(/(\d+)\s*(Stunden|Stunde|Std|Std\.|std|std\.)/i);
-
-        let totalMinutes = 0;
-        if (hrMatch) totalMinutes += parseInt(hrMatch[1], 10) * 60;
-        if (minMatch) totalMinutes += parseInt(minMatch[1], 10);
-
-        this.currentStepTimeMinutes = totalMinutes > 0 ? totalMinutes : null;
-    }
-
-    startTimer(minutes?: number | CustomEvent, label?: string) {
-        let mins: number | null = null;
-        let stepLabel: string | undefined = label;
-
-        if (typeof minutes === 'number') {
-            mins = minutes;
-        } else if (minutes && typeof minutes === 'object' && 'detail' in minutes) {
-            const detail = (minutes as CustomEvent).detail;
-            if (detail) {
-                if (typeof detail.minutes === 'number') {
-                    mins = detail.minutes;
-                }
-                if (detail.label) {
-                    stepLabel = detail.label;
-                }
-            }
-        }
-
-        if (mins === null || mins === undefined || isNaN(mins)) {
-            mins = this.currentStepTimeMinutes;
-        }
-
-        if (!mins || mins <= 0 || isNaN(mins)) return;
-
-        const defaultLabel = this.recipe ? `Schritt ${this.currentCookingStep + 1}: ${this.recipe.instructions[this.currentCookingStep].substring(0, 30)}...` : `Timer ${this.activeTimers.length + 1}`;
-        const finalLabel = stepLabel || defaultLabel;
-
-        const existingIndex = this.activeTimers.findIndex(t => t.label === finalLabel);
-        if (existingIndex !== -1) {
-            const updated = [...this.activeTimers];
-            updated[existingIndex] = {
-                ...updated[existingIndex],
-                secondsRemaining: mins * 60,
-                totalSeconds: mins * 60
-            };
-            this.activeTimers = updated;
-        } else {
-            const newTimer: ActiveTimer = {
-                id: Math.random().toString(36).substring(2, 9),
-                label: finalLabel,
-                totalSeconds: mins * 60,
-                secondsRemaining: mins * 60,
-                stepIndex: this.currentCookingStep
-            };
-            this.activeTimers = [...this.activeTimers, newTimer];
-        }
-
-        this.startTimerTicker();
-        SpeechService.speak(`Timer gestartet für ${mins} Minuten.`);
-    }
-
-    startTimerTicker() {
-        if (this.timerInterval) return;
-        this.timerInterval = window.setInterval(() => {
-            if (this.activeTimers.length === 0) {
-                this.stopTimerTicker();
-                return;
-            }
-
-            this.activeTimers = this.activeTimers.map(timer => {
-                if (timer.isPaused) return timer;
-                if (timer.secondsRemaining > 0) {
-                    return { ...timer, secondsRemaining: timer.secondsRemaining - 1 };
-                } else {
-                    return { ...timer, secondsRemaining: 0 };
-                }
-            });
-
-            // Find expired timer
-            const expired = this.activeTimers.find(t => t.secondsRemaining === 0);
-            if (expired) {
-                this.playAlarm(expired.label);
-                this.activeTimers = this.activeTimers.filter(t => t.id !== expired.id);
-            }
-
-            // Keep timerSecondsRemaining updated with the current step's timer (if it exists)
-            const currentStepTimer = this.activeTimers.find(t => t.stepIndex === this.currentCookingStep);
-            this.timerSecondsRemaining = currentStepTimer ? currentStepTimer.secondsRemaining : 0;
-            
-        }, 1000) as unknown as number;
-    }
-
-    stopTimerTicker() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
-    }
-
-    stopTimer(id?: string) {
-        if (typeof id === 'string') {
-            this.activeTimers = this.activeTimers.filter(t => t.id !== id);
-        } else {
-            // If no ID is passed (e.g. from legacy components), stop the current step's timer
-            this.activeTimers = this.activeTimers.filter(t => t.stepIndex !== this.currentCookingStep);
-        }
-        
-        if (this.activeTimers.length === 0) {
-            this.stopTimerTicker();
-        }
-        
-        const currentStepTimer = this.activeTimers.find(t => t.stepIndex === this.currentCookingStep);
-        this.timerSecondsRemaining = currentStepTimer ? currentStepTimer.secondsRemaining : 0;
-    }
-
-    playAlarm(label: string = '') {
-        this.expiredTimerLabel = label;
-        if (navigator.vibrate) {
-            navigator.vibrate([500, 200, 500, 200, 500, 200, 500]);
-        }
-        this.showTimerExpiredModal = true;
-        this.srAnnouncement = `Achtung! Die Zeit für ${label || 'den Schritt'} ist abgelaufen!`;
-        AudioService.playAlarm();
-    }
-
-    closeTimerExpiredModal() {
-        this.showTimerExpiredModal = false;
-        this.expiredTimerLabel = '';
-        AudioService.stopAlarm();
-        this.srAnnouncement = "Timer-Alarm beendet.";
+        this.currentStepTimeMinutes = parseStepMinutes(stepText);
     }
 
     override render() {
@@ -869,7 +497,7 @@ export class EcoChef extends LitElement {
                   ${this.currentTab === 'regional' && !this._loadedTabs.has('regional') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
                   ${this.currentTab === 'regional' && this._loadedTabs.has('regional') ? html`
                       <eco-chef-regional-map
-                          @add-shopping-item="${(e: CustomEvent) => this.addManualShoppingItem(e.detail.name)}">
+                          @add-shopping-item="${(e: CustomEvent) => this.shopping.addManual(e.detail.name)}">
                       </eco-chef-regional-map>
                   ` : ''}
 
@@ -930,7 +558,7 @@ export class EcoChef extends LitElement {
 
                       <div class="input-with-camera">
                           <input type="text" id="ingredients-input" placeholder="Zutat eingeben & Enter drücken oder Foto 📷" .value="${this.ingredients}" @input="${this._handleInput}" @keypress="${this.handleIngredientsKeypress}" style="margin-bottom: 0;" aria-label="Zutaten eingeben" />
-                          <button class="camera-btn" @click="${this.openCamera}" title="Kühlschrank scannen" aria-label="Kühlschrank scannen oder Foto hochladen">📸</button>
+                          <button class="camera-btn" @click="${this.camera.open}" title="Kühlschrank scannen" aria-label="Kühlschrank scannen oder Foto hochladen">📸</button>
                       </div>
 
                       ${this.ingredientChips.length > 0 ? html`
@@ -1030,14 +658,14 @@ export class EcoChef extends LitElement {
                   ${this.currentTab === 'shopping' && !this._loadedTabs.has('shopping') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
                   ${this.currentTab === 'shopping' && this._loadedTabs.has('shopping') ? html`
                       <eco-chef-shopping-list
-                          .shoppingList="${this.shoppingList}"
+                          .shoppingList="${this.shopping.items}"
                           .budgetSettings="${this.budgetSettings}"
-                          @add-item="${(e: CustomEvent) => this.addManualShoppingItem(e.detail.name)}"
-                          @toggle-item="${(e: CustomEvent) => this.toggleShoppingItem(e.detail.index)}"
-                          @remove-item="${(e: CustomEvent) => this.removeShoppingItem(e.detail.index)}"
-                          @clear-checked="${this.clearCheckedShoppingItems}"
+                          @add-item="${(e: CustomEvent) => this.shopping.addManual(e.detail.name)}"
+                          @toggle-item="${(e: CustomEvent) => this.shopping.toggle(e.detail.index)}"
+                          @remove-item="${(e: CustomEvent) => this.shopping.remove(e.detail.index)}"
+                          @clear-checked="${this.shopping.clearChecked}"
                           @transfer-to-pantry="${this.transferShoppingToPantry}"
-                          @share-list="${this.shareShoppingList}">
+                          @share-list="${this.shopping.share}">
                       </eco-chef-shopping-list>
                   ` : ''}
 
@@ -1064,7 +692,7 @@ export class EcoChef extends LitElement {
                           .isLoading="${this.isLoading}"
                           .pantryItems="${this.pantryItemsAdvanced}"
                           .chatHistory="${this.recipeChatHistory}"
-                          @add-to-shopping-list="${(e: CustomEvent) => this.addToShoppingList(e.detail.item)}"
+                          @add-to-shopping-list="${(e: CustomEvent) => this.shopping.add(e.detail.item)}"
                           @set-recipe-rating="${(e: CustomEvent) => this.setRecipeRating(e.detail.rating)}"
                           @change-portions="${(e: CustomEvent) => this.handlePortionChange(e.detail.persons)}"
                           @mark-cooked="${this.markAsCooked}"
@@ -1098,19 +726,19 @@ export class EcoChef extends LitElement {
                    <eco-chef-cooking-mode
                        .recipe="${this.recipe}"
                        .currentCookingStep="${this.currentCookingStep}"
-                       .timerSecondsRemaining="${this.timerSecondsRemaining}"
+                       .timerSecondsRemaining="${this.timers.secondsRemaining}"
                        .currentStepTimeMinutes="${this.currentStepTimeMinutes}"
                        .isVoiceControlActive="${this.isVoiceControlActive}"
                        .voiceStatusText="${this.voiceStatusText}"
-                       .activeTimers="${this.activeTimers}"
+                       .activeTimers="${this.timers.activeTimers}"
                        .assistantAnswer="${this.assistantAnswerText}"
                        @close="${this.exitCookingMode}"
                        @prev-step="${this.prevStep}"
                        @next-step="${this.nextStep}"
                        @read-step="${this.readCurrentStep}"
                        @toggle-voice="${this.toggleVoiceControl}"
-                       @start-timer="${this.startTimer}"
-                       @stop-timer="${(e: CustomEvent) => this.stopTimer(e.detail?.id)}"
+                       @start-timer="${this.timers.start}"
+                       @stop-timer="${(e: CustomEvent) => this.timers.stop(e.detail?.id)}"
                        @ask-cooking-assistant="${this.handleAskCookingAssistant}">
                    </eco-chef-cooking-mode>
                ` : ''}
@@ -1179,34 +807,34 @@ export class EcoChef extends LitElement {
                 </eco-chef-privacy-modal>
 
                 <eco-chef-timer-expired-modal 
-                    .showTimerExpiredModal="${this.showTimerExpiredModal}"
-                    .timerLabel="${this.expiredTimerLabel}"
-                    @close="${this.closeTimerExpiredModal}">
+                    .showTimerExpiredModal="${this.timers.showExpiredModal}"
+                    .timerLabel="${this.timers.expiredLabel}"
+                    @close="${this.timers.closeExpiredModal}">
                 </eco-chef-timer-expired-modal>
 
                 <!-- Screen Reader Live Announcements & Global File Upload Input -->
-                <input type="file" id="file-upload" accept="image/*" style="display: none;" @change="${this.handleFileUpload}" />
+                <input type="file" id="file-upload" accept="image/*" style="display: none;" @change="${this.camera.handleFileUpload}" />
                 <div class="sr-only" aria-live="polite" id="sr-announcements">
                     ${this.srAnnouncement}
                 </div>
 
                 <!-- Floating Persistent Mini Timer Widget -->
-                ${this.activeTimers.length > 0 && !this.isCookingMode ? html`
+                ${this.timers.activeTimers.length > 0 && !this.isCookingMode ? html`
                     <div style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: #0f172a; color: white; border: 2px solid #10b981; border-radius: 20px; padding: 12px 18px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 12px; font-family: inherit;">
                         <span style="font-size: 20px;">⏱️</span>
                         <div>
                             <div style="font-size: 13px; font-weight: 800; color: #10b981;">
-                                ${this.activeTimers[0].label}
+                                ${this.timers.activeTimers[0].label}
                             </div>
                             <div style="font-size: 16px; font-weight: 900; font-family: monospace;">
-                                ${Math.floor(this.activeTimers[0].secondsRemaining / 60)}:${(this.activeTimers[0].secondsRemaining % 60).toString().padStart(2, '0')}
-                                ${this.activeTimers.length > 1 ? `(+${this.activeTimers.length - 1} weitere)` : ''}
+                                ${Math.floor(this.timers.activeTimers[0].secondsRemaining / 60)}:${(this.timers.activeTimers[0].secondsRemaining % 60).toString().padStart(2, '0')}
+                                ${this.timers.activeTimers.length > 1 ? `(+${this.timers.activeTimers.length - 1} weitere)` : ''}
                             </div>
                         </div>
-                        <button @click="${() => this.togglePauseTimer(this.activeTimers[0].id)}" style="background: #334155; color: white; border: none; border-radius: 10px; width: 32px; height: 32px; font-size: 14px; cursor: pointer;">
-                            ${this.activeTimers[0].isPaused ? '▶️' : '⏸️'}
+                        <button @click="${() => this.timers.togglePause(this.timers.activeTimers[0].id)}" style="background: #334155; color: white; border: none; border-radius: 10px; width: 32px; height: 32px; font-size: 14px; cursor: pointer;">
+                            ${this.timers.activeTimers[0].isPaused ? '▶️' : '⏸️'}
                         </button>
-                        <button @click="${() => this.startTimer(1, this.activeTimers[0].label)}" style="background: #059669; color: white; border: none; border-radius: 10px; padding: 6px 10px; font-size: 12px; font-weight: 800; cursor: pointer;">
+                        <button @click="${() => this.timers.start(1, this.timers.activeTimers[0].label)}" style="background: #059669; color: white; border: none; border-radius: 10px; padding: 6px 10px; font-size: 12px; font-weight: 800; cursor: pointer;">
                             +1 Min
                         </button>
                         <button @click="${() => this.isCookingMode = true}" style="background: #10b981; color: white; border: none; border-radius: 10px; padding: 6px 12px; font-size: 12px; font-weight: 800; cursor: pointer;">
@@ -1216,7 +844,7 @@ export class EcoChef extends LitElement {
                 ` : ''}
 
                 <!-- Webcam/Kamera Modal für Webbrowser -->
-                ${this.showWebcam ? html`
+                ${this.camera.showWebcam ? html`
                     <div class="modal-overlay" style="z-index: 2100;">
                         <div class="modal-content" style="max-width: 500px; display: flex; flex-direction: column; align-items: center; border-radius: 24px; padding: 24px;">
                             <h3 style="margin-bottom: 16px;">📸 Kamera (Web)</h3>
@@ -1225,8 +853,8 @@ export class EcoChef extends LitElement {
                                 <canvas id="webcam-canvas" style="display: none;"></canvas>
                             </div>
                             <div style="display: flex; gap: 12px; width: 100%; margin-top: 20px;">
-                                <button class="main-btn" @click="${this.captureWebcam}" style="margin: 0; flex: 1;">Foto aufnehmen 📸</button>
-                                <button class="secondary-btn" @click="${this.closeWebcam}" style="margin: 0; flex: 1;">Abbrechen</button>
+                                <button class="main-btn" @click="${this.camera.capture}" style="margin: 0; flex: 1;">Foto aufnehmen 📸</button>
+                                <button class="secondary-btn" @click="${this.camera.close}" style="margin: 0; flex: 1;">Abbrechen</button>
                             </div>
                         </div>
                     </div>
@@ -1353,7 +981,7 @@ export class EcoChef extends LitElement {
         this.recipeChatHistory = [];
         this.isCookingMode = false;
         SpeechService.cancelSpeak();
-        this.stopTimer();
+        this.timers.stop();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -1537,7 +1165,7 @@ export class EcoChef extends LitElement {
     }
 
     transferShoppingToPantry() {
-        const checkedItems = this.shoppingList.filter(item => item.checked);
+        const checkedItems = this.shopping.checkedItems();
         if (checkedItems.length === 0) return;
 
         const todayStr = getLocalDateString();
@@ -1567,8 +1195,7 @@ export class EcoChef extends LitElement {
         this.pantryItemsAdvanced = updatedPantry;
         StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
 
-        this.shoppingList = this.shoppingList.filter(item => !item.checked);
-        this.saveShoppingList();
+        this.shopping.clearChecked();
 
         showToast(`${addedCount} Zutat(en) in die Reste-Kammer übernommen!`, 'success');
         this.srAnnouncement = `${addedCount} Zutaten in Reste-Kammer übernommen.`;
@@ -1763,29 +1390,29 @@ export class EcoChef extends LitElement {
             this.srAnnouncement = "Schritt wird vorgelesen.";
         } else if (command.includes('timer starten') || command.includes('timer start') || command.includes('starten')) {
             if (this.currentStepTimeMinutes) {
-                this.startTimer();
+                this.timers.start();
             } else {
                 SpeechService.speak("Für diesen Schritt ist keine Kochzeit angegeben.");
             }
             this.srAnnouncement = "Timer per Sprachbefehl gestartet.";
         } else if (command.includes('wie viel zeit') || command.includes('restzeit') || command.includes('zeit übrig') || command.includes('dauer')) {
-            if (this.activeTimers.length === 0) {
+            if (this.timers.activeTimers.length === 0) {
                 SpeechService.speak("Es laufen aktuell keine aktiven Timer.");
             } else {
-                const textList = this.activeTimers.map(t => {
+                const textList = this.timers.activeTimers.map(t => {
                     const m = Math.floor(t.secondsRemaining / 60);
                     const s = t.secondsRemaining % 60;
                     const timeText = m > 0 ? `${m} Minuten und ${s} Sekunden` : `${s} Sekunden`;
                     return `Timer für ${t.label.split(':')[0]} hat noch ${timeText} übrig.`;
                 });
-                SpeechService.speak(`Es laufen ${this.activeTimers.length} Timer. ${textList.join(' ')}`);
+                SpeechService.speak(`Es laufen ${this.timers.activeTimers.length} Timer. ${textList.join(' ')}`);
             }
             this.srAnnouncement = "Timer-Restlaufzeit per Sprachbefehl angesagt.";
         } else if (command.includes('stopp') || command.includes('halt') || command.includes('anhalten')) {
             SpeechService.cancelSpeak();
-            this.stopTimer();
-            if (this.showTimerExpiredModal) {
-                this.closeTimerExpiredModal();
+            this.timers.stop();
+            if (this.timers.showExpiredModal) {
+                this.timers.closeExpiredModal();
             }
             this.srAnnouncement = "Sprachausgabe und Timer gestoppt.";
         } else if (command.includes('hilfe') || command.includes('befehle')) {
@@ -1953,7 +1580,7 @@ export class EcoChef extends LitElement {
 
     handleTriggerReceiptScan() {
         this.isScanningReceipt = true;
-        this.openCamera();
+        void this.camera.open();
     }
 
     async processReceipt() {
@@ -2051,7 +1678,7 @@ export class EcoChef extends LitElement {
 
     handleAddPlanShopping(e: CustomEvent) {
         const { title } = e.detail;
-        this.addManualShoppingItem(title);
+        this.shopping.addManual(title);
         showToast(`"${title}" zur Einkaufsliste hinzugefügt!`, 'success');
     }
 
@@ -2100,7 +1727,7 @@ export class EcoChef extends LitElement {
 
     handleTriggerProductScan() {
         this.isScanningProduct = true;
-        this.openCamera();
+        void this.camera.open();
     }
 
     async processProductScan() {
@@ -2145,7 +1772,7 @@ export class EcoChef extends LitElement {
     getSyncData(): SyncData {
         return {
             pantryItemsAdvanced: this.pantryItemsAdvanced,
-            shoppingList: this.shoppingList,
+            shoppingList: this.shopping.items,
             achievementsList: this.achievementsList,
             stats: this.stats,
             urgentIngredients: this.urgentIngredients,
@@ -2159,8 +1786,7 @@ export class EcoChef extends LitElement {
             StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
         }
         if (data.shoppingList) {
-            this.shoppingList = data.shoppingList;
-            this.saveShoppingList();
+            this.shopping.set(data.shoppingList);
         }
         if (data.achievementsList) {
             this.achievementsList = data.achievementsList;
@@ -2188,6 +1814,22 @@ export class EcoChef extends LitElement {
         this.srAnnouncement = message;
     }
 
+    setCapturedImage(dataUrl: string) {
+        this.capturedImage = dataUrl;
+    }
+
+    getStepContext() {
+        return {
+            stepIndex: this.currentCookingStep,
+            stepText: this.recipe?.instructions[this.currentCookingStep] ?? null,
+            detectedMinutes: this.currentStepTimeMinutes
+        };
+    }
+
+    getPantryNames(): string[] {
+        return this.pantryItemsAdvanced.map(p => p.name);
+    }
+
     exportCookbookPdf() {
         if (this.savedRecipesList.length === 0) {
             showToast('Du hast noch keine gespeicherten Rezepte im Kochbuch.', 'warning');
@@ -2208,15 +1850,6 @@ export class EcoChef extends LitElement {
             console.error("Cooking assistant query failed", err);
             this.assistantAnswerText = 'Fehler bei der Antwort des Kochassistenten.';
         }
-    }
-
-    togglePauseTimer(id: string) {
-        this.activeTimers = this.activeTimers.map(t => {
-            if (t.id === id) {
-                return { ...t, isPaused: !t.isPaused };
-            }
-            return t;
-        });
     }
 
     triggerMysteryBox() {
