@@ -8,7 +8,6 @@ import { StorageService } from './services/storage.service';
 import { AudioService } from './services/audio.service';
 import { SpeechService } from './services/speech.service';
 import { GeminiService } from './services/gemini.service';
-import { BarcodeService } from './services/barcode.service';
 import { QrService } from './services/qr.service';
 import { PdfService } from './services/pdf.service';
 import { BackupService } from './services/backup.service';
@@ -19,6 +18,8 @@ import { ShoppingListController, ShoppingListHost } from './controllers/shopping
 import { CameraController, CameraHost } from './controllers/camera.controller';
 import { VoiceController, VoiceHost } from './controllers/voice.controller';
 import { AchievementsController } from './controllers/achievements.controller';
+import { PantryController, PantryHost } from './controllers/pantry.controller';
+import { sortByExpiry } from './services/pantry';
 import { parseNumericValue, estimateCo2Fallback, parseStepMinutes } from './services/recipe-utils';
 import { showToast, showConfirmToast } from './components/eco-chef-toast';
 
@@ -74,8 +75,6 @@ export class EcoChef extends LitElement {
     @state() showReadingRuler = false;
     @state() rulerY = 250;
 
-    pantryItems = ['Salz', 'Pfeffer', 'Olivenöl', 'Wasser', 'Zucker', 'Mehl', 'Milch', 'Butter', 'Eier', 'Knoblauch', 'Zwiebeln'];
-    @state() selectedPantry: { [key: string]: boolean } = {};
 
 
     @state() recipeImage: string | null = null;
@@ -99,11 +98,8 @@ export class EcoChef extends LitElement {
     @state() assistantAnswerText = '';
 
     @state() currentTab = 'zauberer';
-    @state() pantryItemsAdvanced: PantryItemAdvanced[] = [];
     @state() mealPlan: MealPlan = {};
     @state() isGeneratingPlan = false;
-    @state() isScanningReceipt = false;
-    @state() isScanningProduct = false;
     @state() lastError: string | null = null;
 
     private readonly sync = new SyncController(this as unknown as SyncHost);
@@ -112,6 +108,7 @@ export class EcoChef extends LitElement {
     readonly camera = new CameraController(this as unknown as CameraHost);
     readonly voice = new VoiceController(this as unknown as VoiceHost);
     readonly achievements = new AchievementsController(this);
+    readonly pantry = new PantryController(this as unknown as PantryHost);
 
     get syncCode(): string {
         return this.sync.code;
@@ -135,7 +132,7 @@ export class EcoChef extends LitElement {
         this.isLrsMode = StorageService.getLrsMode();
         this.fontScale = StorageService.getFontScale();
         this.showReadingRuler = StorageService.getShowRuler();
-        this.selectedPantry = StorageService.getPantry();
+        this.pantry.load();
         this.shopping.load();
         this.selectedAllergens = StorageService.getAllergens();
         this.stats = StorageService.getStats();
@@ -145,7 +142,6 @@ export class EcoChef extends LitElement {
         this.geminiKeySessionOnly = !this.geminiApiKey || StorageService.isGeminiKeySessionOnly();
         this.selectedAvatar = localStorage.getItem('ecoChef_selectedAvatar') || '🧑‍🍳';
 
-        this.pantryItemsAdvanced = StorageService.getPantryAdvanced();
         this.mealPlan = StorageService.getMealPlan();
         
         this.achievements.load();
@@ -399,8 +395,8 @@ export class EcoChef extends LitElement {
                           .isLrsMode="${this.isLrsMode}"
                           .showReadingRuler="${this.showReadingRuler}"
                           .fontScale="${this.fontScale}"
-                          .selectedPantry="${this.selectedPantry}"
-                          .pantryItems="${this.pantryItems}"
+                          .selectedPantry="${this.pantry.selectedStaples}"
+                          .pantryItems="${this.pantry.staples}"
                           .selectedAllergens="${this.selectedAllergens}"
                           .stats="${this.stats}"
                           .calorieGoal="${this.calorieGoal}"
@@ -413,7 +409,7 @@ export class EcoChef extends LitElement {
                           .syncCode="${this.syncCode}"
                           .selectedAvatar="${this.selectedAvatar}"
                           @toggle-sound-effects="${(e: CustomEvent) => this.toggleSoundEffects(e.detail.enabled)}"
-                          @toggle-pantry-item="${(e: CustomEvent) => this.togglePantryItem(e.detail.item)}"
+                          @toggle-pantry-item="${(e: CustomEvent) => this.pantry.toggleStaple(e.detail.item)}"
                           @toggle-allergen="${(e: CustomEvent) => this.toggleAllergen(e.detail.allergen)}"
                           @change-font-scale="${(e: CustomEvent) => this.changeFontScale(e.detail.delta)}"
                           @change-calorie-goal="${(e: CustomEvent) => this.changeCalorieGoal(e.detail.goal)}"
@@ -448,15 +444,15 @@ export class EcoChef extends LitElement {
                   ${this.currentTab === 'pantry' && !this._loadedTabs.has('pantry') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
                   ${this.currentTab === 'pantry' && this._loadedTabs.has('pantry') ? html`
                       <eco-chef-pantry
-                          .pantryItems="${this.pantryItemsAdvanced}"
-                          .isScanning="${this.isLoading && (this.isScanningReceipt || this.isScanningProduct)}"
-                          @add-pantry-item="${this.handleAddPantryItem}"
-                          @delete-pantry-item="${this.handleDeletePantryItem}"
+                          .pantryItems="${this.pantry.items}"
+                          .isScanning="${this.isLoading && (this.pantry.isScanningReceipt || this.pantry.isScanningProduct)}"
+                          @add-pantry-item="${(e: CustomEvent) => this.pantry.add(e.detail)}"
+                          @delete-pantry-item="${(e: CustomEvent) => this.pantry.remove(e.detail.name)}"
                           @use-pantry-item="${this.handleUsePantryItem}"
                           @add-seasonal-ingredient="${this.handleSeasonalIngredient}"
-                          @search-barcode="${(e: CustomEvent) => this.handleBarcodeSearch(e.detail.barcode)}"
-                          @trigger-receipt-scan="${this.handleTriggerReceiptScan}"
-                          @trigger-product-scan="${this.handleTriggerProductScan}"
+                          @search-barcode="${(e: CustomEvent) => this.pantry.searchBarcode(e.detail.barcode)}"
+                          @trigger-receipt-scan="${this.pantry.startReceiptScan}"
+                          @trigger-product-scan="${this.pantry.startProductScan}"
                           @trigger-mystery-box="${this.triggerMysteryBox}">
                       </eco-chef-pantry>
                   ` : ''}
@@ -499,7 +495,7 @@ export class EcoChef extends LitElement {
                   ${this.currentTab === 'zauberer' && !this.recipe && !this.showSavedRecipes ? html`
                       ${(() => {
                           if (!this.notificationsEnabled) return '';
-                          const expiring = this.pantryItemsAdvanced.filter(item => {
+                          const expiring = this.pantry.items.filter(item => {
                               if (!item.expiryDate) return false;
                               const today = new Date();
                               today.setHours(0, 0, 0, 0);
@@ -666,7 +662,7 @@ export class EcoChef extends LitElement {
                           .persons="${this.persons}"
                           .currentRating="${this.currentRating}"
                           .isLoading="${this.isLoading}"
-                          .pantryItems="${this.pantryItemsAdvanced}"
+                          .pantryItems="${this.pantry.items}"
                           .chatHistory="${this.recipeChatHistory}"
                           @add-to-shopping-list="${(e: CustomEvent) => this.shopping.add(e.detail.item)}"
                           @set-recipe-rating="${(e: CustomEvent) => this.setRecipeRating(e.detail.rating)}"
@@ -902,7 +898,7 @@ export class EcoChef extends LitElement {
         try {
             const urgentList = Object.keys(this.urgentIngredients).filter(k => this.urgentIngredients[k] && this.ingredientChips.includes(k));
             const activeAllergens = Object.keys(this.selectedAllergens).filter(k => this.selectedAllergens[k]);
-            const pantryKeys = Object.keys(this.selectedPantry).filter(key => this.selectedPantry[key]);
+            const pantryKeys = this.pantry.activeStapleKeys();
 
             this.recipe = await GeminiService.generateRecipeFromOptions({
                 ingredientChips: this.ingredientChips,
@@ -1098,15 +1094,6 @@ export class EcoChef extends LitElement {
         }
     }
 
-    togglePantryItem(item: string) {
-        this.selectedPantry = {
-            ...this.selectedPantry,
-            [item]: !this.selectedPantry[item]
-        };
-        StorageService.setPantry(this.selectedPantry);
-        this.srAnnouncement = `${item} wurde in der Vorratskammer ${this.selectedPantry[item] ? 'aktiviert' : 'deaktiviert'}.`;
-    }
-
     clearAllData() {
         showConfirmToast(
             'Alle lokalen Daten (Rezepte, Einkaufsliste, Einstellungen) wirklich löschen? Diese Aktion ist unwiderruflich!',
@@ -1137,33 +1124,7 @@ export class EcoChef extends LitElement {
         const checkedItems = this.shopping.checkedItems();
         if (checkedItems.length === 0) return;
 
-        const todayStr = getLocalDateString();
-        const defaultExpiry = new Date();
-        defaultExpiry.setDate(defaultExpiry.getDate() + 7);
-        const expiryStr = getLocalDateString(defaultExpiry);
-
-        let addedCount = 0;
-        const updatedPantry = [...this.pantryItemsAdvanced];
-
-        checkedItems.forEach(cItem => {
-            const exists = updatedPantry.some(p => p.name.toLowerCase() === cItem.name.toLowerCase());
-            if (!exists) {
-                updatedPantry.push({
-                    name: cItem.name,
-                    active: true,
-                    addedDate: todayStr,
-                    expiryDate: expiryStr,
-                    quantity: 1,
-                    unit: 'Stk.',
-                    location: 'Kühlschrank'
-                });
-                addedCount++;
-            }
-        });
-
-        this.pantryItemsAdvanced = updatedPantry;
-        StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
-
+        const addedCount = this.pantry.addFromShopping(checkedItems);
         this.shopping.clearChecked();
 
         showToast(`${addedCount} Zutat(en) in die Reste-Kammer übernommen!`, 'success');
@@ -1217,24 +1178,6 @@ export class EcoChef extends LitElement {
     exportFullBackup() {
         BackupService.downloadJson(BackupService.backupFilename(), BackupService.createBackup(), true);
         this.srAnnouncement = "Vollständiges EcoChef-Backup heruntergeladen.";
-    }
-
-    async handleBarcodeSearch(barcode: string) {
-        this.isLoading = true;
-        this.srAnnouncement = "Barcode wird abgefragt...";
-        const res = await BarcodeService.fetchProductByBarcode(barcode);
-        this.isLoading = false;
-
-        if (res.found) {
-            const newItem = BarcodeService.createPantryItemFromBarcode(res, barcode);
-            this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, newItem];
-            StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
-            showToast(`"${res.name}" erfolgreich per Barcode hinzugefügt!`, 'success');
-            this.srAnnouncement = `${res.name} aus Barcode hinzugefügt.`;
-            this.autoSyncPush();
-        } else {
-            showToast(res.rawMessage || 'Produkt nicht gefunden.', 'error');
-        }
     }
 
     openQrModal() {
@@ -1403,61 +1346,14 @@ export class EcoChef extends LitElement {
     override updated(changedProperties: Map<string | number | symbol, unknown>) {
         super.updated(changedProperties);
         if (changedProperties.has('capturedImage') && this.capturedImage) {
-            if (this.isScanningReceipt) {
-                this.processReceipt();
-            } else if (this.isScanningProduct) {
-                this.processProductScan();
-            }
+            void this.pantry.handleCapturedImage();
         }
-    }
-
-    handleAddPantryItem(e: CustomEvent) {
-        const { name, expiryDate, quantity, unit, location } = e.detail;
-        const exists = this.pantryItemsAdvanced.some(item => item.name.toLowerCase() === name.toLowerCase());
-        if (exists) {
-            showToast(`"${name}" ist bereits in der Reste-Kammer vorhanden!`, 'warning');
-            return;
-        }
-        const item: PantryItemAdvanced = {
-            name,
-            active: true,
-            addedDate: getLocalDateString(),
-            expiryDate,
-            quantity: quantity !== undefined ? quantity : 1,
-            unit: unit !== undefined ? unit : 'Stk.',
-            location: location !== undefined ? location : 'Kühlschrank'
-        };
-        this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, item];
-        StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
-        this.srAnnouncement = `${name} zur Reste-Kammer hinzugefügt.`;
-        this.autoSyncPush();
-    }
-
-    handleDeletePantryItem(e: CustomEvent) {
-        const { name } = e.detail;
-        this.pantryItemsAdvanced = this.pantryItemsAdvanced.filter(item => item.name !== name);
-        StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
-        this.srAnnouncement = `${name} aus der Reste-Kammer entfernt.`;
-        this.autoSyncPush();
     }
 
     handleUsePantryItem(e: CustomEvent) {
         const { name } = e.detail;
         
-        // Gamification Challenge: mhdRetter
-        const matchedItem = this.pantryItemsAdvanced.find(p => p.name.toLowerCase() === name.toLowerCase());
-        if (matchedItem && matchedItem.expiryDate) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const expiry = new Date(matchedItem.expiryDate);
-            expiry.setHours(0, 0, 0, 0);
-            const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            if (diffDays <= 3) {
-                if (this.achievements.unlock('mhdRetter')) {
-                    showToast('🏆 Erfolg freigeschaltet: MHD-Retter! Zutat kurz vor Ablauf verwendet.', 'success', { duration: 5000 });
-                }
-            }
-        }
+        this.pantry.onItemUsed(name);
 
         if (!this.ingredientChips.includes(name)) {
             this.ingredientChips = [...this.ingredientChips, name];
@@ -1477,58 +1373,12 @@ export class EcoChef extends LitElement {
         this.srAnnouncement = `${item} als saisonale Zutat ausgewählt. Wechsel zum Zauberer.`;
     }
 
-    handleTriggerReceiptScan() {
-        this.isScanningReceipt = true;
-        void this.camera.open();
-    }
-
-    async processReceipt() {
-        if (!this.capturedImage) return;
-        this.isLoading = true;
-        this.srAnnouncement = "Kassenzettel wird analysiert...";
-        try {
-            const items = await GeminiService.scanReceipt(this.capturedImage);
-            if (items && items.length > 0) {
-                const todayStr = getLocalDateString();
-                const newItems = items.map(item => {
-                    const expiry = new Date();
-                    expiry.setDate(expiry.getDate() + (item.expiryDays || 7));
-                    const expiryDateStr = getLocalDateString(expiry);
-                    return {
-                        name: item.name || "Zutat",
-                        active: true,
-                        addedDate: todayStr,
-                        expiryDate: expiryDateStr,
-                        quantity: item.quantity || 1,
-                        unit: item.unit || 'Stk.',
-                        location: item.location || 'Kühlschrank'
-                    };
-                });
-                this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, ...newItems];
-                StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
-
-                this.achievements.increment('scannerProfi');
-
-                showToast(`Kassenzettel gescannt! ${items.length} Zutaten hinzugefügt.`, 'success');
-            } else {
-                showToast('Es konnten keine Lebensmittel auf dem Foto erkannt werden.', 'warning');
-            }
-        } catch (e) {
-            console.error("Receipt scan failed", e);
-            showToast('Fehler beim Scannen des Kassenzettels.', 'error');
-        } finally {
-            this.capturedImage = null;
-            this.isScanningReceipt = false;
-            this.isLoading = false;
-        }
-    }
-
     async handleGenerateWeeklyPlan(e: CustomEvent) {
         const isMealPrep = e.detail?.isMealPrep || false;
         this.isGeneratingPlan = true;
         this.srAnnouncement = "Wochenplan wird generiert...";
         try {
-            const pantryNames = this.pantryItemsAdvanced.map(i => i.name);
+            const pantryNames = this.pantry.names();
             const plan = await GeminiService.generateWeeklyPlan(
                 pantryNames,
                 this.selectedDiet,
@@ -1578,45 +1428,6 @@ export class EcoChef extends LitElement {
         });
     }
 
-    handleTriggerProductScan() {
-        this.isScanningProduct = true;
-        void this.camera.open();
-    }
-
-    async processProductScan() {
-        if (!this.capturedImage) return;
-        this.isLoading = true;
-        this.srAnnouncement = "Verpackung wird auf MHD und Inhalt analysiert...";
-        try {
-            const item = await GeminiService.scanPantryItem(this.capturedImage);
-            if (item && item.name) {
-                const todayStr = getLocalDateString();
-                const newItem = {
-                    name: item.name || "Unbekanntes Produkt",
-                    active: true,
-                    addedDate: todayStr,
-                    expiryDate: item.expiryDate || todayStr,
-                    quantity: item.quantity || 1,
-                    unit: item.unit || 'Stk.',
-                    location: item.location || 'Kühlschrank'
-                };
-                this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, newItem];
-                StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
-                showToast(`"${newItem.name}" erkannt und zur Vorratskammer hinzugefügt! (MHD: ${newItem.expiryDate})`, 'success', { duration: 5000 });
-                this.autoSyncPush();
-            } else {
-                showToast('Produkt konnte nicht eindeutig identifiziert werden.', 'warning');
-            }
-        } catch (e) {
-            console.error("Product scan failed", e);
-            showToast('Fehler beim Scannen des Produkts.', 'error');
-        } finally {
-            this.capturedImage = null;
-            this.isScanningProduct = false;
-            this.isLoading = false;
-        }
-    }
-
     autoSyncPush() {
         return this.sync.push();
     }
@@ -1624,7 +1435,7 @@ export class EcoChef extends LitElement {
     // --- SyncHost implementation (used by SyncController) ---
     getSyncData(): SyncData {
         return {
-            pantryItemsAdvanced: this.pantryItemsAdvanced,
+            pantryItemsAdvanced: this.pantry.items,
             shoppingList: this.shopping.items,
             achievementsList: this.achievements.list,
             stats: this.stats,
@@ -1635,8 +1446,7 @@ export class EcoChef extends LitElement {
 
     applySyncData(data: Partial<SyncData>) {
         if (data.pantryItemsAdvanced) {
-            this.pantryItemsAdvanced = data.pantryItemsAdvanced;
-            StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
+            this.pantry.set(data.pantryItemsAdvanced);
         }
         if (data.shoppingList) {
             this.shopping.set(data.shoppingList);
@@ -1679,7 +1489,7 @@ export class EcoChef extends LitElement {
     }
 
     getPantryNames(): string[] {
-        return this.pantryItemsAdvanced.map(p => p.name);
+        return this.pantry.names();
     }
 
     exportCookbookPdf() {
@@ -1705,15 +1515,11 @@ export class EcoChef extends LitElement {
     }
 
     triggerMysteryBox() {
-        if (this.pantryItemsAdvanced.length === 0) {
+        if (this.pantry.items.length === 0) {
             showToast('Deine Vorratskammer ist leer! Füge zuerst Zutaten hinzu.', 'warning');
             return;
         }
-        const sorted = [...this.pantryItemsAdvanced].sort((a, b) => {
-            const dA = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity;
-            const dB = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity;
-            return dA - dB;
-        });
+        const sorted = sortByExpiry(this.pantry.items);
 
         const topItems = sorted.slice(0, 3).map(i => i.name);
         this.ingredientChips = Array.from(new Set([...this.ingredientChips, ...topItems]));
