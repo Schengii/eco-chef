@@ -18,7 +18,7 @@
 ## Directory Structure
 - `ui-src/` - Quellcode der Frontend-Applikation
   - `eco-chef.ts` - Haupt-App-Komponente (Routing, Navigation, State-Management)
-  - `controllers/` - Lit `ReactiveController` (`sync.controller.ts`: verschlüsselter Haushalts-Sync; `timer.controller.ts`: Koch-Timer + Alarm; `shopping-list.controller.ts`: Einkaufsliste; `camera.controller.ts`: Cordova-/Web-Kamera). Neue Zustandslogik aus `eco-chef.ts` bevorzugt hier auslagern (Handler als Arrow-Properties, damit `this` im Template stimmt)
+  - `controllers/` - Lit `ReactiveController` (`sync.controller.ts`: verschlüsselter Haushalts-Sync; `timer.controller.ts`: Koch-Timer + Alarm; `shopping-list.controller.ts`: Einkaufsliste; `camera.controller.ts`: Cordova-/Web-Kamera; `voice.controller.ts`: Sprachbefehle; `achievements.controller.ts`: Erfolge). Neue Zustandslogik aus `eco-chef.ts` bevorzugt hier auslagern (Handler als Arrow-Properties, damit `this` im Template stimmt)
   - `components/` - Wiederverwendbare Lit-Komponenten (Views, Modals, Badges, etc.)
     - `eco-chef-saved-recipes.ts`: Ausgelagerte Rezeptbuch-Verwaltung & Filter
     - `eco-chef-cooking-mode.ts`: Kochmodus mit Screen Wake Lock & Haptik
@@ -33,6 +33,7 @@
     - `dashboard.service.ts`: Nachhaltigkeits-Metriken (CO₂, Food Waste)
     - `sync.service.ts`: Sync-Code (80 Bit, CSPRNG) und Bucket-Hash; `backup.service.ts`, `recipe-filter.ts`: Backup/Import und Filter
     - `ai-json.ts`, `gemini-schemas.ts`, `prompt-safety.ts`: KI-JSON-Parsing, `responseSchema`s, Eingabe-Sanitizing (`<nutzerdaten>`)
+    - `achievements.ts`: reine Erfolgs-Regeln (Defaults, Fortschritt, Kochen-Auswertung)
     - `recipe-utils.ts`: reine Helfer (Nährwert-Parsing, CO₂-Fallback, Schrittdauer)
     - `recipe-image.service.ts`: lokaler SVG-Platzhalter für Rezeptbilder; `sw.service.ts`: Service-Worker-Registrierung + Update-Hinweis; `logger.ts`: Debug-Log nur in Dev
   - `models/` - TypeScript-Interfaces (`eco-chef.models.ts`) und zod-Schemas (`schemas.ts`) für KI-Antworten, Imports, Backups und Sync-Daten

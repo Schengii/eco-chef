@@ -11,13 +11,14 @@ import { GeminiService } from './services/gemini.service';
 import { BarcodeService } from './services/barcode.service';
 import { QrService } from './services/qr.service';
 import { PdfService } from './services/pdf.service';
-import { Logger } from './services/logger';
 import { BackupService } from './services/backup.service';
 import { filterRecipes } from './services/recipe-filter';
 import { SyncController, SyncData, SyncHost } from './controllers/sync.controller';
 import { TimerController, TimerHost } from './controllers/timer.controller';
 import { ShoppingListController, ShoppingListHost } from './controllers/shopping-list.controller';
 import { CameraController, CameraHost } from './controllers/camera.controller';
+import { VoiceController, VoiceHost } from './controllers/voice.controller';
+import { AchievementsController } from './controllers/achievements.controller';
 import { parseNumericValue, estimateCo2Fallback, parseStepMinutes } from './services/recipe-utils';
 import { showToast, showConfirmToast } from './components/eco-chef-toast';
 
@@ -76,8 +77,6 @@ export class EcoChef extends LitElement {
     pantryItems = ['Salz', 'Pfeffer', 'Olivenöl', 'Wasser', 'Zucker', 'Mehl', 'Milch', 'Butter', 'Eier', 'Knoblauch', 'Zwiebeln'];
     @state() selectedPantry: { [key: string]: boolean } = {};
 
-    @state() isVoiceControlActive = false;
-    @state() voiceStatusText = '';
 
     @state() recipeImage: string | null = null;
     @state() isGeneratingImage = false;
@@ -101,27 +100,18 @@ export class EcoChef extends LitElement {
 
     @state() currentTab = 'zauberer';
     @state() pantryItemsAdvanced: PantryItemAdvanced[] = [];
-    @state() achievementsList: Achievement[] = [];
     @state() mealPlan: MealPlan = {};
     @state() isGeneratingPlan = false;
     @state() isScanningReceipt = false;
     @state() isScanningProduct = false;
     @state() lastError: string | null = null;
 
-    defaultAchievements: Achievement[] = [
-        { id: 'retterKoenig', title: 'Retter-König', description: 'Koche Rezepte mit dringend zu verbrauchenden Zutaten.', icon: '👑', unlocked: false, progress: 0, target: 5 },
-        { id: 'klimaSchuetzer', title: 'Klimaschützer', description: 'Erreiche eine CO₂-Ersparnis von insgesamt 10 kg.', icon: '🌳', unlocked: false, progress: 0, target: 10 },
-        { id: 'sterneChef', title: 'Sterne-Eco-Chef', description: 'Bewerte 3 gekochte Rezepte mit 5 Sternen.', icon: '⭐', unlocked: false, progress: 0, target: 3 },
-        { id: 'scannerProfi', title: 'Scanner-Profi', description: 'Scanne 3 Kassenzettel per Kamera.', icon: '🧾', unlocked: false, progress: 0, target: 3 },
-        { id: 'pflanzenfresser', title: 'Pflanzenfresser', description: 'Koche 5 vegetarische oder vegane Gerichte.', icon: '🌿', unlocked: false, progress: 0, target: 5 },
-        { id: 'mealPrepKing', title: 'Meal-Prep-King', description: 'Generiere einen wöchentlichen Meal-Prep-Plan.', icon: '📦', unlocked: false, progress: 0, target: 1 },
-        { id: 'mhdRetter', title: 'MHD-Retter', description: 'Füge Zutat mit nahem MHD zur Koch-Auswahl hinzu.', icon: '⏰', unlocked: false, progress: 0, target: 1 }
-    ];
-
     private readonly sync = new SyncController(this as unknown as SyncHost);
     readonly timers = new TimerController(this as unknown as TimerHost);
     readonly shopping = new ShoppingListController(this as unknown as ShoppingListHost);
     readonly camera = new CameraController(this as unknown as CameraHost);
+    readonly voice = new VoiceController(this as unknown as VoiceHost);
+    readonly achievements = new AchievementsController(this);
 
     get syncCode(): string {
         return this.sync.code;
@@ -158,20 +148,7 @@ export class EcoChef extends LitElement {
         this.pantryItemsAdvanced = StorageService.getPantryAdvanced();
         this.mealPlan = StorageService.getMealPlan();
         
-        let loadedAchievements = StorageService.getAchievements();
-        if (loadedAchievements.length === 0) {
-            loadedAchievements = [...this.defaultAchievements];
-            StorageService.setAchievements(loadedAchievements);
-        } else {
-            // Merge defaults if new achievements were added
-            this.defaultAchievements.forEach(def => {
-                if (!loadedAchievements.some(a => a.id === def.id)) {
-                    loadedAchievements.push(def);
-                }
-            });
-            StorageService.setAchievements(loadedAchievements);
-        }
-        this.achievementsList = loadedAchievements;
+        this.achievements.load();
         
         this.loadChips();
 
@@ -186,7 +163,6 @@ export class EcoChef extends LitElement {
         SpeechService.cancelSpeak();
         this.timers.stop();
         AudioService.stopAlarm();
-        this.stopVoiceRecognition();
         super.disconnectedCallback();
     }
 
@@ -515,7 +491,7 @@ export class EcoChef extends LitElement {
                   ${this.currentTab === 'achievements' && !this._loadedTabs.has('achievements') ? html`<div style="display:flex;justify-content:center;padding:60px 0"><div class="loader"></div></div>` : ''}
                   ${this.currentTab === 'achievements' && this._loadedTabs.has('achievements') ? html`
                       <eco-chef-achievements
-                          .achievements="${this.achievementsList}"
+                          .achievements="${this.achievements.list}"
                           .stats="${this.stats}">
                       </eco-chef-achievements>
                   ` : ''}
@@ -728,15 +704,15 @@ export class EcoChef extends LitElement {
                        .currentCookingStep="${this.currentCookingStep}"
                        .timerSecondsRemaining="${this.timers.secondsRemaining}"
                        .currentStepTimeMinutes="${this.currentStepTimeMinutes}"
-                       .isVoiceControlActive="${this.isVoiceControlActive}"
-                       .voiceStatusText="${this.voiceStatusText}"
+                       .isVoiceControlActive="${this.voice.isActive}"
+                       .voiceStatusText="${this.voice.statusText}"
                        .activeTimers="${this.timers.activeTimers}"
                        .assistantAnswer="${this.assistantAnswerText}"
                        @close="${this.exitCookingMode}"
                        @prev-step="${this.prevStep}"
                        @next-step="${this.nextStep}"
                        @read-step="${this.readCurrentStep}"
-                       @toggle-voice="${this.toggleVoiceControl}"
+                       @toggle-voice="${this.voice.toggle}"
                        @start-timer="${this.timers.start}"
                        @stop-timer="${(e: CustomEvent) => this.timers.stop(e.detail?.id)}"
                        @ask-cooking-assistant="${this.handleAskCookingAssistant}">
@@ -1064,14 +1040,7 @@ export class EcoChef extends LitElement {
             this.requestUpdate();
 
             if (rating === 5) {
-                const list = [...this.achievementsList];
-                const sc = list.find(a => a.id === 'sterneChef');
-                if (sc) {
-                    sc.progress = Math.min(sc.target, sc.progress + 1);
-                    sc.unlocked = sc.progress >= sc.target;
-                    this.achievementsList = list;
-                    StorageService.setAchievements(this.achievementsList);
-                }
+                this.achievements.increment('sterneChef');
             }
 
             this.srAnnouncement = `Bewertung auf ${rating} Sterne aktualisiert.`;
@@ -1352,72 +1321,8 @@ export class EcoChef extends LitElement {
     }
 
     // Sprachsteuerung
-    toggleVoiceControl() {
-        if (this.isVoiceControlActive) {
-            this.stopVoiceRecognition();
-        } else {
-            this.isVoiceControlActive = true;
-            this.voiceStatusText = 'Hört zu...';
-            SpeechService.startListening(
-                (cmd) => this.handleVoiceCommand(cmd),
-                (status) => { this.voiceStatusText = status; },
-                () => { this.isVoiceControlActive = false; }
-            );
-            SpeechService.speak("Sprachsteuerung aktiv. Sag 'weiter' oder 'zurück', um durch die Schritte zu navigieren.");
-            this.srAnnouncement = "Sprachsteuerung aktiviert. Das Mikrofon hört zu.";
-        }
-    }
-
-    stopVoiceRecognition() {
-        this.isVoiceControlActive = false;
-        this.voiceStatusText = '';
-        SpeechService.stopListening();
-        this.srAnnouncement = "Sprachsteuerung deaktiviert.";
-    }
-
-    handleVoiceCommand(command: string) {
-        Logger.debug("Voice Command:", command);
-        if (command.includes('weiter') || command.includes('nächst') || command.includes('weiterer')) {
-            this.nextStep();
-            this.speakCurrentStep();
-            this.srAnnouncement = "Nächster Schritt vorgelesen.";
-        } else if (command.includes('zurück') || command.includes('vorherig') || command.includes('letzter')) {
-            this.prevStep();
-            this.speakCurrentStep();
-            this.srAnnouncement = "Vorheriger Schritt vorgelesen.";
-        } else if (command.includes('vorlesen') || command.includes('lies vor') || command.includes('sprechen')) {
-            this.readCurrentStep();
-            this.srAnnouncement = "Schritt wird vorgelesen.";
-        } else if (command.includes('timer starten') || command.includes('timer start') || command.includes('starten')) {
-            if (this.currentStepTimeMinutes) {
-                this.timers.start();
-            } else {
-                SpeechService.speak("Für diesen Schritt ist keine Kochzeit angegeben.");
-            }
-            this.srAnnouncement = "Timer per Sprachbefehl gestartet.";
-        } else if (command.includes('wie viel zeit') || command.includes('restzeit') || command.includes('zeit übrig') || command.includes('dauer')) {
-            if (this.timers.activeTimers.length === 0) {
-                SpeechService.speak("Es laufen aktuell keine aktiven Timer.");
-            } else {
-                const textList = this.timers.activeTimers.map(t => {
-                    const m = Math.floor(t.secondsRemaining / 60);
-                    const s = t.secondsRemaining % 60;
-                    const timeText = m > 0 ? `${m} Minuten und ${s} Sekunden` : `${s} Sekunden`;
-                    return `Timer für ${t.label.split(':')[0]} hat noch ${timeText} übrig.`;
-                });
-                SpeechService.speak(`Es laufen ${this.timers.activeTimers.length} Timer. ${textList.join(' ')}`);
-            }
-            this.srAnnouncement = "Timer-Restlaufzeit per Sprachbefehl angesagt.";
-        } else if (command.includes('stopp') || command.includes('halt') || command.includes('anhalten')) {
-            SpeechService.cancelSpeak();
-            this.timers.stop();
-            if (this.timers.showExpiredModal) {
-                this.timers.closeExpiredModal();
-            }
-            this.srAnnouncement = "Sprachausgabe und Timer gestoppt.";
-        } else if (command.includes('hilfe') || command.includes('befehle')) {
-            SpeechService.speak("Mögliche Befehle sind: weiter, zurück, vorlesen, timer starten, restzeit abfragen, stoppen und hilfe.");
-        }
+    hasStepDuration(): boolean {
+        return !!this.currentStepTimeMinutes;
     }
 
     speakCurrentStep() {
@@ -1548,13 +1453,7 @@ export class EcoChef extends LitElement {
             expiry.setHours(0, 0, 0, 0);
             const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
             if (diffDays <= 3) {
-                const list = [...this.achievementsList];
-                const ach = list.find(a => a.id === 'mhdRetter');
-                if (ach && !ach.unlocked) {
-                    ach.progress = 1;
-                    ach.unlocked = true;
-                    this.achievementsList = list;
-                    StorageService.setAchievements(this.achievementsList);
+                if (this.achievements.unlock('mhdRetter')) {
                     showToast('🏆 Erfolg freigeschaltet: MHD-Retter! Zutat kurz vor Ablauf verwendet.', 'success', { duration: 5000 });
                 }
             }
@@ -1608,15 +1507,7 @@ export class EcoChef extends LitElement {
                 this.pantryItemsAdvanced = [...this.pantryItemsAdvanced, ...newItems];
                 StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
 
-                // Update achievements progress
-                const list = [...this.achievementsList];
-                const sc = list.find(a => a.id === 'scannerProfi');
-                if (sc) {
-                    sc.progress = Math.min(sc.target, sc.progress + 1);
-                    sc.unlocked = sc.progress >= sc.target;
-                }
-                this.achievementsList = list;
-                StorageService.setAchievements(this.achievementsList);
+                this.achievements.increment('scannerProfi');
 
                 showToast(`Kassenzettel gescannt! ${items.length} Zutaten hinzugefügt.`, 'success');
             } else {
@@ -1650,13 +1541,7 @@ export class EcoChef extends LitElement {
             this.srAnnouncement = "Wochenplan erfolgreich generiert.";
 
             if (isMealPrep) {
-                const list = [...this.achievementsList];
-                const ach = list.find(a => a.id === 'mealPrepKing');
-                if (ach && !ach.unlocked) {
-                    ach.progress = 1;
-                    ach.unlocked = true;
-                    this.achievementsList = list;
-                    StorageService.setAchievements(this.achievementsList);
+                if (this.achievements.unlock('mealPrepKing')) {
                     showToast('🏆 Erfolg freigeschaltet: Meal-Prep-King!', 'success', { duration: 5000 });
                 }
             }
@@ -1685,44 +1570,12 @@ export class EcoChef extends LitElement {
 
 
     updateAchievements() {
-        let totalCO2 = 0;
-        let cookedCount = 0;
-        for (const date in this.stats) {
-            totalCO2 += this.stats[date].co2Saved || 0;
-            cookedCount += this.stats[date].count || 0;
-        }
-
-        const list = [...this.achievementsList];
-        
-        // 1. Klimaschützer
-        const ks = list.find(a => a.id === 'klimaSchuetzer');
-        if (ks) {
-            ks.progress = Math.round(totalCO2);
-            ks.unlocked = ks.progress >= ks.target;
-        }
-
-        // 2. Pflanzenfresser
-        const pf = list.find(a => a.id === 'pflanzenfresser');
-        if (pf && this.recipe) {
-            const isVeg = this.selectedDiet === 'vegetarisch' || this.selectedDiet === 'vegan';
-            if (isVeg) {
-                pf.progress = Math.min(pf.target, pf.progress + 1);
-                pf.unlocked = pf.progress >= pf.target;
-            }
-        }
-
-        // 3. Retter-König
-        const rk = list.find(a => a.id === 'retterKoenig');
-        if (rk && this.recipe) {
-            const hasUrgent = Object.keys(this.urgentIngredients).some(k => this.urgentIngredients[k] && this.recipe?.ingredientsList.some(i => i.item.toLowerCase().includes(k.toLowerCase())));
-            if (hasUrgent) {
-                rk.progress = Math.min(rk.target, rk.progress + 1);
-                rk.unlocked = rk.progress >= rk.target;
-            }
-        }
-
-        this.achievementsList = list;
-        StorageService.setAchievements(this.achievementsList);
+        this.achievements.onRecipeCooked({
+            stats: this.stats,
+            recipe: this.recipe,
+            diet: this.selectedDiet,
+            urgentIngredients: this.urgentIngredients
+        });
     }
 
     handleTriggerProductScan() {
@@ -1773,7 +1626,7 @@ export class EcoChef extends LitElement {
         return {
             pantryItemsAdvanced: this.pantryItemsAdvanced,
             shoppingList: this.shopping.items,
-            achievementsList: this.achievementsList,
+            achievementsList: this.achievements.list,
             stats: this.stats,
             urgentIngredients: this.urgentIngredients,
             ingredientChips: this.ingredientChips
@@ -1789,8 +1642,7 @@ export class EcoChef extends LitElement {
             this.shopping.set(data.shoppingList);
         }
         if (data.achievementsList) {
-            this.achievementsList = data.achievementsList;
-            StorageService.setAchievements(this.achievementsList);
+            this.achievements.set(data.achievementsList);
         }
         if (data.stats) {
             this.stats = data.stats;
