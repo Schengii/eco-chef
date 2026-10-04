@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterApp } from './helpers';
 
 const recipe = {
     title: 'E2E Tomaten-Reis-Pfanne',
@@ -22,11 +23,8 @@ test('ingredients -> generated recipe (mocked AI proxy)', async ({ page }) => {
         return route.fulfill({ json: { text: JSON.stringify(recipe) } });
     });
 
-    await page.goto('/');
-    await page.getByRole('button', { name: /Küche betreten/ }).click();
+    await enterApp(page);
 
-    const consent = page.getByRole('button', { name: 'Einwilligen und fortfahren' });
-    if (await consent.isVisible().catch(() => false)) await consent.click();
 
     const input = page.locator('#ingredients-input');
     await input.fill('Tomaten');

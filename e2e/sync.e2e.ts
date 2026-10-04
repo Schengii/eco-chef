@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterApp } from './helpers';
 
 test('household sync: code is generated and uploaded encrypted (CSP allows kvdb.io)', async ({ page }) => {
     const uploads: Array<{ url: string; body: string }> = [];
@@ -11,10 +12,7 @@ test('household sync: code is generated and uploaded encrypted (CSP allows kvdb.
         if (/Content Security Policy/i.test(msg.text())) cspViolations.push(msg.text());
     });
 
-    await page.goto('/');
-    await page.getByRole('button', { name: /Küche betreten/ }).click();
-    const consent = page.getByRole('button', { name: 'Einwilligen und fortfahren' });
-    if (await consent.isVisible().catch(() => false)) await consent.click();
+    await enterApp(page);
 
     await page.getByRole('button', { name: 'Einstellungen', exact: true }).click();
     await page.getByRole('button', { name: /Sync-Schlüssel generieren/ }).click();
