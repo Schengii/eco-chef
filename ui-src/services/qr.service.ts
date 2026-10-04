@@ -1,5 +1,6 @@
 import qrcode from 'qrcode-generator';
 import { Recipe } from '../models/eco-chef.models';
+import { RecipeSchema } from '../models/schemas';
 
 export const QrService = {
     /**
@@ -29,19 +30,23 @@ export const QrService = {
             if (!data || !data.t || !Array.isArray(data.s)) {
                 return null;
             }
-            return {
+            // QR content is untrusted input: validate and normalize through the recipe schema.
+            const parsed = RecipeSchema.safeParse({
                 title: data.t,
                 difficulty: data.d || 'Mittel',
                 prepTime: data.p || '25 Min',
                 ecoScore: data.e || 'A+',
-                co2SavedKg: typeof data.c === 'number' ? data.c : (parseFloat(data.c) || 0),
+                co2SavedKg: data.c,
                 beverage: 'Wasser / Passender Wein',
                 storageTip: 'Kühl und luftdicht verschlossen aufbewahren.',
                 nutrition: data.n || { calories: '450 kcal', protein: '18g', carbs: '55g', fat: '12g' },
-                ingredientsList: Array.isArray(data.i) ? data.i.map((item: any) => typeof item === 'string' ? { item, category: 'Zutat' } : item) : [],
+                ingredientsList: Array.isArray(data.i)
+                    ? data.i.map((item: unknown) => typeof item === 'string' ? { item, category: 'Zutat' } : item)
+                    : [],
                 instructions: data.s,
                 tip: 'Frisch genießen!'
-            };
+            });
+            return parsed.success ? (parsed.data as Recipe) : null;
         } catch (e) {
             console.error('Failed to decode QR recipe payload', e);
             return null;

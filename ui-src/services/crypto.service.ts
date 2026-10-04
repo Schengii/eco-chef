@@ -4,23 +4,14 @@
  * data stored in public key-value stores is encrypted client-side.
  */
 function getSubtleCrypto(): SubtleCrypto | null {
-    if (typeof window !== 'undefined' && window.crypto?.subtle) {
-        return window.crypto.subtle;
-    }
-    if (typeof globalThis !== 'undefined' && (globalThis as any).crypto?.subtle) {
-        return (globalThis as any).crypto.subtle;
-    }
-    return null;
+    return globalThis.crypto?.subtle ?? null;
 }
 
 function getRandomValues(arr: Uint8Array): Uint8Array {
-    if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
-        return window.crypto.getRandomValues(arr);
+    if (!globalThis.crypto?.getRandomValues) {
+        throw new Error('Kein sicherer Zufallsgenerator verfügbar.');
     }
-    if (typeof globalThis !== 'undefined' && (globalThis as any).crypto?.getRandomValues) {
-        return (globalThis as any).crypto.getRandomValues(arr);
-    }
-    throw new Error('Kein sicherer Zufallsgenerator verfügbar.');
+    return globalThis.crypto.getRandomValues(arr);
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -82,7 +73,7 @@ export const CryptoService = {
         const key = await deriveKey(subtle, secret, 'encrypt');
         const iv = getRandomValues(new Uint8Array(12));
         const dataBytes = new TextEncoder().encode(JSON.stringify(payload));
-        const encrypted = await subtle.encrypt({ name: 'AES-GCM', iv: iv as any }, key, dataBytes as any);
+        const encrypted = await subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, dataBytes as BufferSource);
 
         const combined = new Uint8Array(iv.length + encrypted.byteLength);
         combined.set(iv, 0);
@@ -90,7 +81,7 @@ export const CryptoService = {
         return 'enc2:' + toBase64(combined);
     },
 
-    async decryptData(encryptedStr: string, secret: string): Promise<any> {
+    async decryptData(encryptedStr: string, secret: string): Promise<unknown> {
         const isV2 = encryptedStr?.startsWith('enc2:');
         const isV1 = encryptedStr?.startsWith('enc:');
         if (!isV1 && !isV2) {
@@ -106,7 +97,7 @@ export const CryptoService = {
             const iv = bytes.slice(0, 12);
             const ciphertext = bytes.slice(12);
             const key = isV2 ? await deriveKey(subtle, secret, 'decrypt') : await legacyKey(subtle, secret);
-            const decrypted = await subtle.decrypt({ name: 'AES-GCM', iv: iv as any }, key, ciphertext as any);
+            const decrypted = await subtle.decrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, ciphertext as BufferSource);
             return JSON.parse(new TextDecoder().decode(decrypted));
         } catch (err) {
             console.error('[CryptoService] Decryption failed:', err);
