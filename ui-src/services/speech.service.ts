@@ -1,3 +1,4 @@
+import { Logger } from './logger';
 class SpeechServiceClass {
     private recognition: any = null;
     private isListening = false;
@@ -72,7 +73,7 @@ class SpeechServiceClass {
                     if (directCommands.includes(command)) {
                         processedCommand = command;
                     } else {
-                        console.log("Ignored ambient sound/speech:", command);
+                        Logger.debug("Ignored ambient sound/speech:", command);
                         return;
                     }
                 }

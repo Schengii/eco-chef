@@ -1,3 +1,4 @@
+import { onActivate } from '../services/a11y';
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ecoChefStyles } from '../styles/eco-chef.styles';
@@ -151,7 +152,7 @@ export class EcoChefSavedRecipes extends LitElement {
                             ${filtered.map((item: Recipe) => {
                                 const realIndex = this.savedRecipesList.indexOf(item);
                                 return html`
-                                    <div class="saved-card" @click="${() => this._openRecipe(item)}">
+                                    <div class="saved-card" role="button" tabindex="0" aria-label="Rezept öffnen: ${item.title}" @click="${() => this._openRecipe(item)}" @keydown="${onActivate(() => this._openRecipe(item))}">
                                         <div class="saved-card-content">
                                             <h4>${item.title}</h4>
                                             <div class="saved-meta">

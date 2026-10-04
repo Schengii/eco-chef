@@ -4,25 +4,18 @@ import HtmlWebpackPlugin from 'html-webpack-plugin';
 import { fileURLToPath } from 'url';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import fs from 'fs';
+import dotenv from 'dotenv';
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 
-// Load .env file if it exists (API key security)
+// Load .env file if it exists (dev-only API key injection, see DefinePlugin below)
 const envFile = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '.env');
-const dotenvVars = {};
-if (fs.existsSync(envFile)) {
-    const content = fs.readFileSync(envFile, 'utf-8');
-    content.split('\n').forEach(line => {
-        const [key, ...val] = line.trim().split('=');
-        if (key && !key.startsWith('#')) {
-            dotenvVars[key.trim()] = val.join('=').trim();
-        }
-    });
-}
+const dotenvVars = fs.existsSync(envFile) ? dotenv.parse(fs.readFileSync(envFile)) : {};
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default (env, {mode}) => {
     const analyze = Boolean(env?.analyze);
+    const buildVersion = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
 
     return {
         mode: mode,
@@ -31,7 +24,7 @@ export default (env, {mode}) => {
         },
         devtool: mode === 'production' ? false : 'inline-source-map',
         devServer: {
-            static: './dist',
+            static: false,
             host: 'localhost',
             port: '4444',
             historyApiFallback: true,
@@ -61,7 +54,8 @@ export default (env, {mode}) => {
                     compiler.hooks.afterEmit.tap('CopyAssetsPlugin', () => {
                         const wwwDir = path.resolve(__dirname, 'www');
                         if (fs.existsSync(wwwDir)) {
-                            fs.copyFileSync(path.resolve(__dirname, 'ui-src/sw.js'), path.resolve(wwwDir, 'sw.js'));
+                            const swSource = fs.readFileSync(path.resolve(__dirname, 'ui-src/sw.js'), 'utf-8');
+                            fs.writeFileSync(path.resolve(wwwDir, 'sw.js'), swSource.replace('__BUILD_VERSION__', buildVersion));
                             fs.copyFileSync(path.resolve(__dirname, 'ui-src/manifest.json'), path.resolve(wwwDir, 'manifest.json'));
                             // Copy PWA icons
                             const assetsDir = path.resolve(__dirname, 'ui-src/assets');
@@ -104,7 +98,7 @@ export default (env, {mode}) => {
             clean: true
         },
         optimization: {
-            usedExports: false,
+            usedExports: true,
             runtimeChunk: 'single',
             splitChunks: {
                 chunks: 'all',

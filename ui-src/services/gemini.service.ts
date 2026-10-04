@@ -8,6 +8,7 @@ import {
     ReceiptItem, ScannedProduct
 } from '../models/schemas';
 import { parseAiJson } from './ai-json';
+import { createPlaceholderImage } from './recipe-image.service';
 import { sanitizeList, sanitizeUserText, userData, USER_DATA_RULE } from './prompt-safety';
 import {
     RECIPE_RESPONSE_SCHEMA, RECEIPT_RESPONSE_SCHEMA, PRODUCT_RESPONSE_SCHEMA, WEEKLY_PLAN_RESPONSE_SCHEMA
@@ -197,29 +198,8 @@ ingredientsList: item inkl. Menge (z.B. "250g Kirschtomaten") und category (z.B.
             throw new Error('No image returned by Imagen.');
 
         } catch (e) {
-            console.warn('Imagen failed, using smart Gemini fallback keywords for loremflickr:', e);
-
-            let hash = 0;
-            for (let i = 0; i < safeTitle.length; i++) {
-                hash = safeTitle.charCodeAt(i) + ((hash << 5) - hash);
-            }
-            const lock = Math.abs(hash) % 1000;
-
-            try {
-                const kwPrompt = `${USER_DATA_RULE}
-Translate the German food dish ${userData('gericht', safeTitle)} to English and extract 2 to 3 descriptive comma-separated keywords (nouns/adjectives) that represent this dish for an image search (e.g. for "Spaghetti mit Tomatensoße" output "pasta,spaghetti,tomato").
-Antworte AUSSCHLIESSLICH mit diesen kommagetrennten englischen Wörtern in Kleinbuchstaben, ohne Satzzeichen, ohne Anführungszeichen, ohne Zusatztext.`;
-
-                const kwText = await generateText([kwPrompt], { temperature: 0.2 });
-                const keywords = kwText.trim().toLowerCase().replace(/[^a-z,]/g, '');
-                if (keywords && keywords.length > 2) {
-                    return `https://loremflickr.com/600/400/food,${encodeURIComponent(keywords)}/all?lock=${lock}`;
-                }
-            } catch (err) {
-                console.error('Gemini keyword classification failed:', err);
-            }
-
-            return `https://loremflickr.com/600/400/food?lock=${lock}`;
+            console.warn('Imagen not available, using local placeholder image:', e);
+            return createPlaceholderImage(safeTitle);
         }
     },
 

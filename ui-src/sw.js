@@ -1,4 +1,5 @@
-const CACHE_NAME = 'eco-chef-v3';
+// The version token in CACHE_NAME is replaced with the build timestamp by webpack (see webpack.config.js)
+const CACHE_NAME = 'eco-chef-__BUILD_VERSION__';
 
 const ASSETS_TO_CACHE = [
     '/',
@@ -9,8 +10,14 @@ const ASSETS_TO_CACHE = [
     '/icon-512.png'
 ];
 
+// The new worker waits until the page asks for activation (update toast in sw.service.ts)
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
+
 self.addEventListener('install', (event) => {
-    self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
             console.log('[SW] Cache opened, pre-caching core assets');

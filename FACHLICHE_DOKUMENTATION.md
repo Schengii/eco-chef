@@ -171,7 +171,7 @@ POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:ge
 | **Kochassistent (Live)** | `gemini-2.5-flash` | Nutzerfrage + Rezeptname als Text | Kurze Antwort (1–2 Sätze) |
 | **Wochenplaner** | `gemini-2.5-flash` | Vorräte, Ernährungsweise, Aufwand, Personen | JSON-Objekt mit 7 Tageseinträgen |
 | **Bild-Generierung** | `imagen-3.0-generate-002` | Rezepttitel (englisch) | JPEG Base64 |
-| **Bild-Fallback** | `gemini-2.5-flash` + loremflickr | Rezepttitel → englische Keywords | `loremflickr.com`-URL |
+| **Bild-Fallback** | lokal (`recipe-image.service.ts`) | Rezepttitel | SVG-Platzhalter (Emoji + Farbverlauf), keine externe Anfrage |
 
 ### D. Strukturierte JSON-Ausgabe
 
@@ -207,7 +207,7 @@ Die CSP ist sowohl in `config.xml` als auch in `ui-src/index.html` definiert und
 - `https://generativelanguage.googleapis.com` – direkte Gemini API (bei eigenem Key)
 - `https://eco-chef-theta.vercel.app` – Vercel-Proxy
 - `https://world.openfoodfacts.org` – Barcode-Lookup
-- `https://loremflickr.com` – Bild-Fallback
+- `https://kvdb.io` – verschlüsselter Haushalts-Sync
 - `https://fonts.googleapis.com` / `https://fonts.gstatic.com` – Google Fonts
 
 ### Service Worker

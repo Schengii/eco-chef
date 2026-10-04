@@ -1,3 +1,4 @@
+import { onActivate } from '../services/a11y';
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 
@@ -179,7 +180,7 @@ export class EcoChefFridgeGuide extends LitElement {
 
                 <div class="fridge-graphic">
                     ${this.zones.map(z => html`
-                        <div class="fridge-zone ${z.id === this.activeZoneId ? 'active' : ''}" @click="${() => this.activeZoneId = z.id}">
+                        <div class="fridge-zone ${z.id === this.activeZoneId ? 'active' : ''}" role="button" tabindex="0" aria-pressed="${z.id === this.activeZoneId}" @click="${() => this.activeZoneId = z.id}" @keydown="${onActivate(() => { this.activeZoneId = z.id; })}">
                             <div class="zone-left">
                                 <span class="zone-icon">${z.icon}</span>
                                 <span class="zone-name">${z.name}</span>

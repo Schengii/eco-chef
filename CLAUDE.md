@@ -18,6 +18,7 @@
 ## Directory Structure
 - `ui-src/` - Quellcode der Frontend-Applikation
   - `eco-chef.ts` - Haupt-App-Komponente (Routing, Navigation, State-Management)
+  - `controllers/` - Lit `ReactiveController` (z. B. `sync.controller.ts`: verschlüsselter Haushalts-Sync)
   - `components/` - Wiederverwendbare Lit-Komponenten (Views, Modals, Badges, etc.)
     - `eco-chef-saved-recipes.ts`: Ausgelagerte Rezeptbuch-Verwaltung & Filter
     - `eco-chef-cooking-mode.ts`: Kochmodus mit Screen Wake Lock & Haptik
@@ -30,13 +31,17 @@
     - `speech.service.ts` & `audio.service.ts`: Web Speech API mit Loop-Schutz & Oszillator-Soundeffekte/Vibration
     - `pdf.service.ts`: Rezept-Export als PDF
     - `dashboard.service.ts`: Nachhaltigkeits-Metriken (CO₂, Food Waste)
-  - `models/` - TypeScript-Interfaces & Datenmodelle (`recipe.model.ts`, etc.)
+    - `sync.service.ts`: Sync-Code (80 Bit, CSPRNG) und Bucket-Hash; `backup.service.ts`, `recipe-filter.ts`: Backup/Import und Filter
+    - `ai-json.ts`, `gemini-schemas.ts`, `prompt-safety.ts`: KI-JSON-Parsing, `responseSchema`s, Eingabe-Sanitizing (`<nutzerdaten>`)
+    - `recipe-image.service.ts`: lokaler SVG-Platzhalter für Rezeptbilder; `sw.service.ts`: Service-Worker-Registrierung + Update-Hinweis; `logger.ts`: Debug-Log nur in Dev
+  - `models/` - TypeScript-Interfaces (`eco-chef.models.ts`) und zod-Schemas (`schemas.ts`) für KI-Antworten, Imports, Backups und Sync-Daten
   - `styles/` - Design Tokens, Themes, globale CSS-Variablen, Print-CSS
   - `api-config.ts` - Build-Time Injection des Gemini API Keys
-- `api/` - Vercel Serverless Function (`gemini.ts`) mit In-Memory Rate Limiting & Modell-Whitelist
+- `api/` - Vercel Serverless Function (`gemini.ts`) mit Request-Validierung (`_validate.ts`), CORS-Allowlist, Modell-Whitelist und Rate Limiting (`_ratelimit.ts`: Upstash Redis falls konfiguriert, sonst In-Memory)
+- `e2e/` - Playwright-Smoke-Tests (`npm run e2e`, KI-Proxy und kvdb gemockt)
 - `www/` - Webpack Build-Output (Cordova Root)
 - `platforms/` & `plugins/` - Cordova Native Artefakte (nicht manuell editieren)
-- `tests/` bzw. `*.spec.ts` - Jest Unit-Tests (31 Tests über 9 Suites)
+- `*.spec.ts` - Jest Unit-Tests (Services, Controller, API, jsdom-Komponententests via `@jest-environment jsdom`); Coverage-Schwellen in `jest.config.js`
 
 ---
 
@@ -62,8 +67,9 @@ npm run build
 
 ### Testing
 ```bash
-npm test
-# Führt Jest-Tests im Repo aus (ts-jest)
+npm test              # Jest-Unit-Tests (ts-jest)
+npm run test:coverage # inkl. Coverage-Schwellen (CI)
+npm run e2e           # Playwright-Smoke-Tests (startet npm run dev)
 ```
 Ein einzelner Test kann ausgeführt werden mit:
 ```bash
@@ -76,7 +82,8 @@ npx jest ui-src/services/crypto.service.spec.ts
 
 ### 1. API Keys & Sicherheit
 - **NIEMALS** API-Keys im Code committen oder hardcoden!
-- Der Gemini API-Key wird zur Build-Zeit via `.env` (`GEMINI_API_KEY`) injiziert oder dynamisch durch den Benutzer in den Einstellungen (`Settings`) hinterlegt.
+- `GEMINI_API_KEY` aus `.env` wird nur im Dev-Build injiziert; Produktions-Bundles enthalten keinen Key und nutzen den Proxy (`api/gemini.ts`) oder den vom Nutzer in den Einstellungen hinterlegten Key (Standard: nur Sitzung).
+- Alle Daten von außen (KI-Antworten, Importe, QR, Sync) werden mit den zod-Schemas aus `models/schemas.ts` validiert; Nutzertext im Prompt immer über `prompt-safety.ts`.
 
 ### 2. Lit Components & TypeScript
 - Verwende strikte Typisierung (`noImplicitAny`).

@@ -32,6 +32,11 @@ node_modules/
 /dist/
 /www/
 
+# Test artifacts
+coverage/
+test-results/
+playwright-report/
+
 ### IntelliJ IDEA ###
 .idea/
 *.iws

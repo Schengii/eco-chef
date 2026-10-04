@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { ecoChefStyles } from '../styles/eco-chef.styles';
 import { DailyStat, getLocalDateString } from '../models/eco-chef.models';
+import { DashboardService } from '../services/dashboard.service';
 
 @customElement('eco-chef-dashboard')
 export class EcoChefDashboard extends LitElement {
@@ -132,9 +133,7 @@ export class EcoChefDashboard extends LitElement {
         const totalCooked = Object.values(this.stats).reduce((sum, s) => sum + (s.count || 0), 0);
 
         // Equivalencies
-        const kmDriven = Math.round(totalCO2Saved * 8);
-        const treesPlanted = (totalCO2Saved / 20).toFixed(1);
-        const phoneCharges = Math.round(totalCO2Saved * 120);
+        const { kmDriven, treesPlanted, phoneCharges } = DashboardService.calculateCo2Equivalencies(totalCO2Saved);
 
         const calPct = Math.min(100, Math.round((todayStat.calories / (this.calorieGoal || 2000)) * 100));
         const protPct = Math.min(100, Math.round((todayStat.protein / (this.proteinGoal || 80)) * 100));
@@ -202,6 +201,9 @@ export class EcoChefDashboard extends LitElement {
                                 <div class="impact-label">Handy-Ladungen</div>
                             </div>
                         </div>
+                        <p style="font-size: 11px; color: #166534; margin-top: 10px;">
+                            ℹ️ Die CO₂-Werte pro Rezept sind KI-Schätzungen im Vergleich zu einem fleischlastigen Standardgericht, die Vergleiche (Auto, Baum, Handy) grobe Richtwerte.
+                        </p>
                     </div>
                 </div>
 

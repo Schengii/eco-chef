@@ -602,7 +602,7 @@ export const ecoChefStyles = css`
     /* Erweitertes Barrierefreiheits-Styling */
     
     /* Fokusring */
-    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .chip:focus-visible, .pantry-item:focus-visible, .allergen-item:focus-visible {
+    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [role="button"]:focus-visible, .chip:focus-visible, .pantry-item:focus-visible, .allergen-item:focus-visible {
         outline: 3px solid var(--primary) !important;
         outline-offset: 3px !important;
     }
@@ -1357,6 +1357,16 @@ export const ecoChefStyles = css`
             object-fit: cover !important;
             border-radius: 6px !important;
             border: 1px solid #e5e7eb !important;
+        }
+    }
+
+    /* Bewegung reduzieren, wenn vom System gewünscht */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
         }
     }
 `;

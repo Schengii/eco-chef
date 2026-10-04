@@ -11,6 +11,7 @@ import { GeminiService } from './services/gemini.service';
 import { BarcodeService } from './services/barcode.service';
 import { QrService } from './services/qr.service';
 import { PdfService } from './services/pdf.service';
+import { Logger } from './services/logger';
 import { BackupService } from './services/backup.service';
 import { filterRecipes } from './services/recipe-filter';
 import { SyncController, SyncData, SyncHost } from './controllers/sync.controller';
@@ -1748,7 +1749,7 @@ export class EcoChef extends LitElement {
     }
 
     handleVoiceCommand(command: string) {
-        console.log("Voice Command:", command);
+        Logger.debug("Voice Command:", command);
         if (command.includes('weiter') || command.includes('nächst') || command.includes('weiterer')) {
             this.nextStep();
             this.speakCurrentStep();

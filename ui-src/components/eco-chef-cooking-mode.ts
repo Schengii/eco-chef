@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { onActivate } from '../services/a11y';
 import { ecoChefStyles } from '../styles/eco-chef.styles';
 import { Recipe, ActiveTimer } from '../models/eco-chef.models';
 
@@ -341,7 +342,7 @@ export class EcoChefCookingMode extends LitElement {
                     <!-- Schritt-Timeline (Dashboard) -->
                     <div class="steps-timeline">
                         ${this.currentCookingStep > 0 ? html`
-                            <div class="timeline-step" @click="${this._prevStep}" style="cursor: pointer;">
+                            <div class="timeline-step" role="button" tabindex="0" aria-label="Vorheriger Schritt" @click="${this._prevStep}" @keydown="${onActivate(() => this._prevStep())}" style="cursor: pointer;">
                                 ⬅️ ${this.recipe.instructions[this.currentCookingStep - 1].substring(0, 60)}...
                             </div>
                         ` : ''}
@@ -351,7 +352,7 @@ export class EcoChefCookingMode extends LitElement {
                         </div>
                         
                         ${this.currentCookingStep < totalSteps - 1 ? html`
-                            <div class="timeline-step" @click="${this._nextStep}" style="cursor: pointer;">
+                            <div class="timeline-step" role="button" tabindex="0" aria-label="Nächster Schritt" @click="${this._nextStep}" @keydown="${onActivate(() => this._nextStep())}" style="cursor: pointer;">
                                 ➡️ ${this.recipe.instructions[this.currentCookingStep + 1].substring(0, 60)}...
                             </div>
                         ` : ''}

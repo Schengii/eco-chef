@@ -5,32 +5,13 @@ import {
     sanitizeGenerationConfig,
     validateContents
 } from './_validate';
+import { isRateLimited } from './_ratelimit';
 
 export const config = { maxDuration: 60 };
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 Minute
-const MAX_REQUESTS_PER_WINDOW = 20; // Max 20 Anfragen pro Minute pro IP (best effort, pro Instanz)
 const MAX_BODY_BYTES = 4_500_000; // Vercel-Limit für Request-Bodies
-
-// NOTE: In-Memory-Limit gilt nur pro Function-Instanz. Für ein verbindliches Limit
-// Vercel Firewall Rate Limiting oder einen Marketplace-Store (z.B. Upstash Redis) verwenden.
-function isRateLimited(ip: string): boolean {
-    const now = Date.now();
-    if (rateLimitMap.size > 5000) {
-        for (const [key, rec] of rateLimitMap) if (now > rec.resetTime) rateLimitMap.delete(key);
-    }
-    const record = rateLimitMap.get(ip);
-    if (!record || now > record.resetTime) {
-        rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
-        return false;
-    }
-    if (record.count >= MAX_REQUESTS_PER_WINDOW) return true;
-    record.count++;
-    return false;
-}
 
 function getClientIp(req: VercelRequest): string {
     const forwarded = (req.headers['x-vercel-forwarded-for'] ?? req.headers['x-forwarded-for']) as string | undefined;
@@ -61,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(413).json({ error: 'Anfrage zu groß.' });
     }
 
-    if (isRateLimited(getClientIp(req))) {
+    if (await isRateLimited(getClientIp(req))) {
         res.setHeader('Retry-After', '60');
         return res.status(429).json({ error: 'Zu viele Anfragen. Bitte warte einen Moment.' });
     }
