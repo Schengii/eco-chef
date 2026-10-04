@@ -50,9 +50,10 @@ export default (env, {mode}) => {
                 'npm_package_version': 'packagejson-vars-missing',
                 'buildTimestamp': new Date().toISOString()
             }),
-            // Inject API key from .env file at build time (keeps key out of source control)
+            // Dev only: inject the key from .env. Production bundles are public, so they never embed a key
+            // and use the server proxy (api/gemini.ts) unless the user enters their own key in the settings.
             new webpack.DefinePlugin({
-                'process.env.ECOCHEF_GEMINI_API_KEY': JSON.stringify(dotenvVars['GEMINI_API_KEY'] || '')
+                'process.env.ECOCHEF_GEMINI_API_KEY': JSON.stringify(mode === 'production' ? '' : (dotenvVars['GEMINI_API_KEY'] || ''))
             }),
             ...(analyze ? [new BundleAnalyzerPlugin()] : []),
             {

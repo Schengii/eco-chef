@@ -60,6 +60,8 @@ Inhalt der `.env`-Datei:
 GEMINI_API_KEY=dein_api_key_hier
 ```
 
+> Die `.env` wird nur im Dev-Modus (`npm run dev`) in das Bundle eingebettet. Produktions-Builds (`npm run build`) enthalten bewusst keinen Key und nutzen den Server-Proxy oder den Key, den Nutzer in den Einstellungen eintragen (standardmäßig nur für die Sitzung gespeichert).
+
 ### Option 3: Vercel (Serverless-Proxy)
 Der API-Key ist als Umgebungsvariable `GEMINI_API_KEY` auf Vercel hinterlegt. Die Web-App und alle mobilen Apps nutzen diesen sicheren Server-Proxy (`/api/gemini`) automatisch.
 

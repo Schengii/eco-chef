@@ -11,8 +11,9 @@ import { GeminiService } from './services/gemini.service';
 import { BarcodeService } from './services/barcode.service';
 import { QrService } from './services/qr.service';
 import { PdfService } from './services/pdf.service';
-import { CryptoService } from './services/crypto.service';
-import { SyncService } from './services/sync.service';
+import { BackupService } from './services/backup.service';
+import { filterRecipes } from './services/recipe-filter';
+import { SyncController, SyncData, SyncHost } from './controllers/sync.controller';
 import { showToast, showConfirmToast } from './components/eco-chef-toast';
 
 // Always-needed components loaded eagerly
@@ -90,6 +91,7 @@ export class EcoChef extends LitElement {
     @state() calorieGoal = 2000;
     @state() proteinGoal = 80;
     @state() geminiApiKey = '';
+    @state() geminiKeySessionOnly = true;
     @state() selectedAvatar = '🧑‍🍳';
     @state() budgetSettings = StorageService.getBudgetSettings();
     @state() notificationsEnabled = StorageService.getNotificationsEnabled();
@@ -105,7 +107,6 @@ export class EcoChef extends LitElement {
     @state() isGeneratingPlan = false;
     @state() isScanningReceipt = false;
     @state() isScanningProduct = false;
-    @state() syncCode = '';
     @state() lastError: string | null = null;
 
     defaultAchievements: Achievement[] = [
@@ -117,6 +118,12 @@ export class EcoChef extends LitElement {
         { id: 'mealPrepKing', title: 'Meal-Prep-King', description: 'Generiere einen wöchentlichen Meal-Prep-Plan.', icon: '📦', unlocked: false, progress: 0, target: 1 },
         { id: 'mhdRetter', title: 'MHD-Retter', description: 'Füge Zutat mit nahem MHD zur Koch-Auswahl hinzu.', icon: '⏰', unlocked: false, progress: 0, target: 1 }
     ];
+
+    private readonly sync = new SyncController(this as unknown as SyncHost);
+
+    get syncCode(): string {
+        return this.sync.code;
+    }
 
     override connectedCallback() {
         super.connectedCallback();
@@ -143,8 +150,8 @@ export class EcoChef extends LitElement {
         this.calorieGoal = StorageService.getCalorieGoal();
         this.proteinGoal = StorageService.getProteinGoal();
         this.geminiApiKey = StorageService.getGeminiApiKey();
+        this.geminiKeySessionOnly = !this.geminiApiKey || StorageService.isGeminiKeySessionOnly();
         this.selectedAvatar = localStorage.getItem('ecoChef_selectedAvatar') || '🧑‍🍳';
-        this.syncCode = localStorage.getItem('ecoChef_syncCode') || '';
 
         this.pantryItemsAdvanced = StorageService.getPantryAdvanced();
         this.mealPlan = StorageService.getMealPlan();
@@ -166,14 +173,7 @@ export class EcoChef extends LitElement {
         
         this.loadChips();
 
-        if (this.syncCode && !SyncService.normalizeCode(this.syncCode)) {
-            // Legacy 6-char code from an older version: no longer secure, drop it.
-            this.syncCode = '';
-            localStorage.removeItem('ecoChef_syncCode');
-        }
-        if (this.syncCode) {
-            this.handleApplySyncCode(new CustomEvent('apply-sync-code', { detail: { code: this.syncCode } }));
-        }
+        void this.sync.start();
 
         this.updateFontScaleStyle();
         this.updateBodyBackground();
@@ -214,23 +214,24 @@ export class EcoChef extends LitElement {
 
     async openCamera() {
         // App-Kamera über Cordova
-        if ((navigator as any).camera) {
+        const camera = navigator.camera;
+        if (camera) {
             const options = {
                 quality: 70,
-                destinationType: (navigator as any).camera.DestinationType.DATA_URL,
-                encodingType: (navigator as any).camera.EncodingType.JPEG,
-                mediaType: (navigator as any).camera.MediaType.PICTURE,
+                destinationType: camera.DestinationType.DATA_URL,
+                encodingType: camera.EncodingType.JPEG,
+                mediaType: camera.MediaType.PICTURE,
                 correctOrientation: true,
                 targetWidth: 800,
                 targetHeight: 800
             };
 
-            (navigator as any).camera.getPicture(
+            camera.getPicture(
                 (imageData: string) => {
                     this.capturedImage = 'data:image/jpeg;base64,' + imageData;
                     this.srAnnouncement = "Foto erfolgreich über App-Kamera aufgenommen.";
                 },
-                (error: any) => { 
+                (error: string) => {
                     console.error("Cordova Camera error:", error); 
                     this.srAnnouncement = "Fehler bei der App-Kamera.";
                 },
@@ -456,7 +457,7 @@ export class EcoChef extends LitElement {
         this.srAnnouncement = `Allergenfilter ${allergen} wurde ${this.selectedAllergens[allergen] ? 'aktiviert' : 'deaktiviert'}.`;
     }
 
-    normalizeIngredients(ingredients: any[]): IngredientItem[] {
+    normalizeIngredients(ingredients: Array<IngredientItem | string> | undefined): IngredientItem[] {
         if (!ingredients) return [];
         return ingredients.map(ing => {
             if (typeof ing === 'string') {
@@ -803,6 +804,7 @@ export class EcoChef extends LitElement {
                           .notificationsEnabled="${this.notificationsEnabled}"
                           .soundEffectsEnabled="${this.soundEffectsEnabled}"
                           .geminiApiKey="${this.geminiApiKey}"
+                          .geminiKeySessionOnly="${this.geminiKeySessionOnly}"
                           .syncCode="${this.syncCode}"
                           .selectedAvatar="${this.selectedAvatar}"
                           @toggle-sound-effects="${(e: CustomEvent) => this.toggleSoundEffects(e.detail.enabled)}"
@@ -819,14 +821,14 @@ export class EcoChef extends LitElement {
                               this.notificationsEnabled = e.detail.enabled;
                               StorageService.setNotificationsEnabled(this.notificationsEnabled);
                           }}"
-                          @change-gemini-api-key="${(e: CustomEvent) => this.changeGeminiApiKey(e.detail.key)}"
+                          @change-gemini-api-key="${(e: CustomEvent) => this.changeGeminiApiKey(e.detail.key, e.detail.sessionOnly)}"
                           @change-avatar="${(e: CustomEvent) => {
                               this.selectedAvatar = e.detail.avatar;
                               localStorage.setItem('ecoChef_selectedAvatar', e.detail.avatar);
                               this.autoSyncPush();
                           }}"
-                          @generate-sync-code="${this.handleGenerateSyncCode}"
-                          @apply-sync-code="${this.handleApplySyncCode}"
+                          @generate-sync-code="${() => this.sync.generate()}"
+                          @apply-sync-code="${(e: CustomEvent) => this.sync.connect(e.detail.code)}"
                           @toggle-lrs-mode="${this.toggleLrsMode}"
                           @toggle-reading-ruler="${this.toggleReadingRuler}"
                           @toggle-privacy="${this.togglePrivacyDetails}"
@@ -1315,9 +1317,9 @@ export class EcoChef extends LitElement {
 
             this.generateRecipeImage(this.recipe.title);
 
-        } catch (networkError: any) {
+        } catch (networkError: unknown) {
             console.error("API Verbindungsfehler:", networkError);
-            const errMsg: string = networkError?.message || '';
+            const errMsg: string = networkError instanceof Error ? networkError.message : '';
             let userMsg = 'Verbindungsfehler – bitte Internetverbindung prüfen.';
             if (errMsg.includes('API_KEY') || errMsg.includes('403')) {
                 userMsg = 'Ungültiger API-Key. Bitte in den Einstellungen prüfen.';
@@ -1355,8 +1357,8 @@ export class EcoChef extends LitElement {
     }
 
     exitApp() {
-        if ((navigator as any).app) {
-            (navigator as any).app.exitApp();
+        if (navigator.app) {
+            navigator.app.exitApp();
         } else {
             showToast('App beenden funktioniert nur auf dem echten Gerät!', 'info');
         }
@@ -1399,7 +1401,7 @@ export class EcoChef extends LitElement {
             this.showShoppingList = false;
             this.showSettings = false;
             const parsed = StorageService.getSavedRecipes();
-            this.savedRecipesList = parsed.map((r: any) => ({
+            this.savedRecipesList = parsed.map((r) => ({
                 ...r,
                 ingredientsList: this.normalizeIngredients(r.ingredientsList)
             }));
@@ -1407,10 +1409,10 @@ export class EcoChef extends LitElement {
         }
     }
 
-    openSavedRecipe(savedRecipe: any) {
+    openSavedRecipe(savedRecipe: Recipe) {
         this.recipe = {
             ...savedRecipe,
-            co2SavedKg: typeof savedRecipe.co2SavedKg === 'number' ? savedRecipe.co2SavedKg : (parseFloat(savedRecipe.co2SavedKg) || 0),
+            co2SavedKg: typeof savedRecipe.co2SavedKg === 'number' ? savedRecipe.co2SavedKg : (parseFloat(String(savedRecipe.co2SavedKg)) || 0),
             ingredientsList: this.normalizeIngredients(savedRecipe.ingredientsList)
         };
         this.recipeImage = savedRecipe.image || null;
@@ -1461,25 +1463,7 @@ export class EcoChef extends LitElement {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const content = e.target?.result as string;
-                const imported = JSON.parse(content);
-
-                if (!Array.isArray(imported)) {
-                    showToast('Ungültiges Format. Erwartet wird ein JSON-Array von Rezepten.', 'error');
-                    return;
-                }
-
-                const existing = StorageService.getSavedRecipes();
-                const merged = [...existing, ...imported.map((r: any) => ({
-                    ...r,
-                    ingredientsList: this.normalizeIngredients(r.ingredientsList),
-                    importedAt: new Date().toISOString()
-                }))];
-
-                StorageService.setSavedRecipes(merged);
-                this.savedRecipesList = merged;
-                showToast(`${imported.length} Rezept(e) erfolgreich importiert!`, 'success');
-                this.srAnnouncement = `${imported.length} Rezepte importiert.`;
+                this.importRecipesSuccess(JSON.parse(e.target?.result as string));
             } catch (err) {
                 showToast('Fehler beim Importieren. Stelle sicher, dass es eine gültige EcoChef-JSON-Datei ist.', 'error');
                 console.error('Import error:', err);
@@ -1489,18 +1473,18 @@ export class EcoChef extends LitElement {
         input.value = '';
     }
 
-    importRecipesSuccess(recipes: any[]) {
-        const existing = StorageService.getSavedRecipes();
-        const merged = [...existing, ...recipes.map((r: any) => ({
-            ...r,
-            ingredientsList: this.normalizeIngredients(r.ingredientsList),
-            importedAt: new Date().toISOString()
-        }))];
-
+    importRecipesSuccess(raw: unknown) {
+        const parsed = BackupService.parseRecipeImport(raw);
+        if (!parsed || parsed.recipes.length === 0) {
+            showToast('Keine gültigen Rezepte in der Datei gefunden.', 'error');
+            return;
+        }
+        const merged = BackupService.mergeImportedRecipes(StorageService.getSavedRecipes(), parsed.recipes);
         StorageService.setSavedRecipes(merged);
         this.savedRecipesList = merged;
-        showToast(`${recipes.length} Rezept(e) erfolgreich importiert!`, 'success');
-        this.srAnnouncement = `${recipes.length} Rezepte importiert.`;
+        const skippedHint = parsed.skipped > 0 ? ` (${parsed.skipped} ungültige übersprungen)` : '';
+        showToast(`${parsed.recipes.length} Rezept(e) erfolgreich importiert!${skippedHint}`, 'success');
+        this.srAnnouncement = `${parsed.recipes.length} Rezepte importiert.`;
     }
 
     updateFontScaleStyle() {
@@ -1547,14 +1531,7 @@ export class EcoChef extends LitElement {
             showToast('Du hast noch keine Rezepte gespeichert.', 'warning');
             return;
         }
-        
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(saved));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", "ecoChef_rezepte.json");
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
+        BackupService.downloadJson('ecoChef_rezepte.json', saved);
         this.srAnnouncement = "Deine Rezepte wurden als Datei heruntergeladen.";
     }
 
@@ -1641,27 +1618,7 @@ export class EcoChef extends LitElement {
     }
 
     exportFullBackup() {
-        const backupData = {
-            version: '1.0.0',
-            exportedAt: new Date().toISOString(),
-            savedRecipes: StorageService.getSavedRecipes(),
-            pantryItemsAdvanced: StorageService.getPantryAdvanced(),
-            shoppingList: StorageService.getShoppingList(),
-            stats: StorageService.getStats(),
-            achievements: StorageService.getAchievements(),
-            urgentIngredients: StorageService.getUrgentIngredients(),
-            ingredientChips: StorageService.getIngredientChips(),
-            calorieGoal: StorageService.getCalorieGoal(),
-            proteinGoal: StorageService.getProteinGoal()
-        };
-
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `ecoChef_full_backup_${getLocalDateString()}.json`);
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
+        BackupService.downloadJson(BackupService.backupFilename(), BackupService.createBackup(), true);
         this.srAnnouncement = "Vollständiges EcoChef-Backup heruntergeladen.";
     }
 
@@ -1690,41 +1647,26 @@ export class EcoChef extends LitElement {
         this.showQrModal = true;
     }
 
-    importFullBackup(payload: any) {
-        if (!payload || typeof payload !== 'object') {
+    importFullBackup(raw: unknown) {
+        const payload = BackupService.parseBackup(raw);
+        if (!payload) {
             showToast('Ungültiges Backup-Format.', 'error');
             return;
         }
 
         try {
-            if (Array.isArray(payload.savedRecipes)) {
-                StorageService.setSavedRecipes(payload.savedRecipes);
-                this.savedRecipesList = payload.savedRecipes;
+            if (payload.savedRecipes) {
+                StorageService.setSavedRecipes(payload.savedRecipes as Recipe[]);
+                this.savedRecipesList = payload.savedRecipes as Recipe[];
             }
-            if (Array.isArray(payload.pantryItemsAdvanced)) {
-                StorageService.setPantryAdvanced(payload.pantryItemsAdvanced);
-                this.pantryItemsAdvanced = payload.pantryItemsAdvanced;
-            }
-            if (Array.isArray(payload.shoppingList)) {
-                StorageService.setShoppingList(payload.shoppingList);
-                this.shoppingList = payload.shoppingList;
-            }
-            if (payload.stats && typeof payload.stats === 'object') {
-                StorageService.setStats(payload.stats);
-                this.stats = payload.stats;
-            }
-            if (Array.isArray(payload.achievements)) {
-                StorageService.setAchievements(payload.achievements);
-                this.achievementsList = payload.achievements;
-            }
-            if (payload.urgentIngredients) {
-                StorageService.setUrgentIngredients(payload.urgentIngredients);
-                this.urgentIngredients = payload.urgentIngredients;
-            }
-            if (Array.isArray(payload.ingredientChips)) {
-                StorageService.setIngredientChips(payload.ingredientChips);
-                this.ingredientChips = payload.ingredientChips;
-            }
+            this.applySyncData({
+                pantryItemsAdvanced: payload.pantryItemsAdvanced as PantryItemAdvanced[] | undefined,
+                shoppingList: payload.shoppingList as ShoppingItem[] | undefined,
+                stats: payload.stats,
+                urgentIngredients: payload.urgentIngredients,
+                achievementsList: payload.achievements as Achievement[] | undefined,
+                ingredientChips: payload.ingredientChips
+            });
 
             showToast('EcoChef-Backup erfolgreich wiederhergestellt!', 'success', { duration: 4500 });
             this.srAnnouncement = "Gesamtdaten erfolgreich importiert.";
@@ -1765,9 +1707,10 @@ export class EcoChef extends LitElement {
         StorageService.setProteinGoal(goal);
     }
 
-    changeGeminiApiKey(key: string) {
+    changeGeminiApiKey(key: string, sessionOnly = true) {
         this.geminiApiKey = key.trim();
-        StorageService.setGeminiApiKey(this.geminiApiKey);
+        this.geminiKeySessionOnly = sessionOnly;
+        StorageService.setGeminiApiKey(this.geminiApiKey, sessionOnly);
     }
 
     acceptConsent() {
@@ -1887,16 +1830,7 @@ export class EcoChef extends LitElement {
     }
 
     getFilteredSavedRecipes() {
-        let result = this.savedRecipesList;
-        if (this.savedFilterRating > 0) {
-            result = result.filter((r: any) => (r.rating || 0) >= this.savedFilterRating);
-        }
-        if (!this.searchQuery.trim()) return result;
-        const query = this.searchQuery.toLowerCase();
-        return result.filter((r: any) =>
-            r.title?.toLowerCase().includes(query) ||
-            r.ingredientsList?.some((i: any) => i.item?.toLowerCase().includes(query))
-        );
+        return filterRecipes(this.savedRecipesList, this.savedFilterRating, this.searchQuery);
     }
 
     setRecipeRating(rating: number) {
@@ -2120,94 +2054,7 @@ export class EcoChef extends LitElement {
         showToast(`"${title}" zur Einkaufsliste hinzugefügt!`, 'success');
     }
 
-    async handleGenerateSyncCode() {
-        this.srAnnouncement = "Generiere Synchronisations-Code...";
-        const code = SyncService.generateCode();
 
-        const payload = {
-            pantryItemsAdvanced: this.pantryItemsAdvanced,
-            shoppingList: this.shoppingList,
-            achievementsList: this.achievementsList,
-            stats: this.stats,
-            urgentIngredients: this.urgentIngredients,
-            ingredientChips: this.ingredientChips
-        };
-
-        try {
-            const encryptedPayload = await CryptoService.encryptData(payload, code);
-            const res = await fetch(await SyncService.bucketUrl(code), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enc: encryptedPayload })
-            });
-            if (res.ok) {
-                this.syncCode = code;
-                localStorage.setItem('ecoChef_syncCode', code);
-                this.srAnnouncement = `Sync-Code generiert: ${code}.`;
-                this.requestUpdate();
-            } else {
-                throw new Error("HTTP Status " + res.status);
-            }
-        } catch (e) {
-            console.error("Generate sync code failed", e);
-            showToast('Fehler beim Verbinden mit dem Cloud-Server.', 'error');
-        }
-    }
-
-    async handleApplySyncCode(e: CustomEvent) {
-        const code = SyncService.normalizeCode(e.detail?.code);
-        if (!code) {
-            showToast('Ungültiges Schlüssel-Format. Erwartet: XXXX-XXXX-XXXX-XXXX.', 'error');
-            return;
-        }
-        this.srAnnouncement = "Verbinde und synchronisiere Daten...";
-        try {
-            const res = await fetch(await SyncService.bucketUrl(code));
-            if (res.ok) {
-                const rawJson = await res.json();
-                const data = (rawJson && rawJson.enc)
-                    ? await CryptoService.decryptData(rawJson.enc, code)
-                    : rawJson;
-
-                if (data) {
-                    if (data.pantryItemsAdvanced && Array.isArray(data.pantryItemsAdvanced)) {
-                        this.pantryItemsAdvanced = data.pantryItemsAdvanced;
-                        StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
-                    }
-                    if (data.shoppingList && Array.isArray(data.shoppingList)) {
-                        this.shoppingList = data.shoppingList;
-                        this.saveShoppingList();
-                    }
-                    if (data.achievementsList && Array.isArray(data.achievementsList)) {
-                        this.achievementsList = data.achievementsList;
-                        StorageService.setAchievements(this.achievementsList);
-                    }
-                    if (data.stats && typeof data.stats === 'object') {
-                        this.stats = data.stats;
-                        StorageService.setStats(this.stats);
-                    }
-                    if (data.urgentIngredients && typeof data.urgentIngredients === 'object') {
-                        this.urgentIngredients = data.urgentIngredients;
-                        StorageService.setUrgentIngredients(this.urgentIngredients);
-                    }
-                    if (data.ingredientChips && Array.isArray(data.ingredientChips)) {
-                        this.ingredientChips = data.ingredientChips;
-                        this.saveChips();
-                    }
-                    this.syncCode = code;
-                    localStorage.setItem('ecoChef_syncCode', code);
-                    showToast('Daten erfolgreich synchronisiert!', 'success');
-                    this.srAnnouncement = "Synchronisation abgeschlossen.";
-                    this.requestUpdate();
-                }
-            } else {
-                showToast('Ungültiger oder abgelaufener Sync-Schlüssel.', 'error');
-            }
-        } catch (err) {
-            console.error("Apply sync code failed", err);
-            showToast('Fehler beim Abrufen der Synchronisationsdaten.', 'error');
-        }
-    }
 
     updateAchievements() {
         let totalCO2 = 0;
@@ -2289,9 +2136,13 @@ export class EcoChef extends LitElement {
         }
     }
 
-    async autoSyncPush() {
-        if (!this.syncCode) return;
-        const payload = {
+    autoSyncPush() {
+        return this.sync.push();
+    }
+
+    // --- SyncHost implementation (used by SyncController) ---
+    getSyncData(): SyncData {
+        return {
             pantryItemsAdvanced: this.pantryItemsAdvanced,
             shoppingList: this.shoppingList,
             achievementsList: this.achievementsList,
@@ -2299,17 +2150,41 @@ export class EcoChef extends LitElement {
             urgentIngredients: this.urgentIngredients,
             ingredientChips: this.ingredientChips
         };
-        try {
-            const encryptedPayload = await CryptoService.encryptData(payload, this.syncCode);
-            await fetch(await SyncService.bucketUrl(this.syncCode), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enc: encryptedPayload })
-            });
-            console.log("Auto-sync push completed successfully (encrypted).");
-        } catch (e) {
-            console.warn("Auto-sync push failed", e);
+    }
+
+    applySyncData(data: Partial<SyncData>) {
+        if (data.pantryItemsAdvanced) {
+            this.pantryItemsAdvanced = data.pantryItemsAdvanced;
+            StorageService.setPantryAdvanced(this.pantryItemsAdvanced);
         }
+        if (data.shoppingList) {
+            this.shoppingList = data.shoppingList;
+            this.saveShoppingList();
+        }
+        if (data.achievementsList) {
+            this.achievementsList = data.achievementsList;
+            StorageService.setAchievements(this.achievementsList);
+        }
+        if (data.stats) {
+            this.stats = data.stats;
+            StorageService.setStats(this.stats);
+        }
+        if (data.urgentIngredients) {
+            this.urgentIngredients = data.urgentIngredients;
+            StorageService.setUrgentIngredients(this.urgentIngredients);
+        }
+        if (data.ingredientChips) {
+            this.ingredientChips = data.ingredientChips;
+            this.saveChips();
+        }
+    }
+
+    notify(message: string, type: 'success' | 'error' | 'warning') {
+        showToast(message, type);
+    }
+
+    announce(message: string) {
+        this.srAnnouncement = message;
     }
 
     exportCookbookPdf() {

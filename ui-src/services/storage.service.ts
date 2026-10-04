@@ -258,11 +258,35 @@ export const StorageService = {
         safeSetItem('ecoChef_proteinGoal', String(goal));
     },
 
+    /** User-supplied Gemini key. Session-only keys (sessionStorage) take precedence over persisted ones. */
     getGeminiApiKey(): string {
+        try {
+            const sessionKey = sessionStorage.getItem('ecoChef_geminiApiKey');
+            if (sessionKey) return sessionKey;
+        } catch { /* sessionStorage unavailable */ }
         return localStorage.getItem('ecoChef_geminiApiKey') || '';
     },
-    setGeminiApiKey(key: string): void {
+    isGeminiKeySessionOnly(): boolean {
+        try {
+            return !!sessionStorage.getItem('ecoChef_geminiApiKey');
+        } catch {
+            return false;
+        }
+    },
+    setGeminiApiKey(key: string, sessionOnly = false): void {
+        this.clearGeminiApiKey();
+        if (!key) return;
+        if (sessionOnly) {
+            try {
+                sessionStorage.setItem('ecoChef_geminiApiKey', key);
+                return;
+            } catch { /* fall through to persistent storage */ }
+        }
         safeSetItem('ecoChef_geminiApiKey', key);
+    },
+    clearGeminiApiKey(): void {
+        try { sessionStorage.removeItem('ecoChef_geminiApiKey'); } catch { /* ignore */ }
+        localStorage.removeItem('ecoChef_geminiApiKey');
     },
 
     getPantryAdvanced(): PantryItemAdvanced[] {
