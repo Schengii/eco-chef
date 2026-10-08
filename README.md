@@ -1,7 +1,7 @@
 # EcoChef 🧑‍🍳 - Dein intelligenter KI-Rezept-Zauberer
 
 > **In short (EN):** AI kitchen assistant that turns leftover ingredients into recipes with Google Gemini. Includes barcode scanning (OpenFoodFacts), expiry alerts, a voice-controlled cooking mode, budget tracking and WCAG-oriented accessibility features. Runs as a web app and as an Android app via Cordova.
-> **Stack:** TypeScript · Lit Web Components · Google GenAI SDK (Gemini 2.5 Flash) · Webpack · Jest · Apache Cordova · Vercel
+> **Stack:** TypeScript · Lit Web Components · Google GenAI SDK (Gemini 3.5 Flash) · Webpack · Jest · Apache Cordova · Vercel
 > **Live demo:** [eco-chef-theta.vercel.app](https://eco-chef-theta.vercel.app)
 
 <!-- Screenshot: Datei unter docs/screenshots/rezept.png ablegen und die nächste Zeile einkommentieren -->
@@ -14,7 +14,7 @@
 
 ## 🌟 Kernfunktionen & Features
 
-- 🪄 **KI-Rezept-Zauberer (Google Gemini 2.5 Flash & Imagen):** Generierung maßgeschneiderter Rezepte inkl. Nährwerten, Eco-Score, Wein-/Getränkeempfehlung & Gerichtsfoto.
+- 🪄 **KI-Rezept-Zauberer (Google Gemini 3.5 Flash & Nano Banana):** Generierung maßgeschneiderter Rezepte inkl. Nährwerten, Eco-Score, Wein-/Getränkeempfehlung & Gerichtsfoto.
 - 📷 **Live-Kamera-Barcodescanner & EAN-Lookup:** Erkennt Barcodes (EAN-13, EAN-8, UPC) direkt live im Kamerasucher via nativer `BarcodeDetector`-API und importiert Produktdaten und Nutri-Score von OpenFoodFacts.
 - 📅 **Wochenplan Kalender-Export (.ics):** Generiere einen personalisierten Wochenplan und exportiere ihn mit einem Klick als standardkonforme iCalendar-Datei (.ics) für Google Kalender, Apple Kalender oder Outlook.
 - 🖨️ **Print-CSS für Einzelrezepte:** Perfekt formatiertes DIN-A4-Drucklayout für jedes Rezept auf Knopfdruck (blendet Navigation, Chat und Buttons aus).
@@ -204,7 +204,7 @@ EcoChef/
                                                ▼
                                ┌───────────────────────────┐
                                │  Google Gemini REST API   │
-                               │  gemini-2.5-flash         │
+                               │  gemini-3.5-flash         │ 
                                └───────────────────────────┘
 
 Clients:
@@ -249,6 +249,15 @@ Das Projekt ist für den Einsatz von KI-Assistenten (insbesondere [Claude Code](
 
 ### v1.3.1 (2026-10-08) – Sicherheit, Performance & Testabdeckung
 
+#### 🤖 Aktualisiert: Gemini-Modelle
+- Standardmodell `gemini-2.5-flash` → `gemini-3.5-flash` (live gegen die API getestet, Schema-JSON funktioniert). Google schränkt den Zugang zu den 2.5-Modellen ein.
+- Fallback-Kette bei Überlastung (503) oder Abschaltung (404): `gemini-3.5-flash-lite` → `gemini-2.5-flash`, serverseitig im Proxy (`modelChain`) und clientseitig bei eigenem Key.
+- Proxy-Whitelist bereinigt: abgeschaltete Modelle (`gemini-2.0-flash`, `gemini-1.5-*`) entfernt.
+- Bilder: Imagen 3 ist seit November 2025 abgeschaltet. Mit eigenem Key erzeugt jetzt `gemini-nano-banana-2.1` das Gerichtsfoto, sonst bleibt der lokale Platzhalter. Der öffentliche Proxy bietet bewusst keine Bildgenerierung (Kostenschutz).
+
+#### 🐛 Behoben: Dev-Key wurde nie eingebettet
+- `api-config.ts` prüfte `typeof process`, was im Browser immer `undefined` ist. Der Key aus `.env` kam daher nie in den Dev-Build an. Playwright setzt jetzt `ECOCHEF_NO_DEV_KEY=1`, damit die gemockten E2E-Tests weiter den Proxy nutzen (`LIVE_AI=1` für echte Aufrufe).
+
 #### 🔒 Behoben: HTML-Injection im Kochbuch-Druck
 - `pdf.service.ts` maskiert jetzt alle Rezeptfelder (`escapeHtml`) vor der Ausgabe im Druckfenster. Rezepte aus Import, QR-Code, Sync oder KI konnten zuvor HTML/Skript in das gleich-originäre Druckfenster einschleusen.
 
@@ -257,10 +266,10 @@ Das Projekt ist für den Einsatz von KI-Assistenten (insbesondere [Claude Code](
 - Start-Bundle: 581 KiB → 311 KiB (ohne Webpack-Warnungen).
 
 #### ✅ Verbessert: Tests & CI
-- 224 Jest-Tests (zuvor 186) und 9 Playwright-Tests; Gesamtabdeckung ca. 87 % (Schwellen in `jest.config.js` auf 80/70/80/80 angehoben).
+- 232 Jest-Tests (zuvor 186) und 9 Playwright-Tests; Gesamtabdeckung ca. 87 % (Schwellen in `jest.config.js` auf 80/70/80/80 angehoben).
 - Neue Tests für `storage.service` (inkl. IndexedDB via `fake-indexeddb`, Quota-Pruning), `speech.service`, `sw.service`, `backup.service`, `pdf.service` und den direkten Gemini-Pfad.
 - CI führt zusätzlich `npm audit --omit=dev --audit-level=high` aus.
-- Abhängigkeiten aktualisiert (Lit 3.3.3, Playwright 1.64, dotenv, css-loader, `@vercel/node` 23).
+- Abhängigkeiten aktualisiert (Lit 3.3.3, Playwright 1.64, dotenv, css-loader, `webpack-dev-server` 6). `@vercel/node` wurde durch lokale Typen (`api/vercel-types.ts`) ersetzt; `npm audit --omit=dev` meldet 0 Schwachstellen.
 
 ### v1.3.0 (2026-10-03) – Security, Quality & Architecture Optimizations
 

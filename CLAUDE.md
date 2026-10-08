@@ -1,7 +1,7 @@
 # CLAUDE.md - EcoChef Guidelines & Context
 
 ## Project Overview
-**EcoChef** ist eine KI-gestützte Rezept- und Nachhaltigkeits-App (Apache Cordova + TypeScript + Lit Web Components + Google GenAI SDK). Sie verwandelt Kühlschrankreste durch multimodale KI (Gemini 2.5 Flash) in strukturierte Rezepte, berechnet CO₂-/Wasser-Einsparungen und unterstützt Barcode-/Kamera-Scans sowie Sprachsteuerung.
+**EcoChef** ist eine KI-gestützte Rezept- und Nachhaltigkeits-App (Apache Cordova + TypeScript + Lit Web Components + Google GenAI SDK). Sie verwandelt Kühlschrankreste durch multimodale KI (Gemini 3.5 Flash) in strukturierte Rezepte, berechnet CO₂-/Wasser-Einsparungen und unterstützt Barcode-/Kamera-Scans sowie Sprachsteuerung.
 
 ---
 
@@ -90,7 +90,9 @@ Einzelnes Playwright-Spec: `npx playwright test e2e/tabs.e2e.ts` (Specs heißen 
 - Alles, was als HTML ausgegeben wird (Druckfenster in `pdf.service.ts`), muss über `escapeHtml` laufen; `innerHTML` nur für selbst erzeugte Markups (QR-SVG).
 - Coverage-Schwellen stehen bei 80/70/80/80 (`jest.config.js`). IndexedDB wird in Tests mit `fake-indexeddb/auto` bedient; Browser-APIs (Speech, Service Worker) in `@jest-environment jsdom`-Specs gemockt.
 - Playwright braucht einmalig `npx playwright install chromium`. Der erste E2E-Lauf nach einem Playwright-Update kann wegen des kalten Webpack-Starts zeitlich scheitern, dann einfach wiederholen.
-- CI prüft zusätzlich `npm audit --omit=dev --audit-level=high`. Offene Dev-Meldungen stammen aus `@vercel/node` (nur Typen, nicht im Bundle).
+- Modelle: `MODEL`, `FALLBACK_MODELS`, `IMAGE_MODEL` in `gemini.service.ts` und `ALLOWED_MODELS`/`MODEL_FALLBACKS` in `api/_validate.ts` müssen zusammenpassen. Vor einem Modellwechsel live gegen die API prüfen (Schema-JSON, `thinking`-Verbrauch in `maxOutputTokens`); Google nennt Abschaltungen unter ai.google.dev/gemini-api/docs/deprecations. Imagen ist abgeschaltet, der Proxy bietet keine Bildgenerierung.
+- Dev-Key: `GEMINI_API_KEY` aus `.env` wird per DefinePlugin eingebettet. Playwright startet den Dev-Server mit `ECOCHEF_NO_DEV_KEY=1`, damit gemockte E2E-Tests den Proxy nutzen; echte Läufe mit `LIVE_AI=1 npx playwright test ...`.
+- CI prüft zusätzlich `npm audit --omit=dev --audit-level=high`. Ein voller `npm audit` zeigt weiterhin Meldungen, die nur Dev-/Build-Werkzeuge betreffen (Jest-Toolchain, `cordova-android`); die vorgeschlagenen Fixes wären Downgrades und werden nicht übernommen. Die Vercel-Typen liegen lokal in `api/vercel-types.ts` (kein `@vercel/node` mehr).
 
 ### Weitere Doku
 `README.md` (Features), `FACHLICHE_DOKUMENTATION.md` (Fachlogik), `BENUTZERANLEITUNG.md` (Nutzersicht).

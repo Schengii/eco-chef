@@ -63,7 +63,7 @@ EcoChef/
                                                ▼
                                ┌───────────────────────────┐
                                │  Google Gemini REST API   │
-                               │  gemini-2.5-flash         │
+                               │  gemini-3.5-flash         │ 
                                │  generativelanguage.      │
                                │  googleapis.com/v1beta    │
                                └───────────────────────────┘
@@ -142,20 +142,21 @@ Die Function kommuniziert direkt mit der Gemini REST API – ohne das `@google/g
 
 **Sicherheits- & Härtungs-Maßnahmen:**
 - **In-Memory Rate Limiting:** Sliding-Window Drosselung auf maximal 30 Anfragen pro Minute je Client-IP. Überschreitungen werden mit HTTP 429 beantwortet.
-- **Modell-Whitelist (`ALLOWED_MODELS`):** Erlaubt ausschließlich verifizierte Modelle (`gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-1.5-flash`, `imagen-3.0-generate-002`). Unzulässige Modellbezeichner werden mit HTTP 400 abgewiesen.
+- **Modell-Whitelist (`ALLOWED_MODELS`):** Erlaubt ausschließlich verifizierte Modelle (`gemini-3.8-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-2.5-flash`). Unzulässige oder abgekündigte Modellbezeichner (z. B. `gemini-2.0-flash`, `gemini-1.5-*`, `imagen-*`) werden mit HTTP 400 abgewiesen.
+- **Modell-Fallback (`modelChain`):** Antwortet das angefragte Modell mit 503 (überlastet) oder 404 (abgeschaltet), probiert der Proxy nacheinander `gemini-3.5-flash`, `gemini-3.5-flash-lite` und `gemini-2.5-flash`. Andere Fehler (z. B. 429 Kontingent) werden nicht wiederholt.
 - **CORS-Restriktionen:** Zulassung der definierten Header `Content-Type` und `Authorization`.
 
 ```
 POST /api/gemini
 Body: {
   action: "generateContent",
-  model: "gemini-2.5-flash",
+  model: "gemini-3.5-flash",
   contents: [...],
   config: { responseMimeType: "application/json" }
 }
 
 → Proxy ruft auf:
-POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=<SERVER_KEY>
+POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=<SERVER_KEY>
 
 → Antwort:
 { text: "<KI-Antwort>" }
@@ -165,12 +166,12 @@ POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:ge
 
 | Funktion | Modell | Eingabe | Ausgabe |
 |---|---|---|---|
-| **Rezeptgenerierung** | `gemini-2.5-flash` | Zutaten-Text + optionales Kühlschrankfoto (Base64) | JSON-Rezept mit Nährwerten, Eco-Score, Schritten |
-| **Kassenzettel-Scan** | `gemini-2.5-flash` | Bon-Foto (Base64) + Prompt | JSON-Array mit erkannten Lebensmitteln |
-| **Produkt-Scan** | `gemini-2.5-flash` | Produkt-Foto (Base64) + Prompt | JSON-Objekt (Name, Menge, MHD, Lagerort) |
-| **Kochassistent (Live)** | `gemini-2.5-flash` | Nutzerfrage + Rezeptname als Text | Kurze Antwort (1–2 Sätze) |
-| **Wochenplaner** | `gemini-2.5-flash` | Vorräte, Ernährungsweise, Aufwand, Personen | JSON-Objekt mit 7 Tageseinträgen |
-| **Bild-Generierung** | `imagen-3.0-generate-002` | Rezepttitel (englisch) | JPEG Base64 |
+| **Rezeptgenerierung** | `gemini-3.5-flash` | Zutaten-Text + optionales Kühlschrankfoto (Base64) | JSON-Rezept mit Nährwerten, Eco-Score, Schritten |
+| **Kassenzettel-Scan** | `gemini-3.5-flash` | Bon-Foto (Base64) + Prompt | JSON-Array mit erkannten Lebensmitteln |
+| **Produkt-Scan** | `gemini-3.5-flash` | Produkt-Foto (Base64) + Prompt | JSON-Objekt (Name, Menge, MHD, Lagerort) |
+| **Kochassistent (Live)** | `gemini-3.5-flash` | Nutzerfrage + Rezeptname als Text | Kurze Antwort (1–2 Sätze) |
+| **Wochenplaner** | `gemini-3.5-flash` | Vorräte, Ernährungsweise, Aufwand, Personen | JSON-Objekt mit 7 Tageseinträgen |
+| **Bild-Generierung** | `gemini-nano-banana-2.1` (nur mit eigenem Nutzer-Key; Imagen wurde von Google abgeschaltet) | Rezepttitel (englisch) | Base64-Bild (`inlineData`); ohne Key oder bei Fehler lokaler SVG-Platzhalter |
 | **Bild-Fallback** | lokal (`recipe-image.service.ts`) | Rezepttitel | SVG-Platzhalter (Emoji + Farbverlauf), keine externe Anfrage |
 
 ### D. Strukturierte JSON-Ausgabe
@@ -372,7 +373,7 @@ Im Rahmen des Projekts wurden folgende Kernbereiche eigenständig konzipiert und
     - Regio-Markt Finder (`eco-chef-regional-map`)
     - Budget- & MHD-Ablauf-Tracking
     - Vollständiges JSON-Datensicherungs-System
-    - Automatisierte Tests: 224 Jest-Unit-Tests (37 Suites, ca. 87 % Coverage) und 9 Playwright-E2E-Tests, alle bestanden
+    - Automatisierte Tests: 232 Jest-Unit-Tests (37 Suites, ca. 87 % Coverage) und 9 Playwright-E2E-Tests, alle bestanden
     - Lazy-Loading des Gemini-SDKs (nur bei eigenem Nutzer-Key), Start-Bundle 311 KiB
     - HTML-Escaping aller Rezeptfelder im Kochbuch-Druck (`escapeHtml` in `pdf.service.ts`)
     - Strikte TypeScript-Prüfung (`npm run type-check`) in lokaler Entwicklung und GitHub Actions CI

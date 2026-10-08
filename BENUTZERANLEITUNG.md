@@ -80,7 +80,7 @@ Bevor du auf **✨ Rezept Zaubern** klickst, kannst du die Generierung anpassen:
 * **Ernährungsweise:** Wähle zwischen *Alles*, *Vegetarisch* oder *Vegan*.
 * **Zeitaufwand:** Wähle *Egal*, *Schnell* (unter 25 Min.) oder *Aufwendig*.
 
-Nach dem Klick auf **✨ Rezept Zaubern** erstellt Gemini 2.5 Flash ein maßgeschneidertes Rezept inklusive:
+Nach dem Klick auf **✨ Rezept Zaubern** erstellt Gemini 3.5 Flash ein maßgeschneidertes Rezept inklusive:
 * **Nachhaltigkeits-Bewertung (Eco-Score):** Bewertung mit Blättern (🍃) und Erklärung.
 * **Nährwertangaben & CO₂-Ersparnis:** Übersicht der Kalorien, Proteine, Kohlenhydrate, Fette sowie der geschätzten CO₂-Ersparnis gegenüber einem Fleischgericht.
 * **Getränkeempfehlung & Aufbewahrungstipp:** Vorschläge für passende Getränke und Lagerungshinweise.
