@@ -1,11 +1,19 @@
 /** Request validation for the Gemini proxy (kept separate so it can be unit-tested). */
 
 export const ALLOWED_MODELS = new Set([
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro'
+    'gemini-3.8-flash',
+    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-2.5-flash'
 ]);
+
+/** Tried in order when the requested model is overloaded (503) or gone (404). Must be a subset of ALLOWED_MODELS. */
+export const MODEL_FALLBACKS = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash'];
+
+/** Requested model first, then the remaining fallbacks without duplicates. */
+export function modelChain(requested: string): string[] {
+    return [requested, ...MODEL_FALLBACKS.filter(m => m !== requested)];
+}
 
 export const MAX_CONTENT_ITEMS = 8;
 export const MAX_TEXT_CHARS = 20_000;

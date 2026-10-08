@@ -37,8 +37,12 @@ export interface GenerationConfig {
     maxOutputTokens?: number;
 }
 
-const MODEL = 'gemini-2.5-flash';
-// gemini-2.5 spends part of maxOutputTokens on "thinking", so JSON answers get the proxy maximum.
+const MODEL = 'gemini-3.5-flash';
+/** Used with a user-supplied key when MODEL is overloaded (503) or retired (404); the proxy has the same chain server-side. */
+const FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-2.5-flash'];
+/** Imagen was shut down; images now come from the Gemini image model via generateContent. */
+const IMAGE_MODEL = 'gemini-nano-banana-2.1';
+// Gemini thinking models spend part of maxOutputTokens on "thinking", so JSON answers get the proxy maximum.
 const JSON_OUTPUT_TOKENS = 8192;
 
 function jsonConfig(schema: Record<string, unknown>, temperature: number): GenerationConfig {
@@ -82,6 +86,13 @@ async function createClient(): Promise<GoogleGenAI> {
     return new Client({ apiKey: getApiKey() });
 }
 
+function isModelUnavailable(err: unknown): boolean {
+    const e = err as { status?: number; code?: number; message?: string };
+    const status = e?.status ?? e?.code;
+    if (status === 503 || status === 404) return true;
+    return /(503|404)|UNAVAILABLE|NOT_FOUND|high demand/i.test(String(e?.message ?? ''));
+}
+
 /** Single entry point for text generation: user key -> SDK directly, otherwise -> server proxy. */
 async function generateText(contents: ContentPart[], config?: GenerationConfig): Promise<string> {
     const payload = { model: MODEL, contents, config };
@@ -90,8 +101,18 @@ async function generateText(contents: ContentPart[], config?: GenerationConfig):
         return typeof result.text === 'string' ? result.text : '';
     }
     const ai = await createClient();
-    const response = await ai.models.generateContent(payload as unknown as GenerateContentParameters);
-    return (response.text ?? '').trim();
+    let lastError: unknown;
+    for (const model of [MODEL, ...FALLBACK_MODELS]) {
+        try {
+            const response = await ai.models.generateContent({ ...payload, model } as unknown as GenerateContentParameters);
+            return (response.text ?? '').trim();
+        } catch (err) {
+            lastError = err;
+            if (!isModelUnavailable(err)) throw err;
+            console.warn(`[Gemini] ${model} nicht verfügbar, versuche Fallback.`, err);
+        }
+    }
+    throw lastError;
 }
 
 function buildImageContents(capturedImage: string): ImagePart {
@@ -171,35 +192,24 @@ ingredientsList: item inkl. Menge (z.B. "250g Kirschtomaten") und category (z.B.
     async generateRecipeImage(title: string): Promise<string> {
         const safeTitle = sanitizeUserText(title, 120);
         const imagePrompt = `A beautiful, clean studio food photography of ${safeTitle}, professional plating, high quality food shot, soft lighting, 4k`;
-        const imagePayload = {
-            model: 'imagen-3.0-generate-002',
-            prompt: imagePrompt,
-            config: { numberOfImages: 1, outputMimeType: 'image/jpeg', aspectRatio: '4:3' }
-        };
 
-        type GeneratedImages = { image?: { imageBytes?: string } }[];
-        let generatedImages: GeneratedImages | null = null;
-
+        // The server proxy deliberately offers no image generation (cost control on the shared key),
+        // so only users with their own key get a generated photo; everyone else gets the local placeholder.
         try {
-            if (!hasDirectKey()) {
-                const result = await callProxy('generateImages', imagePayload);
-                generatedImages = (result.generatedImages as GeneratedImages | undefined) ?? null;
-            } else {
-                const ai = await createClient();
-                const response = await ai.models.generateImages({
-                    model: imagePayload.model,
-                    prompt: imagePrompt,
-                    config: imagePayload.config
-                });
-                generatedImages = response.generatedImages ?? null;
-            }
+            if (!hasDirectKey()) throw new Error('Image generation needs a personal API key.');
+            const ai = await createClient();
+            const response = await ai.models.generateContent({
+                model: IMAGE_MODEL,
+                contents: [imagePrompt],
+                config: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '4:3' } }
+            } as unknown as GenerateContentParameters);
 
-            const bytes = generatedImages?.[0]?.image?.imageBytes;
-            if (bytes) return `data:image/jpeg;base64,${bytes}`;
-            throw new Error('No image returned by Imagen.');
-
+            const parts = response.candidates?.[0]?.content?.parts ?? [];
+            const inline = parts.find(p => p.inlineData?.data)?.inlineData;
+            if (inline?.data) return `data:${inline.mimeType || 'image/png'};base64,${inline.data}`;
+            throw new Error('No image returned by the image model.');
         } catch (e) {
-            console.warn('Imagen not available, using local placeholder image:', e);
+            console.warn('Image generation not available, using local placeholder image:', e);
             return createPlaceholderImage(safeTitle);
         }
     },

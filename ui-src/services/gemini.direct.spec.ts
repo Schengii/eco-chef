@@ -47,16 +47,41 @@ describe('GeminiService with user key (lazy SDK)', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    test('image generation returns a data URL from the SDK', async () => {
-        generateImages.mockResolvedValue({ generatedImages: [{ image: { imageBytes: 'QUJD' } }] });
+    test('image generation uses the Gemini image model and returns a data URL', async () => {
+        generateContent.mockResolvedValue({
+            candidates: [{ content: { parts: [{ text: 'hier' }, { inlineData: { mimeType: 'image/png', data: 'QUJD' } }] } }]
+        });
         const img = await GeminiService.generateRecipeImage('Curry');
-        expect(img).toBe('data:image/jpeg;base64,QUJD');
+        expect(img).toBe('data:image/png;base64,QUJD');
+        expect(generateContent).toHaveBeenCalledWith(expect.objectContaining({
+            model: 'gemini-nano-banana-2.1',
+            config: expect.objectContaining({ responseModalities: ['IMAGE'] })
+        }));
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    test('image generation falls back to the local placeholder when the SDK fails', async () => {
-        generateImages.mockRejectedValue(new Error('quota'));
-        const img = await GeminiService.generateRecipeImage('Curry');
-        expect(img.startsWith('data:image/svg+xml')).toBe(true);
+    test('image generation falls back to the local placeholder when the model fails or returns no image', async () => {
+        generateContent.mockRejectedValueOnce(new Error('quota'));
+        expect((await GeminiService.generateRecipeImage('Curry')).startsWith('data:image/svg+xml')).toBe(true);
+        generateContent.mockResolvedValueOnce({ candidates: [{ content: { parts: [{ text: 'nur Text' }] } }] });
+        expect((await GeminiService.generateRecipeImage('Curry')).startsWith('data:image/svg+xml')).toBe(true);
+    });
+
+    test('text generation uses gemini-3.5-flash and falls back when the model is overloaded', async () => {
+        generateContent
+            .mockRejectedValueOnce(Object.assign(new Error('This model is currently experiencing high demand'), { status: 503 }))
+            .mockResolvedValueOnce({ text: 'Fallback-Antwort' });
+        const text = await GeminiService.askCookingQuestion('Wie lange?', 'Curry');
+        expect(text).toContain('Fallback-Antwort');
+        expect(generateContent.mock.calls[0][0].model).toBe('gemini-3.5-flash');
+        expect(generateContent.mock.calls[1][0].model).toBe('gemini-3.5-flash-lite');
+    });
+
+    test('other SDK errors are not retried', async () => {
+        jest.spyOn(console, 'error').mockImplementation(() => undefined);
+        generateContent.mockRejectedValue(Object.assign(new Error('API key not valid'), { status: 400 }));
+        const text = await GeminiService.askCookingQuestion('Wie lange?', 'Curry');
+        expect(text).toContain('Problem');
+        expect(generateContent).toHaveBeenCalledTimes(1);
     });
 });

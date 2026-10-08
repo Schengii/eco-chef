@@ -78,10 +78,9 @@ describe('GeminiService via proxy', () => {
         expect(await GeminiService.askCookingQuestion('Wie lange?', 'Suppe')).toContain('Problem');
     });
 
-    test('generateRecipeImage falls back to a local placeholder', async () => {
-        fetchMock.mockResolvedValue({ ok: false, status: 501, json: async () => ({ error: 'nicht verfügbar' }) });
+    test('generateRecipeImage uses the local placeholder without a personal key (no proxy call)', async () => {
         const img = await GeminiService.generateRecipeImage('Tomatensuppe');
         expect(img.startsWith('data:image/svg+xml')).toBe(true);
-        expect(fetchMock).toHaveBeenCalledTimes(1); // no keyword round-trip anymore
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 });

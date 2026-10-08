@@ -1,5 +1,5 @@
 import handler from './gemini';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './vercel-types';
 
 function createRes() {
     const res = {
@@ -103,5 +103,40 @@ describe('api/gemini handler', () => {
     test('generateImages is reported as unavailable', async () => {
         const res = await run(createReq({ body: { action: 'generateImages' } }));
         expect(res.statusCode).toBe(501);
+    });
+
+    test('falls back to the next model when the requested one is overloaded or retired', async () => {
+        const ok = { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'Antwort' }] } }] }) };
+        fetchMock
+            .mockResolvedValueOnce({ ok: false, status: 503, text: async () => 'high demand' })
+            .mockResolvedValueOnce({ ok: false, status: 404, text: async () => 'gone' })
+            .mockResolvedValueOnce(ok);
+
+        const res = await run(createReq({ body: { action: 'generateContent', model: 'gemini-3.8-flash', contents: ['Hallo'] } }));
+        expect(res.body).toEqual({ text: 'Antwort' });
+        const urls = fetchMock.mock.calls.map(c => String(c[0]));
+        expect(urls[0]).toContain('gemini-3.8-flash:');
+        expect(urls[1]).toContain('gemini-3.5-flash:');
+        expect(urls[2]).toContain('gemini-3.5-flash-lite:');
+    });
+
+    test('does not retry on other upstream errors and maps quota to 429', async () => {
+        fetchMock.mockResolvedValue({ ok: false, status: 429, text: async () => 'quota' });
+        const res = await run(createReq());
+        expect(res.statusCode).toBe(429);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    test('answers 502 when every model in the chain is unavailable', async () => {
+        fetchMock.mockResolvedValue({ ok: false, status: 503, text: async () => 'high demand' });
+        const res = await run(createReq());
+        expect(res.statusCode).toBe(502);
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    test('rejects retired models', async () => {
+        for (const model of ['gemini-2.0-flash', 'gemini-1.5-flash', 'imagen-3.0-generate-002']) {
+            expect((await run(createReq({ body: { action: 'generateContent', model, contents: ['x'] } }))).statusCode).toBe(400);
+        }
     });
 });

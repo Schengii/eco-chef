@@ -1,7 +1,8 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './vercel-types';
 import {
     ALLOWED_MODELS,
     isAllowedOrigin,
+    modelChain,
     sanitizeGenerationConfig,
     validateContents
 } from './_validate';
@@ -86,11 +87,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (generationConfig) body.generationConfig = generationConfig;
 
     try {
-        const response = await fetch(`${GEMINI_BASE}/models/${model}:generateContent`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-            body: JSON.stringify(body)
-        });
+        let response!: Response;
+        for (const candidate of modelChain(model)) {
+            response = await fetch(`${GEMINI_BASE}/models/${candidate}:generateContent`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+                body: JSON.stringify(body)
+            });
+            // Only an overloaded (503) or retired (404) model is worth a retry with the next one.
+            if (response.status !== 503 && response.status !== 404) break;
+            console.warn('Gemini model unavailable, trying next', candidate, response.status);
+        }
 
         if (!response.ok) {
             // Details nur serverseitig loggen, nicht an den Client durchreichen.

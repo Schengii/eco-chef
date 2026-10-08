@@ -1,4 +1,7 @@
-import { validateContents, sanitizeGenerationConfig, isAllowedOrigin, MAX_OUTPUT_TOKENS } from './_validate';
+import {
+    validateContents, sanitizeGenerationConfig, isAllowedOrigin, MAX_OUTPUT_TOKENS,
+    ALLOWED_MODELS, MODEL_FALLBACKS, modelChain
+} from './_validate';
 
 describe('proxy validation', () => {
     test('accepts strings and valid images', () => {
@@ -28,5 +31,14 @@ describe('proxy validation', () => {
         expect(isAllowedOrigin('https://eco-chef-theta.vercel.app')).toBe(true);
         expect(isAllowedOrigin('https://evil.example')).toBe(false);
         expect(isAllowedOrigin(undefined)).toBe(false);
+    });
+
+    test('model chain starts with the requested model and has no duplicates', () => {
+        expect(modelChain('gemini-3.8-flash')).toEqual(['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash']);
+        expect(modelChain('gemini-3.5-flash')).toEqual(['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash']);
+    });
+
+    test('every fallback model is allowed', () => {
+        for (const m of MODEL_FALLBACKS) expect(ALLOWED_MODELS.has(m)).toBe(true);
     });
 });
