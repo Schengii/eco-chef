@@ -1,5 +1,15 @@
 import { Recipe } from '../models/eco-chef.models';
 
+/** Recipes can come from imports, QR codes, sync or the AI, so every value is escaped before it enters the print HTML. */
+export function escapeHtml(value: unknown): string {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 export const PdfService = {
     generateCookbookHtml(recipes: Recipe[], userAvatar = '🧑‍🍳'): string {
         if (!recipes || recipes.length === 0) {
@@ -11,12 +21,12 @@ export const PdfService = {
         const pages = recipes.map((r, idx) => `
             <div class="recipe-page">
                 <div class="recipe-header">
-                    <h2>${idx + 1}. ${r.title}</h2>
+                    <h2>${idx + 1}. ${escapeHtml(r.title)}</h2>
                     <div class="meta-pills">
-                        <span class="pill">📊 ${r.difficulty || 'Mittel'}</span>
-                        <span class="pill">🕒 ${r.prepTime || '25 Min'}</span>
-                        <span class="pill eco">🌱 Eco: ${r.ecoScore || 'A+'}</span>
-                        <span class="pill co2">🌳 ${r.co2SavedKg || 0} kg CO₂ gespart</span>
+                        <span class="pill">📊 ${escapeHtml(r.difficulty || 'Mittel')}</span>
+                        <span class="pill">🕒 ${escapeHtml(r.prepTime || '25 Min')}</span>
+                        <span class="pill eco">🌱 Eco: ${escapeHtml(r.ecoScore || 'A+')}</span>
+                        <span class="pill co2">🌳 ${escapeHtml(r.co2SavedKg || 0)} kg CO₂ gespart</span>
                     </div>
                 </div>
 
@@ -24,27 +34,27 @@ export const PdfService = {
                     <div class="column">
                         <h3>🛒 Zutaten</h3>
                         <ul>
-                            ${r.ingredientsList.map(ing => `<li>${ing.item}</li>`).join('')}
+                            ${r.ingredientsList.map(ing => `<li>${escapeHtml(ing.item)}</li>`).join('')}
                         </ul>
 
                         <h3>📊 Nährwerte (pro Portion)</h3>
                         <table class="nutrition-table">
-                            <tr><td>Kalorien</td><td><strong>${r.nutrition?.calories || '?'}</strong></td></tr>
-                            <tr><td>Eiweiß</td><td><strong>${r.nutrition?.protein || '?'}</strong></td></tr>
-                            <tr><td>Kohlenhydrate</td><td><strong>${r.nutrition?.carbs || '?'}</strong></td></tr>
-                            <tr><td>Fett</td><td><strong>${r.nutrition?.fat || '?'}</strong></td></tr>
+                            <tr><td>Kalorien</td><td><strong>${escapeHtml(r.nutrition?.calories || '?')}</strong></td></tr>
+                            <tr><td>Eiweiß</td><td><strong>${escapeHtml(r.nutrition?.protein || '?')}</strong></td></tr>
+                            <tr><td>Kohlenhydrate</td><td><strong>${escapeHtml(r.nutrition?.carbs || '?')}</strong></td></tr>
+                            <tr><td>Fett</td><td><strong>${escapeHtml(r.nutrition?.fat || '?')}</strong></td></tr>
                         </table>
                     </div>
 
                     <div class="column">
                         <h3>👨‍🍳 Zubereitung</h3>
                         <ol>
-                            ${r.instructions.map(inst => `<li>${inst}</li>`).join('')}
+                            ${r.instructions.map(inst => `<li>${escapeHtml(inst)}</li>`).join('')}
                         </ol>
 
                         <div class="tip-box">
                             <strong>💡 Chef-Tipp & Lagerung:</strong><br />
-                            ${r.storageTip || r.tip || 'Kühl lagern und frisch genießen.'}
+                            ${escapeHtml(r.storageTip || r.tip || 'Kühl lagern und frisch genießen.')}
                         </div>
                     </div>
                 </div>
@@ -159,7 +169,7 @@ export const PdfService = {
             </head>
             <body>
                 <div class="cover-page">
-                    <div style="font-size: 72px;">${userAvatar}</div>
+                    <div style="font-size: 72px;">${escapeHtml(userAvatar)}</div>
                     <h1 class="cover-title">Mein EcoChef Kochbuch</h1>
                     <div class="cover-subtitle">Kreative, klimaschonende Lieblingsrezepte aus der eigenen Küche</div>
                     <div class="cover-badge">🌱 Gesamte CO₂-Ersparnis: ${totalCO2} kg CO₂</div>

@@ -1,5 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
-import type { GenerateContentParameters } from '@google/genai';
+import type { GoogleGenAI, GenerateContentParameters } from '@google/genai';
 import { GEMINI_API_KEY } from '../api-config';
 import { StorageService } from './storage.service';
 import { Recipe, MealPlan } from '../models/eco-chef.models';
@@ -77,6 +76,12 @@ async function callProxy(action: string, payload: Record<string, unknown>): Prom
     return res.json();
 }
 
+/** The SDK (~800 KiB) is only needed with a user-supplied key, so it is loaded on first use instead of at startup. */
+async function createClient(): Promise<GoogleGenAI> {
+    const { GoogleGenAI: Client } = await import('@google/genai');
+    return new Client({ apiKey: getApiKey() });
+}
+
 /** Single entry point for text generation: user key -> SDK directly, otherwise -> server proxy. */
 async function generateText(contents: ContentPart[], config?: GenerationConfig): Promise<string> {
     const payload = { model: MODEL, contents, config };
@@ -84,7 +89,7 @@ async function generateText(contents: ContentPart[], config?: GenerationConfig):
         const result = await callProxy('generateContent', payload);
         return typeof result.text === 'string' ? result.text : '';
     }
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const ai = await createClient();
     const response = await ai.models.generateContent(payload as unknown as GenerateContentParameters);
     return (response.text ?? '').trim();
 }
@@ -104,10 +109,6 @@ function buildImageContents(capturedImage: string): ImagePart {
 }
 
 export const GeminiService = {
-    getClient(): GoogleGenAI {
-        return new GoogleGenAI({ apiKey: getApiKey() });
-    },
-
     async generateRecipe(capturedImage: string | null, promptText: string): Promise<string> {
         const contents: ContentPart[] = [];
         if (capturedImage) contents.push(buildImageContents(capturedImage));
@@ -184,7 +185,7 @@ ingredientsList: item inkl. Menge (z.B. "250g Kirschtomaten") und category (z.B.
                 const result = await callProxy('generateImages', imagePayload);
                 generatedImages = (result.generatedImages as GeneratedImages | undefined) ?? null;
             } else {
-                const ai = new GoogleGenAI({ apiKey: getApiKey() });
+                const ai = await createClient();
                 const response = await ai.models.generateImages({
                     model: imagePayload.model,
                     prompt: imagePrompt,

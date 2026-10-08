@@ -13,6 +13,6 @@ module.exports = {
     '!**/*.d.ts'
   ],
   coverageThreshold: {
-    global: { statements: 65, branches: 58, functions: 62, lines: 65 }
+    global: { statements: 80, branches: 70, functions: 80, lines: 80 }
   }
 };

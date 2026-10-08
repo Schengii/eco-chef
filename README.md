@@ -90,8 +90,11 @@ Rufe anschließend `http://localhost:4444` im Browser auf.
 
 ### 4. Tests & Typprüfung ausführen
 ```bash
-# Unit-Tests mit Jest
+# Unit-Tests mit Jest (Coverage-Schwellen: npm run test:coverage)
 npm test
+
+# End-to-End-Tests (Playwright; einmalig: npx playwright install chromium)
+npm run e2e
 
 # Strikte TypeScript-Prüfung (Frontend & Vercel Functions)
 npm run type-check
@@ -243,6 +246,21 @@ Das Projekt ist für den Einsatz von KI-Assistenten (insbesondere [Claude Code](
 #### ✅ Neu: Duales IndexedDB- & Quota-Speichersystem
 - Asynchrone Persistierung aller Rezepte in IndexedDB (`ecoChef_db`) ohne Größenbeschränkungen
 - Nahtlose Kombination mit synchronem LocalStorage-Cache und automatischem Bilddaten-Pruning
+
+### v1.3.1 (2026-10-08) – Sicherheit, Performance & Testabdeckung
+
+#### 🔒 Behoben: HTML-Injection im Kochbuch-Druck
+- `pdf.service.ts` maskiert jetzt alle Rezeptfelder (`escapeHtml`) vor der Ausgabe im Druckfenster. Rezepte aus Import, QR-Code, Sync oder KI konnten zuvor HTML/Skript in das gleich-originäre Druckfenster einschleusen.
+
+#### ⚡ Neu: Kleineres Start-Bundle
+- Das `@google/genai`-SDK wird nur noch bei eigenem Nutzer-Key per dynamischem `import()` nachgeladen (eigener Chunk `genai.[hash].js`). Der Standardweg über den Server-Proxy braucht es nicht.
+- Start-Bundle: 581 KiB → 311 KiB (ohne Webpack-Warnungen).
+
+#### ✅ Verbessert: Tests & CI
+- 224 Jest-Tests (zuvor 186) und 9 Playwright-Tests; Gesamtabdeckung ca. 87 % (Schwellen in `jest.config.js` auf 80/70/80/80 angehoben).
+- Neue Tests für `storage.service` (inkl. IndexedDB via `fake-indexeddb`, Quota-Pruning), `speech.service`, `sw.service`, `backup.service`, `pdf.service` und den direkten Gemini-Pfad.
+- CI führt zusätzlich `npm audit --omit=dev --audit-level=high` aus.
+- Abhängigkeiten aktualisiert (Lit 3.3.3, Playwright 1.64, dotenv, css-loader, `@vercel/node` 23).
 
 ### v1.3.0 (2026-10-03) – Security, Quality & Architecture Optimizations
 

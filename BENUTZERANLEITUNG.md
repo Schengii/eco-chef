@@ -85,7 +85,7 @@ Nach dem Klick auf **✨ Rezept Zaubern** erstellt Gemini 2.5 Flash ein maßgesc
 * **Nährwertangaben & CO₂-Ersparnis:** Übersicht der Kalorien, Proteine, Kohlenhydrate, Fette sowie der geschätzten CO₂-Ersparnis gegenüber einem Fleischgericht.
 * **Getränkeempfehlung & Aufbewahrungstipp:** Vorschläge für passende Getränke und Lagerungshinweise.
 * **Dynamische Portionsskalierung (1–12 Personen):** Verändere direkt in der Rezeptansicht die Personenanzahl – alle Mengenangaben und Nährwerte werden in Echtzeit umgerechnet.
-* **🖨️ DIN-A4 Druckansicht:** Klicke auf **„🖨️ Rezept drucken"**, um das Gericht perfekt formatiert (ohne Menüleisten oder Buttons) auf Papier oder als PDF auszudrucken.
+* **🖨️ DIN-A4 Druckansicht:** Klicke auf **„🖨️ Rezept drucken"**, um das Gericht perfekt formatiert (ohne Menüleisten oder Buttons) auf Papier oder als PDF auszudrucken. Erlaube dafür ggf. Pop-ups für EcoChef, da die Druckansicht in einem neuen Fenster geöffnet wird.
 
 ---
 

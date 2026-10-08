@@ -78,6 +78,22 @@ Ein einzelner Test kann ausgeführt werden mit:
 ```bash
 npx jest ui-src/services/crypto.service.spec.ts
 ```
+Einzelnes Playwright-Spec: `npx playwright test e2e/tabs.e2e.ts` (Specs heißen `*.e2e.ts`, Gerät: Pixel 7, Service Worker geblockt; gemeinsame Mocks in `e2e/helpers.ts`).
+
+### Android & Deployment
+- `build-android.ps1`: baut Web-App, `cordova prepare android` und eine Debug-APK (SDK-/JDK-Pfade sind dort hartkodiert für diese Maschine).
+- Web-Deployment über Vercel (`vercel.json`: Output `www/`, SPA-Rewrite auf `index.html`, `/api/*` bleibt Serverless Function).
+- CI (`.github/workflows`, Node 22): `type-check` → `test:coverage` → `build` → `e2e`. Alle vier müssen vor einem Commit grün sein.
+
+### Performance, Sicherheit & Testregeln
+- `@google/genai` wird nur in `gemini.service.ts` per dynamischem `import()` geladen (`createClient()`, eigener Webpack-Chunk `genai`). Nicht statisch importieren, sonst wächst das Start-Bundle wieder um ~270 KiB. Typen nur per `import type`.
+- Alles, was als HTML ausgegeben wird (Druckfenster in `pdf.service.ts`), muss über `escapeHtml` laufen; `innerHTML` nur für selbst erzeugte Markups (QR-SVG).
+- Coverage-Schwellen stehen bei 80/70/80/80 (`jest.config.js`). IndexedDB wird in Tests mit `fake-indexeddb/auto` bedient; Browser-APIs (Speech, Service Worker) in `@jest-environment jsdom`-Specs gemockt.
+- Playwright braucht einmalig `npx playwright install chromium`. Der erste E2E-Lauf nach einem Playwright-Update kann wegen des kalten Webpack-Starts zeitlich scheitern, dann einfach wiederholen.
+- CI prüft zusätzlich `npm audit --omit=dev --audit-level=high`. Offene Dev-Meldungen stammen aus `@vercel/node` (nur Typen, nicht im Bundle).
+
+### Weitere Doku
+`README.md` (Features), `FACHLICHE_DOKUMENTATION.md` (Fachlogik), `BENUTZERANLEITUNG.md` (Nutzersicht).
 
 ---
 

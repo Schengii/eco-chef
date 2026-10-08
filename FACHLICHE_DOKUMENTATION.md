@@ -210,6 +210,12 @@ Die CSP ist sowohl in `config.xml` als auch in `ui-src/index.html` definiert und
 - `https://kvdb.io` – verschlüsselter Haushalts-Sync
 - `https://fonts.googleapis.com` / `https://fonts.gstatic.com` – Google Fonts
 
+### Eingabe-Härtung & Ausgabe-Escaping
+Alle externen Daten (KI-Antworten, Importe, QR-Codes, Sync) werden per zod-Schema validiert. Zusätzlich werden Rezeptdaten vor der Ausgabe in das Druckfenster (`PdfService.generateCookbookHtml`) HTML-maskiert, da dieses Fenster dieselbe Origin wie die App nutzt und sonst Zugriff auf `localStorage` (inkl. eventuell gespeichertem Nutzer-Key) hätte. Die QR-SVG wird ausschließlich aus Zahlenwerten erzeugt.
+
+### Lazy-Loading des Gemini-SDKs
+`@google/genai` wird nur geladen, wenn ein eigener API-Key hinterlegt ist (`createClient()` in `gemini.service.ts`, dynamischer `import()`). Webpack legt das SDK dafür in einen eigenen asynchronen Chunk (`genai`). Der Standardweg läuft über den Serverless-Proxy ohne SDK im Client.
+
 ### Service Worker
 ```javascript
 var isCordova = window.location.protocol === 'file:' ||
@@ -366,7 +372,9 @@ Im Rahmen des Projekts wurden folgende Kernbereiche eigenständig konzipiert und
     - Regio-Markt Finder (`eco-chef-regional-map`)
     - Budget- & MHD-Ablauf-Tracking
     - Vollständiges JSON-Datensicherungs-System
-    - Automatisierte Jest-Unit-Tests (31 Tests über 9 Test-Suites, 100 % Erfolgsquote)
+    - Automatisierte Tests: 224 Jest-Unit-Tests (37 Suites, ca. 87 % Coverage) und 9 Playwright-E2E-Tests, alle bestanden
+    - Lazy-Loading des Gemini-SDKs (nur bei eigenem Nutzer-Key), Start-Bundle 311 KiB
+    - HTML-Escaping aller Rezeptfelder im Kochbuch-Druck (`escapeHtml` in `pdf.service.ts`)
     - Strikte TypeScript-Prüfung (`npm run type-check`) in lokaler Entwicklung und GitHub Actions CI
     - Nährwert- & Klimaschutz-Dashboard
     - Globales Floating-Timer-Widget

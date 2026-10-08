@@ -97,12 +97,25 @@ export default (env, {mode}) => {
             chunkFilename: mode === 'production' ? '[name].[chunkhash:8].js' : '[name].chunk.js',
             clean: true
         },
+        performance: {
+            // The lazily loaded Gemini SDK chunk is intentionally large; only the startup bundle is budgeted.
+            maxEntrypointSize: 340 * 1024,
+            assetFilter: (assetFilename) => !/^genai\./.test(assetFilename) && !assetFilename.endsWith('.map'),
+        },
         optimization: {
             usedExports: true,
             runtimeChunk: 'single',
             splitChunks: {
                 chunks: 'all',
                 cacheGroups: {
+                    // The Gemini SDK is only used with a user-supplied key and is loaded via dynamic import().
+                    genai: {
+                        test: /[\\/]node_modules[\\/]@google[\\/]genai[\\/]/,
+                        name: 'genai',
+                        chunks: 'async',
+                        priority: 20,
+                        enforce: true,
+                    },
                     vendor: {
                         test: /[\\/]node_modules[\\/]/,
                         name: 'vendors',
