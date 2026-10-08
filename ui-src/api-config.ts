@@ -13,10 +13,17 @@
  * The user can also override the key at any time via the EcoChef Settings ⚙️ page.
  */
 
-// The key is injected by webpack DefinePlugin at build time.
-// process.env.ECOCHEF_GEMINI_API_KEY is replaced with the actual string during bundling.
+// The key is injected by webpack DefinePlugin at build time: the expression `process.env.ECOCHEF_GEMINI_API_KEY`
+// is replaced with a string literal (empty in production). `typeof process` must NOT be used as a guard here:
+// browsers have no `process`, so the guard would always fall through and discard the injected dev key.
 declare const process: { env: { ECOCHEF_GEMINI_API_KEY?: string } };
 
-export const GEMINI_API_KEY: string = (typeof process !== 'undefined' && process.env?.ECOCHEF_GEMINI_API_KEY)
-    ? process.env.ECOCHEF_GEMINI_API_KEY
-    : ''; // Empty string = user must provide key via Settings
+function readInjectedKey(): string {
+    try {
+        return process.env.ECOCHEF_GEMINI_API_KEY || '';
+    } catch {
+        return ''; // not bundled by webpack (no DefinePlugin replacement, no `process`)
+    }
+}
+
+export const GEMINI_API_KEY: string = readInjectedKey(); // Empty string = user must provide key via Settings

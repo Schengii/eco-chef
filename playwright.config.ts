@@ -14,6 +14,8 @@ export default defineConfig({
     projects: [{ name: 'chromium', use: { ...devices['Pixel 7'] } }],
     webServer: {
         command: 'npm run dev',
+        // Mocked e2e tests must hit the (mocked) proxy even when a local .env key exists; LIVE_AI=1 keeps the key.
+        env: process.env.LIVE_AI ? {} : { ECOCHEF_NO_DEV_KEY: '1' },
         url: 'http://localhost:4444',
         reuseExistingServer: !process.env.CI,
         timeout: 120_000
