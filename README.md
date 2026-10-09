@@ -1,5 +1,7 @@
 # EcoChef 🧑‍🍳 - Dein intelligenter KI-Rezept-Zauberer
 
+[![CI](https://github.com/Schengii/eco-chef/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Schengii/eco-chef/actions/workflows/ci.yml) [![Lizenz: Apache-2.0](https://img.shields.io/badge/Lizenz-Apache--2.0-yellow.svg)](LICENSE) [![Live-Demo](https://img.shields.io/badge/Live--Demo-Vercel-2ea44f?logo=vercel)](https://eco-chef-theta.vercel.app) ![Lit](https://img.shields.io/badge/Lit-3-324FFF?logo=lit&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+
 > **In short (EN):** AI kitchen assistant that turns leftover ingredients into recipes with Google Gemini. Includes barcode scanning (OpenFoodFacts), expiry alerts, a voice-controlled cooking mode, budget tracking and WCAG-oriented accessibility features. Runs as a web app and as an Android app via Cordova.
 > **Stack:** TypeScript · Lit Web Components · Google GenAI SDK (Gemini 3.5 Flash) · Webpack · Jest · Apache Cordova · Vercel
 > **Live demo:** [eco-chef-theta.vercel.app](https://eco-chef-theta.vercel.app)
