@@ -6,8 +6,7 @@
 > **Stack:** TypeScript · Lit Web Components · Google GenAI SDK (Gemini 3.5 Flash) · Webpack · Jest · Apache Cordova · Vercel
 > **Live demo:** [eco-chef-theta.vercel.app](https://eco-chef-theta.vercel.app)
 
-<!-- Screenshot: Datei unter docs/screenshots/rezept.png ablegen und die nächste Zeile einkommentieren -->
-<!-- ![Rezeptgenerierung aus Kühlschrankresten](docs/screenshots/rezept.png) -->
+![EcoChef – Zutaten eingeben und Rezept zaubern](docs/screenshots/rezept.jpg)
 
 
 **EcoChef** ist eine moderne, nachhaltige Hybrid-Web- & Mobile-App, die aus deinen vorhandenen Kühlschrankzutaten kreative, klimaschonende und leckere Gerichte zaubert. Mit Fokus auf Resteverwertung, Barrierefreiheit (LRS-Modus, Leselineal, Screenreader), Sprachsteuerung, Wochenmärkte-Finder, OpenFoodFacts Barcode-Scanner und umfassendem Budget- & Umwelt-Tracking.
