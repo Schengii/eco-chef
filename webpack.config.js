@@ -35,7 +35,6 @@ export default (env, {mode}) => {
                 title: 'Development',
                 template: 'ui-src/index.html',
                 favicon: 'ui-src/favicon.ico',
-               // publicPath: mode === 'development' ? '/' : '/demo-ui/',
             }),
             new MiniCssExtractPlugin(),
             new webpack.EnvironmentPlugin({
