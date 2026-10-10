@@ -94,8 +94,13 @@ Einzelnes Playwright-Spec: `npx playwright test e2e/tabs.e2e.ts` (Specs heißen 
 - Dev-Key: `GEMINI_API_KEY` aus `.env` wird per DefinePlugin eingebettet. Playwright startet den Dev-Server mit `ECOCHEF_NO_DEV_KEY=1`, damit gemockte E2E-Tests den Proxy nutzen; echte Läufe mit `LIVE_AI=1 npx playwright test ...`.
 - CI prüft zusätzlich `npm audit --omit=dev --audit-level=high`. Ein voller `npm audit` zeigt weiterhin Meldungen, die nur Dev-/Build-Werkzeuge betreffen (Jest-Toolchain, `cordova-android`); die vorgeschlagenen Fixes wären Downgrades und werden nicht übernommen. Die Vercel-Typen liegen lokal in `api/vercel-types.ts` (kein `@vercel/node` mehr).
 
-### Weitere Doku
-`README.md` (Features), `FACHLICHE_DOKUMENTATION.md` (Fachlogik), `BENUTZERANLEITUNG.md` (Nutzersicht).
+### Weitere Doku & Projektdateien
+- [README.md](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/README.md) (Features & Überblick)
+- [CHANGELOG.md](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/CHANGELOG.md) (Versionshistorie nach Keep a Changelog)
+- [CONTRIBUTING.md](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/CONTRIBUTING.md) (Mitwirkungs- und Workflow-Leitfaden für Devs & KI)
+- [SECURITY.md](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/SECURITY.md) (Sicherheitsrichtlinie & Schwachstellenmeldung)
+- [FACHLICHE_DOKUMENTATION.md](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/FACHLICHE_DOKUMENTATION.md) (Detaillierte Fach- & Architekturlogik)
+- [BENUTZERANLEITUNG.md](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/BENUTZERANLEITUNG.md) (Nutzersicht & Bedienungsanleitung)
 
 ---
 
@@ -109,7 +114,7 @@ Einzelnes Playwright-Spec: `npx playwright test e2e/tabs.e2e.ts` (Specs heißen 
 ### 2. Lit Components & TypeScript
 - Verwende strikte Typisierung (`noImplicitAny`).
 - Dekoriere Lit-Properties sauber (`@property`, `@state`).
-- Styles immer in `static styles = css\`...\`` kapseln, um Shadow-DOM-Isolierung und Theme-Variablen zu wahren.
+- Styles immer in `static styles = css`...`` kapseln, um Shadow-DOM-Isolierung und Theme-Variablen zu wahren.
 - Nutze responsive CSS (Mobile First, da primär Mobile/Cordova App).
 
 ### 3. AI & Prompt Engineering (`gemini.service.ts`)
@@ -117,6 +122,10 @@ Einzelnes Playwright-Spec: `npx playwright test e2e/tabs.e2e.ts` (Specs heißen 
 - Validiere und fange Parsing-Fehler robust ab (Fallback auf benutzerfreundliche Fehlermeldungen).
 - Behalte Temperatur und Token-Limits für Rezepterzeugung im Auge.
 
-### 4. Git & Commits
+### 4. Git, Vercel & Release-Workflow
 - Konventionelle Commit-Messages bevorzugen (`feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`).
-- Keine generierten Dateien (`dist/`, `www/`, `node_modules/`, `platforms/`) committen.
+- Keine generierten Dateien (`dist/`, `www/`, `node_modules/`, `platforms/`, `.vercel/`) committen.
+- Bei jedem Feature oder Fix den Eintrag in [CHANGELOG.md](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/CHANGELOG.md) unter `[Unreleased]` festhalten.
+- Pull Requests folgen dem Template in `.github/pull_request_template.md`.
+- Vercel-Deployments werden durch [.vercelignore](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/.vercelignore) optimiert; Claude-Sitzungen durch [.claudeignore](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/.claudeignore).
+

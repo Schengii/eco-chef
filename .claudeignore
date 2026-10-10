@@ -1,7 +1,14 @@
+# ==============================================================================
 # Claude Code Ignore Rules (.claudeignore)
-# Prevents Claude from indexing large build artifacts, dependencies, secrets and caches.
+# ==============================================================================
+# Verhindert, dass Claude unnötige, riesige oder sensible Dateien indiziert.
+# Spart Tokens, verhindert Latenzen und schützt Geheimnisse.
+# ==============================================================================
 
-# Dependencies
+# Version Control
+.git/
+
+# Dependencies & Lockfiles
 node_modules/
 package-lock.json
 
@@ -10,26 +17,50 @@ package-lock.json
 .env.*
 !.env.example
 
-# Build outputs & Bundles
+# Build Outputs & Bundles
 dist/
 www/
 coverage/
+test-results/
+playwright-report/
+blob-report/
+*.tsbuildinfo
 
-# Cordova Platform / Generated Native Code
+# Vercel Deployment & Caches
+.vercel/
+
+# Apache Cordova Native Artifacts & Plugins
 platforms/
 plugins/
 
-# IDE & Editor Configs
+# IDE & Editor Files
 .idea/
 .vscode/
 *.iml
 *.iws
 *.ipr
+.project
+.settings/
+.classpath
 
-# OS specific files
+# Logs & Temporary Files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# AI Assistant Brain & System Dumps
+.gemini/
+.system_generated/
+
+# OS Specific
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Large media assets or binaries if needed
+# Large Binary / Media Assets
 ui-src/assets/*.mp3
 ui-src/assets/*.wav
+ui-src/assets/icon.png
+ui-src/assets/splash.png

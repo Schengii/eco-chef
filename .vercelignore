@@ -1,0 +1,51 @@
+# ==============================================================================
+# Vercel Ignore Rules (.vercelignore)
+# ==============================================================================
+# Verhindert den Upload unnötiger Dateien in Vercel Deployments.
+# Reduziert Build-Zeiten, Bandbreite und Deployment-Größe.
+# ==============================================================================
+
+# Git & GitHub
+.git/
+.github/
+
+# Apache Cordova Native Directories (nur für Mobile relevant)
+platforms/
+plugins/
+build-android.ps1
+config.xml
+
+# Test Suites & Coverage (Vercel führt nur 'npm run build' aus)
+coverage/
+test-results/
+playwright-report/
+e2e/
+*.spec.ts
+jest.config.js
+playwright.config.ts
+
+# IDEs & Developer Tooling
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# AI Assistant configs & docs
+.claude/
+.claude.json
+.claudeignore
+CLAUDE.md
+BENUTZERANLEITUNG.md
+FACHLICHE_DOKUMENTATION.md
+CHANGELOG.md
+
+# Environment secrets (werden direkt im Vercel Dashboard gepflegt)
+.env
+.env.*
+!.env.example
+
+# OS Files & Logs
+.DS_Store
+Thumbs.db
+*.log
