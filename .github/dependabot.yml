@@ -1,13 +1,19 @@
 version: 2
 updates:
+  # Minor-/Patch-Updates werden zu einem wöchentlichen PR gebündelt;
+  # Major-Updates bleiben einzeln, damit sie bewusst geprüft werden.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
     groups:
-      dev-dependencies:
-        dependency-type: "development"
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     ignore:
       # ts-jest only supports TypeScript <7 (peer dependency), so `npm ci` fails with ERESOLVE on 7.x
       - dependency-name: "typescript"
@@ -15,5 +21,9 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns:
+          - "*"
