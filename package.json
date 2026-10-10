@@ -10,7 +10,9 @@
     "type-check": "tsc --noEmit && tsc -p api/tsconfig.json --noEmit",
     "dev": "kill-port --port 4444 && webpack serve --mode=development",
     "build": "webpack --mode=production",
-    "analyze": "webpack --mode=production --env analyze"
+    "analyze": "webpack --mode=production --env analyze",
+    "check:secrets": "node .githooks/check-secrets.js",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "keywords": [
     "ecosystem:cordova"

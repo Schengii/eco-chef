@@ -9,6 +9,10 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Added
+- Automatisierter Git Pre-Commit Hook (`.githooks/pre-commit` & `.githooks/check-secrets.js`) zur Erkennung und Blockierung von `.env`-Dateien und Secrets (Gemini API-Keys, OpenAI, SSH/RSA Keys)
+- CI-Secret-Scanning-Schritt in GitHub Actions (`npm run check:secrets`)
+
 ### Geplant
 - Mehrsprachige Unterstützung (i18n) für Englisch und Französisch
 - Erweiterte Barcode-Datenbank-Offline-Caches

@@ -47,11 +47,14 @@ npm run dev
 
 ---
 
-## 3. Qualitätssicherung vor Commits & Pull Requests
+## 3. Qualitätssicherung & Pre-Commit Schutz
 
-Vor jedem Commit oder PR müssen folgende Befehle erfolgreich durchlaufen:
+Vor jedem Commit oder PR müssen folgende Befehle erfolgreich durchlaufen (der integrierte Pre-Commit Hook prüft automatisch vor jedem `git commit` auf versehentliche Secrets):
 
 ```bash
+# 0. Secret- & .env-Scan (wird auch automatisch vom Git Hook ausgeführt)
+npm run check:secrets
+
 # 1. Strikte Typprüfung für Frontend & Vercel API
 npm run type-check
 

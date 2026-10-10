@@ -1,0 +1,12 @@
+#!/bin/sh
+# EcoChef Git Pre-Commit Hook
+# Verhindert das versehentliche Committen von .env-Dateien und API-Keys
+
+node .githooks/check-secrets.js
+RESULT=$?
+
+if [ $RESULT -ne 0 ]; then
+  exit $RESULT
+fi
+
+exit 0

@@ -21,6 +21,7 @@
 - [ ] Vercel Serverless Function & Deployment
 
 ## Qualitäts- & Test-Checkliste
+- [ ] `npm run check:secrets` passiert ohne gefundene Secrets/Keys
 - [ ] `npm run type-check` läuft fehlerfrei durch (`tsc --noEmit`)
 - [ ] `npm test` bzw. `npm run test:coverage` besteht alle Tests
 - [ ] `npm run build` erzeugt erfolgreich den Production-Build (`www/`)

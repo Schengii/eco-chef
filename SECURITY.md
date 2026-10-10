@@ -28,6 +28,10 @@ Die Sicherheit von EcoChef und der Schutz von Nutzerdaten haben höchste Priorit
 3. **Prompt-Injection-Schutz:**
    - Sämtliche Nutzerdaten (Zutaten, Vorräte, Notizen) werden in XML-Tags (`<nutzerdaten>`) gekapselt und vor der Weitergabe an das GenAI-Modell bereinigt (`prompt-safety.ts`).
 
+4. **Automatisierter Pre-Commit & CI Schutz:**
+   - Ein Git Hook (`.githooks/pre-commit` via `.githooks/check-secrets.js`) verhindert lokal das Stagen/Committen von `.env`-Dateien und API-Keys.
+   - Der Schritt `npm run check:secrets` wird zusätzlich in der GitHub Actions CI-Pipeline erzwungen.
+
 ---
 
 ## Melden einer Sicherheitslücke

@@ -106,7 +106,11 @@ Einzelnes Playwright-Spec: `npx playwright test e2e/tabs.e2e.ts` (Specs heißen 
 
 ## Code & Quality Guidelines
 
-### 1. API Keys & Sicherheit
+### 1. API Keys, Secrets & Pre-Commit Hook
+- **Automatischer Schutz durch Pre-Commit Hook:**
+  - Im Repository ist ein aktiver Git Hook unter [.githooks/pre-commit](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/.githooks/pre-commit) eingerichtet (`git config core.hooksPath .githooks`).
+  - Der Hook führt [.githooks/check-secrets.js](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/.githooks/check-secrets.js) aus und bricht Commits sofort ab, falls `.env`-Dateien oder API-Keys (Gemini `AIza...`, OpenAI, Private Keys etc.) gestaged wurden.
+  - Manueller Check: `npm run check:secrets`.
 - **NIEMALS** API-Keys im Code committen oder hardcoden!
 - `GEMINI_API_KEY` aus `.env` wird nur im Dev-Build injiziert; Produktions-Bundles enthalten keinen Key und nutzen den Proxy (`api/gemini.ts`) oder den vom Nutzer in den Einstellungen hinterlegten Key (Standard: nur Sitzung).
 - Alle Daten von außen (KI-Antworten, Importe, QR, Sync) werden mit den zod-Schemas aus `models/schemas.ts` validiert; Nutzertext im Prompt immer über `prompt-safety.ts`.
@@ -125,6 +129,7 @@ Einzelnes Playwright-Spec: `npx playwright test e2e/tabs.e2e.ts` (Specs heißen 
 ### 4. Git, Vercel & Release-Workflow
 - Konventionelle Commit-Messages bevorzugen (`feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`).
 - Keine generierten Dateien (`dist/`, `www/`, `node_modules/`, `platforms/`, `.vercel/`) committen.
+- Der Git Hook (.githooks/) schützt vor Fehlern; bei Problemen `git reset HEAD <datei>` ausführen.
 - Bei jedem Feature oder Fix den Eintrag in [CHANGELOG.md](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/CHANGELOG.md) unter `[Unreleased]` festhalten.
 - Pull Requests folgen dem Template in `.github/pull_request_template.md`.
 - Vercel-Deployments werden durch [.vercelignore](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/.vercelignore) optimiert; Claude-Sitzungen durch [.claudeignore](file:///c:/Users/sche-/Desktop/Programmieren%20Projekte/EcoChef/.claudeignore).
