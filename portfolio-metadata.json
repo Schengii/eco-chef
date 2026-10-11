@@ -9,7 +9,7 @@
     "LocalStorage",
     "Speech Synthesis"
   ],
-  "image": "assets/images/ecochef_showcase.png",
+  "image": "assets/images/ecochef_showcase.webp",
   "link": "Projekte/EcoChef/www/index.html",
   "descDe": "EcoChef ist die IHK-Abschlussarbeit (Hybrid-App) – ein intelligenter Rezept-Assistent. Aus Kühlschrank-Zutaten generiert die Gemini-KI kreative, nachhaltige Rezeptideen inklusive Nährwertangaben, CO2-Einsparungsberechnungen und integriertem Kochmodus mit digitalem Vorlese-Assistenten.",
   "descEn": "EcoChef is the final IHK graduation project (hybrid app) – an intelligent recipe assistant. Using Gemini AI, it generates creative, sustainable recipes based on your ingredients, calculates nutritional values and CO2 savings, and includes a hands-free reading assistant.",
