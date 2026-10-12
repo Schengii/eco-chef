@@ -193,7 +193,7 @@ export class EcoChefSeasonalCalendar extends LitElement {
             <div class="calendar-card">
                 <div class="calendar-header">
                     <h3 class="calendar-title">📅 Saisonkalender</h3>
-                    <select class="month-selector" @change="${this.changeMonth}">
+                    <select class="month-selector" aria-label="Monat für Saisonkalender auswählen" @change="${this.changeMonth}">
                         ${this.months.map((m, idx) => html`
                             <option value="${idx}" ?selected="${idx === this.currentMonth}">${m}</option>
                         `)}

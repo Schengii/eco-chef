@@ -28,8 +28,13 @@ export class EcoChefPrivacyModal extends LitElement {
                         <p><strong>3. Ihre Rechte (DSGVO)</strong><br>
                         Da alle Daten lokal gespeichert werden, haben Sie die volle Kontrolle: Sie können alle Daten über die App-Einstellungen ("Alle App-Daten löschen") oder durch das Löschen der Browserdaten Ihres Geräts unwiderruflich entfernen. Damit wird Ihr Recht auf Löschung (Art. 17 DSGVO) vollständig gewahrt.</p>
                         
-                        <p><strong>4. Kontakt</strong><br>
-                        EcoChef App - Lokale Cordova App ohne externe Server-Datenbank.</p>
+                        <p><strong>4. Externe Ressourcen (Google Fonts & APIs)</strong><br>
+                        Aus Design- und Barrierefreiheitsgründen lädt die App Schriftarten ("Outfit") über Google Fonts. Dabei wird technisch bedingt Ihre IP-Adresse an Server von Google übermittelt. Beim Abrufen von Nährwerten zu Barcodes kann zudem eine Anfrage an OpenFoodFacts erfolgen.</p>
+
+                        <p><strong>5. Impressum & Kontakt</strong><br>
+                        EcoChef Open Source Projekt<br>
+                        Bereitgestellt als lokale PWA / Cordova Applikation.<br>
+                        GitHub: <a href="https://github.com/DFG-DEV/eco-chef" target="_blank" rel="noopener noreferrer" style="color: var(--primary);">DFG-DEV/eco-chef</a></p>
                     </div>
                     <button class="main-btn" @click="${this._close}" style="margin-top: 24px;" aria-label="Schließen">Schließen</button>
                 </div>

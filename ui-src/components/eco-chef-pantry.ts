@@ -628,14 +628,14 @@ export class EcoChefPantry extends LitElement {
                         <button class="scan-btn" style="padding: 6px 12px; font-size: 12px; opacity: ${this.selectedLocationFilter === 'Gefrierfach' ? '1' : '0.65'};" @click="${() => this.selectedLocationFilter = 'Gefrierfach'}">
                             🧊 Tiefkühl
                         </button>
-                        <button class="scan-btn" style="padding: 6px 12px; font-size: 12px; background: #fee2e2; color: #dc2626; border-color: #fca5a5; opacity: ${this.selectedLocationFilter === 'urgent' ? '1' : '0.75'};" @click="${() => this.selectedLocationFilter = 'urgent'}">
+                        <button class="scan-btn" style="padding: 6px 12px; font-size: 12px; background: #fee2e2; color: #991b1b; border-color: #fca5a5; opacity: 1; font-weight: 800;" @click="${() => this.selectedLocationFilter = 'urgent'}">
                             🚨 Bald ablaufend
                         </button>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 6px;">
                         <span style="font-size: 12px; font-weight: 700; color: var(--text-dark);">Sortierung:</span>
-                        <select .value="${this.sortBy}" @change="${(e: Event) => this.sortBy = (e.target as HTMLSelectElement).value}" style="padding: 6px 10px; border-radius: 10px; border: 2px solid var(--border); font-size: 12px; background: var(--surface); color: var(--text-dark);">
+                        <select aria-label="Sortierung der Vorratskammer" .value="${this.sortBy}" @change="${(e: Event) => this.sortBy = (e.target as HTMLSelectElement).value}" style="padding: 6px 10px; border-radius: 10px; border: 2px solid var(--border); font-size: 12px; background: var(--surface); color: var(--text-dark);">
                             <option value="expiry">⏰ Nächstes MHD zuerst</option>
                             <option value="name">🔤 Name (A-Z)</option>
                         </select>

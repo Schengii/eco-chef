@@ -17,7 +17,7 @@ export const ecoChefStyles = css`
         --surface: hsl(0, 0%, 100%);
         --surface-glass: rgba(255, 255, 255, 0.85);
         --text-dark: hsl(222, 47%, 11%); /* Slate-900 */
-        --text-muted: hsl(215.4, 16.3%, 46.9%); /* Slate-500 */
+        --text-muted: hsl(215.4, 25%, 38%); /* Darker slate for WCAG AA compliance (4.9+:1) */
         --border: hsl(214.3, 31.8%, 91.4%); /* Slate-200 */
         --font-scale: 1.0;
         
@@ -378,13 +378,13 @@ export const ecoChefStyles = css`
     .saved-btn:hover {
         transform: translateY(-1px);
         box-shadow: var(--shadow-md);
-        background: var(--primary);
-        color: white;
+        background: var(--primary-dark);
+        color: #ffffff;
     }
     .saved-btn.active {
-        background: var(--primary);
-        color: white;
-        border-color: var(--primary-dark);
+        background: var(--primary-dark);
+        color: #ffffff;
+        border-color: #022c22;
         box-shadow: var(--shadow-md), 0 0 0 2px var(--primary-light);
     }
     .saved-btn:active { transform: scale(0.95); }
@@ -604,6 +604,9 @@ export const ecoChefStyles = css`
     .dark-theme .edit-mode-box { background: var(--surface); border-color: var(--border); }
     .dark-theme .tip-box { background: var(--accent-light); border-color: var(--accent); color: hsl(38, 92%, 80%); }
     .dark-theme .extras-box { background: var(--primary-light); border-color: var(--primary); color: var(--primary-dark); }
+    .dark-theme .saved-btn { background: var(--surface); color: var(--text-dark); border-color: var(--border); }
+    .dark-theme .saved-btn.active { background: var(--primary); color: #022c22; border-color: var(--primary-dark); font-weight: 900; }
+    .dark-theme .saved-btn:hover { background: var(--primary-dark); color: #ffffff; }
     
     /* Erweitertes Barrierefreiheits-Styling */
     
