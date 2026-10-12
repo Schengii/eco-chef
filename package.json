@@ -1,7 +1,7 @@
 {
   "name": "com.schenk.ecochef",
   "displayName": "EcoChef",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "EcoChef - Dein intelligenter KI-Rezept-Zauberer. Koche nachhaltig mit deinen Kühlschrankzutaten.",
   "scripts": {
     "test": "jest",

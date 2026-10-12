@@ -56,6 +56,12 @@ npm run dev
 # Startet webpack-dev-server auf Port 4444 (killt eventuelle alte Prozesse davor)
 ```
 
+### Linting
+```bash
+npm run lint
+# Führt ESLint mit TypeScript-Regeln aus
+```
+
 ### Type Checking
 ```bash
 npm run type-check
@@ -83,7 +89,7 @@ Einzelnes Playwright-Spec: `npx playwright test e2e/tabs.e2e.ts` (Specs heißen 
 ### Android & Deployment
 - `build-android.ps1`: baut Web-App, `cordova prepare android` und eine Debug-APK (SDK-/JDK-Pfade sind dort hartkodiert für diese Maschine).
 - Web-Deployment über Vercel (`vercel.json`: Output `www/`, SPA-Rewrite auf `index.html`, `/api/*` bleibt Serverless Function).
-- CI (`.github/workflows`, Node 22): `type-check` → `test:coverage` → `build` → `e2e`. Alle vier müssen vor einem Commit grün sein.
+- CI (`.github/workflows`, Node 22): `check:secrets` → `audit` → `lint` → `type-check` → `test:coverage` → `build` → `e2e`. Alle müssen vor einem Release grün sein.
 
 ### Performance, Sicherheit & Testregeln
 - `@google/genai` wird nur in `gemini.service.ts` per dynamischem `import()` geladen (`createClient()`, eigener Webpack-Chunk `genai`). Nicht statisch importieren, sonst wächst das Start-Bundle wieder um ~270 KiB. Typen nur per `import type`.

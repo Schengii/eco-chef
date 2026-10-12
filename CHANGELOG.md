@@ -9,14 +9,32 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
-### Added
-- Automatisierter Git Pre-Commit Hook (`.githooks/pre-commit` & `.githooks/check-secrets.js`) zur Erkennung und Blockierung von `.env`-Dateien und Secrets (Gemini API-Keys, OpenAI, SSH/RSA Keys)
-- CI-Secret-Scanning-Schritt in GitHub Actions (`npm run check:secrets`)
-
 ### Geplant
 - Mehrsprachige Unterstützung (i18n) für Englisch und Französisch
 - Erweiterte Barcode-Datenbank-Offline-Caches
 - Direkte Integration lokaler Einkaufszettel-Dienste
+
+---
+
+## [1.1.0] - 2026-10-12
+
+### Added
+- Direkter Speichern-Button in der Rezept-Detailansicht (`eco-chef-recipe-view.ts`) mit direktem Feedback.
+- Asynchroner Fallback-Restore aus IndexedDB beim App-Start in `RecipeBookController`.
+- Visuelle Hervorhebung des aktiven Navigations-Tabs (`.saved-btn.active`).
+- Barrierefreies Inline-Modal mit Tastatursteuerung (`Enter`/`Escape`) als Ersatz für blockierendes `window.prompt()` im Kochmodus.
+- Härtung des Service-Worker-Install-Events via `Promise.allSettled`.
+- Barrierefreiheit: Vollständige ARIA-Rollen und `<label for="...">`-Verknüpfungen in Einstellungen und Vorratskammer.
+- Barrierefreiheit: Tastatur-Aktivierung (`Space`/`Enter`) für Vorrats- und Allergenchips.
+- Härtung der Content-Security-Policy (CSP) in `index.html` (`media-src 'self' blob: data: content:`).
+- Strikte Zod-Validierung in `CalendarService.generateIcs` und Schema-Typen-Export.
+- Kapselung von Logging-Ausgaben über `Logger` in Production-Builds.
+- Umfassende Unit-Test-Suiten für `CameraController` und `AchievementsController` sowie Download-Tests für `CalendarService`.
+- Vollständiger E2E-Workflow für den Kochmodus und Timer in Playwright.
+- ESLint Flat Config (`eslint.config.mjs`) mit TypeScript-Unterstützung und CI-Workflow-Integration.
+- Webpack Bundle-Size-Budgets und Performance-Hints.
+- Automatisierter Git Pre-Commit Hook (`.githooks/pre-commit` & `.githooks/check-secrets.js`) zur Erkennung und Blockierung von `.env`-Dateien und Secrets.
+- CI-Secret-Scanning-Schritt in GitHub Actions (`npm run check:secrets`).
 
 ---
 
