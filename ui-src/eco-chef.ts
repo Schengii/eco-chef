@@ -655,6 +655,7 @@ export class EcoChef extends LitElement {
                           @set-recipe-rating="${(e: CustomEvent) => this.setRecipeRating(e.detail.rating)}"
                           @change-portions="${(e: CustomEvent) => this.generator.changePortions(e.detail.persons)}"
                           @mark-cooked="${this.markAsCooked}"
+                          @save-recipe="${() => { if (this.recipe) this.book.save(this.recipe, this.recipeImage, this.currentRating); }}"
                           @start-cooking="${this.startCooking}"
                           @print-recipe="${this.printRecipe}"
                           @regenerate-recipe="${(e: CustomEvent) => this.generator.regenerate(e.detail.additionalPrompt)}"
