@@ -2,6 +2,7 @@ import { LitElement, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { ecoChefStyles } from '../styles/eco-chef.styles';
 import { DailyStat, getLocalDateString } from '../models/eco-chef.models';
+import { onActivate } from '../services/a11y';
 import { showToast } from './eco-chef-toast';
 
 @customElement('eco-chef-settings')
@@ -367,6 +368,7 @@ export class EcoChefSettings extends LitElement {
                             <button 
                                 class="pantry-item ${this.selectedPantry[item] ? 'active' : ''}" 
                                 @click="${() => this._togglePantryItem(item)}"
+                                @keydown="${onActivate(() => this._togglePantryItem(item))}"
                                 aria-pressed="${!!this.selectedPantry[item]}"
                             >
                                 ${this.selectedPantry[item] ? '✅' : '➕'} ${item}
@@ -386,6 +388,7 @@ export class EcoChefSettings extends LitElement {
                             <button 
                                 class="allergen-item ${this.selectedAllergens[allergen] ? 'active' : ''}" 
                                 @click="${() => this._toggleAllergen(allergen)}"
+                                @keydown="${onActivate(() => this._toggleAllergen(allergen))}"
                                 aria-pressed="${!!this.selectedAllergens[allergen]}"
                             >
                                 ${this.selectedAllergens[allergen] ? '❌' : '➕'} ${allergen}
