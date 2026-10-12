@@ -229,10 +229,12 @@ export class EcoChefSettings extends LitElement {
                     </div>
 
                     <div class="setting-toggle-row">
-                        <span class="setting-label">🔔 MHD-Ablauf-Erinnerungen aktivieren</span>
+                        <label class="setting-label" for="settings-notifications-toggle">🔔 MHD-Ablauf-Erinnerungen aktivieren</label>
                         <label class="toggle-switch">
                             <input type="checkbox"
+                                   id="settings-notifications-toggle"
                                    .checked="${this.notificationsEnabled}"
+                                   aria-label="MHD-Ablauf-Erinnerungen aktivieren"
                                    @change="${(e: Event) => {
                                        const val = (e.target as HTMLInputElement).checked;
                                        this.dispatchEvent(new CustomEvent('toggle-notifications', { detail: { enabled: val }, bubbles: true, composed: true }));
@@ -242,10 +244,12 @@ export class EcoChefSettings extends LitElement {
                     </div>
 
                     <div class="setting-toggle-row" style="margin-top: 12px;">
-                        <span class="setting-label">🔊 Synthetisierte Web-Audio Soundeffekte</span>
+                        <label class="setting-label" for="settings-sound-toggle">🔊 Synthetisierte Web-Audio Soundeffekte</label>
                         <label class="toggle-switch">
                             <input type="checkbox"
+                                   id="settings-sound-toggle"
                                    .checked="${this.soundEffectsEnabled}"
+                                   aria-label="Synthetisierte Web-Audio Soundeffekte aktivieren"
                                    @change="${(e: Event) => {
                                        const val = (e.target as HTMLInputElement).checked;
                                        this.dispatchEvent(new CustomEvent('toggle-sound-effects', { detail: { enabled: val }, bubbles: true, composed: true }));
@@ -448,8 +452,8 @@ export class EcoChefSettings extends LitElement {
                                autocomplete="off" spellcheck="false" 
                                style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-dark); box-sizing: border-box;"
                                aria-label="Gemini API Key" />
-                        <label style="display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--text-dark);">
-                            <input type="checkbox" .checked="${this.geminiKeySessionOnly}" @change="${this._onSessionOnlyChange}" />
+                        <label for="settings-session-only-toggle" style="display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--text-dark); cursor: pointer;">
+                            <input type="checkbox" id="settings-session-only-toggle" .checked="${this.geminiKeySessionOnly}" @change="${this._onSessionOnlyChange}" aria-label="API-Key nur für diese Sitzung speichern" />
                             Nur für diese Sitzung speichern (empfohlen)
                         </label>
                         ${this.geminiApiKey ? html`

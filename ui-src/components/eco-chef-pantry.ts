@@ -574,11 +574,11 @@ export class EcoChefPantry extends LitElement {
                     `}
                 </div>
 
-                <div class="add-form">
+                <div class="add-form" role="region" aria-label="Zutat manuell hinzufügen">
                     <div class="form-row">
-                        <input class="input-name" type="text" placeholder="Zutat (z.B. Tomaten)" .value="${this.newItemName}" @input="${(e: Event) => this.newItemName = (e.target as HTMLInputElement).value}" />
-                        <input class="input-qty" type="number" placeholder="Menge" .value="${this.newItemQuantity.toString()}" @input="${(e: Event) => this.newItemQuantity = Number((e.target as HTMLInputElement).value)}" min="0.1" step="any" />
-                        <select class="input-unit" .value="${this.newItemUnit}" @change="${(e: Event) => this.newItemUnit = (e.target as HTMLSelectElement).value}">
+                        <input class="input-name" id="pantry-new-name" type="text" placeholder="Zutat (z.B. Tomaten)" .value="${this.newItemName}" @input="${(e: Event) => this.newItemName = (e.target as HTMLInputElement).value}" aria-label="Zutatenname" />
+                        <input class="input-qty" id="pantry-new-qty" type="number" placeholder="Menge" .value="${this.newItemQuantity.toString()}" @input="${(e: Event) => this.newItemQuantity = Number((e.target as HTMLInputElement).value)}" min="0.1" step="any" aria-label="Menge" />
+                        <select class="input-unit" id="pantry-new-unit" .value="${this.newItemUnit}" @change="${(e: Event) => this.newItemUnit = (e.target as HTMLSelectElement).value}" aria-label="Einheit">
                             <option value="Stk.">Stk.</option>
                             <option value="g">g</option>
                             <option value="kg">kg</option>
@@ -588,8 +588,8 @@ export class EcoChefPantry extends LitElement {
                         </select>
                     </div>
                     <div class="form-row">
-                        <input class="input-date" type="date" .value="${this.newItemExpiry}" @input="${(e: Event) => this.newItemExpiry = (e.target as HTMLInputElement).value}" title="Mindesthaltbarkeitsdatum" />
-                        <select class="input-loc" .value="${this.newItemLocation}" @change="${(e: Event) => this.newItemLocation = (e.target as HTMLSelectElement).value as any}">
+                        <input class="input-date" id="pantry-new-date" type="date" .value="${this.newItemExpiry}" @input="${(e: Event) => this.newItemExpiry = (e.target as HTMLInputElement).value}" title="Mindesthaltbarkeitsdatum" aria-label="Mindesthaltbarkeitsdatum" />
+                        <select class="input-loc" id="pantry-new-loc" .value="${this.newItemLocation}" @change="${(e: Event) => this.newItemLocation = (e.target as HTMLSelectElement).value as any}" aria-label="Lagerort">
                             <option value="Kühlschrank">Kühlschrank ❄️</option>
                             <option value="Vorratskammer">Vorratskammer 🌾</option>
                             <option value="Gefrierfach">Gefrierfach 🧊</option>
@@ -598,18 +598,20 @@ export class EcoChefPantry extends LitElement {
                     </div>
                     <div class="form-row" style="align-items: center; gap: 8px;">
                         <input type="text" 
+                               id="pantry-barcode-input"
                                placeholder="🔍 Barcode / EAN suchen (OpenFoodFacts)" 
                                .value="${this.barcodeInput}" 
                                @input="${(e: Event) => this.barcodeInput = (e.target as HTMLInputElement).value}" 
+                               aria-label="Barcode oder EAN eingeben"
                                style="flex: 1; padding: 10px; border-radius: 12px; border: 2px solid var(--border); background: var(--surface); color: var(--text-dark); font-family: inherit; font-size: 13px;" />
-                        <button class="scan-btn" @click="${this.handleBarcodeSearch}" style="padding: 10px 14px; font-size: 12px;">
+                        <button class="scan-btn" @click="${this.handleBarcodeSearch}" style="padding: 10px 14px; font-size: 12px;" aria-label="EAN bei OpenFoodFacts abfragen">
                             EAN Abfragen
                         </button>
-                        <button class="scan-btn" @click="${this.startLiveScanner}" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-color: #075985; padding: 10px 14px; font-size: 12px;" title="Barcode live mit der Kamera erfassen">
+                        <button class="scan-btn" @click="${this.startLiveScanner}" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-color: #075985; padding: 10px 14px; font-size: 12px;" title="Barcode live mit der Kamera erfassen" aria-label="Barcode mit Live-Kamera scannen">
                             📷 Live-Scan
                         </button>
                     </div>
-                    <button class="add-btn" @click="${this.handleAdd}">Manuell Hinzufügen</button>
+                    <button class="add-btn" @click="${this.handleAdd}" aria-label="Zutat zur Reste-Kammer hinzufügen">Manuell Hinzufügen</button>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
