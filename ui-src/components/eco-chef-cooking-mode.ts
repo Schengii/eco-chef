@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { onActivate } from '../services/a11y';
+import { Logger } from '../services/logger';
 import { ecoChefStyles } from '../styles/eco-chef.styles';
 import { Recipe, ActiveTimer } from '../models/eco-chef.models';
 
@@ -212,7 +213,7 @@ export class EcoChefCookingMode extends LitElement {
                     this.wakeLock = null;
                 });
             } catch (err) {
-                console.warn('Wake Lock request failed:', err);
+                Logger.warn('Wake Lock request failed:', err);
             }
         }
     }
@@ -222,7 +223,7 @@ export class EcoChefCookingMode extends LitElement {
             try {
                 this.wakeLock.release();
             } catch (err) {
-                console.warn('Wake Lock release error:', err);
+                Logger.warn('Wake Lock release error:', err);
             }
             this.wakeLock = null;
         }
