@@ -413,7 +413,7 @@ export class EcoChefPantry extends LitElement {
                                 this.handleBarcodeSearch();
                             }
                         }
-                    } catch (err) {
+                    } catch {
                         // ignore frame error
                     }
                 }, 200);
