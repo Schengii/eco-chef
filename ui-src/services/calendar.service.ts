@@ -1,4 +1,5 @@
 import { MealPlan } from '../models/eco-chef.models';
+import { WeeklyPlanSchema } from '../models/schemas';
 
 export class CalendarService {
     private static readonly DAY_OFFSETS: Record<string, number> = {
@@ -41,6 +42,9 @@ export class CalendarService {
      * Generates a standard RFC 5545 iCalendar string from a MealPlan.
      */
     static generateIcs(mealPlan: MealPlan, baseDate: Date = new Date()): string {
+        const parsed = WeeklyPlanSchema.safeParse(mealPlan);
+        const validPlan: MealPlan = parsed.success ? parsed.data : (mealPlan || {});
+
         const nowStamp = this.formatIcsDateTime(new Date());
         const monday = this.getWeekMonday(baseDate);
 
@@ -53,7 +57,7 @@ export class CalendarService {
             'X-WR-CALNAME:EcoChef Wochenplan'
         ];
 
-        for (const [dayKey, dayInfo] of Object.entries(mealPlan)) {
+        for (const [dayKey, dayInfo] of Object.entries(validPlan)) {
             if (!dayInfo || !dayInfo.title) continue;
 
             const normalizedKey = dayKey.toLowerCase().trim();
