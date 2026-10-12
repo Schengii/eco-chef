@@ -20,7 +20,13 @@ self.addEventListener('message', (event) => {
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS_TO_CACHE);
+            return Promise.allSettled(
+                ASSETS_TO_CACHE.map((asset) =>
+                    fetch(asset).then((res) => {
+                        if (res.ok) return cache.put(asset, res);
+                    }).catch(() => undefined)
+                )
+            );
         })
     );
 });
