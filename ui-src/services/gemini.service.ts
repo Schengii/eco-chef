@@ -116,8 +116,8 @@ async function generateText(contents: ContentPart[], config?: GenerationConfig):
 }
 
 function buildImageContents(capturedImage: string): ImagePart {
-    let base64Data = '';
     let mimeType = 'image/jpeg';
+    let base64Data: string;
     if (capturedImage.includes(',')) {
         const parts = capturedImage.split(',');
         base64Data = parts[1];

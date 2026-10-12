@@ -96,7 +96,7 @@ export class EcoChefRecipeView extends LitElement {
     }
 
     private _isIngredientInPantry(itemName: string): boolean {
-        const cleanName = itemName.toLowerCase().replace(/[\d\s\.,]+(g|ml|l|stk\.|pkg\.|kg|dose|dosen|zehen|zehe|prise|prisen|el|tl|etwas|paar)\b/g, '').trim();
+        const cleanName = itemName.toLowerCase().replace(/[\d\s.,]+(g|ml|l|stk\.|pkg\.|kg|dose|dosen|zehen|zehe|prise|prisen|el|tl|etwas|paar)\b/g, '').trim();
         if (cleanName.length < 2) return false;
         return this.pantryItems.some(p => {
             const pClean = p.name.toLowerCase().trim();
