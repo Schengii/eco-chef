@@ -90,4 +90,13 @@ describe('RecipeBookController', () => {
         expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Pfanne'));
         expect(toast).toHaveBeenLastCalledWith('Rezept-Text in die Zwischenablage kopiert!', 'success');
     });
+
+    it('restores recipes from IndexedDB when localStorage is empty', async () => {
+        const { book, host } = make();
+        jest.spyOn(StorageService, 'restoreRecipesFromIndexedDb').mockResolvedValue([recipe('IDB Suppe')]);
+        await book.restoreFromIndexedDb();
+        expect(book.saved).toHaveLength(1);
+        expect(book.saved[0].title).toBe('IDB Suppe');
+        expect(host.requestUpdate).toHaveBeenCalled();
+    });
 });

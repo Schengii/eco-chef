@@ -121,7 +121,7 @@ const ShoppingItemSchema = z.looseObject({
     category: z.string().optional().catch(undefined)
 });
 
-const DailyStatSchema = z.object({
+export const DailyStatSchema = z.object({
     calories: numLike.catch(0),
     protein: numLike.catch(0),
     carbs: numLike.catch(0),

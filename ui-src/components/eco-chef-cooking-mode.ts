@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { onActivate } from '../services/a11y';
+import { Logger } from '../services/logger';
 import { ecoChefStyles } from '../styles/eco-chef.styles';
 import { Recipe, ActiveTimer } from '../models/eco-chef.models';
 
@@ -184,6 +185,8 @@ export class EcoChefCookingMode extends LitElement {
     @property({ type: String }) assistantAnswer = '';
 
     @state() private questionInput = '';
+    @state() private showCustomTimerModal = false;
+    @state() private customTimerInput = '5';
     private wakeLock: any = null;
 
     override connectedCallback() {
@@ -210,7 +213,7 @@ export class EcoChefCookingMode extends LitElement {
                     this.wakeLock = null;
                 });
             } catch (err) {
-                console.warn('Wake Lock request failed:', err);
+                Logger.warn('Wake Lock request failed:', err);
             }
         }
     }
@@ -220,7 +223,7 @@ export class EcoChefCookingMode extends LitElement {
             try {
                 this.wakeLock.release();
             } catch (err) {
-                console.warn('Wake Lock release error:', err);
+                Logger.warn('Wake Lock release error:', err);
             }
             this.wakeLock = null;
         }
@@ -295,13 +298,20 @@ export class EcoChefCookingMode extends LitElement {
     }
 
     private _promptCustomTimer() {
-        const val = prompt("Timer-Dauer in Minuten eingeben:", "5");
-        if (val) {
-            const mins = parseInt(val, 10);
-            if (!isNaN(mins) && mins > 0) {
-                this._startTimer(mins, `Timer ${mins} Min.`);
-            }
+        this.customTimerInput = '5';
+        this.showCustomTimerModal = true;
+    }
+
+    private _submitCustomTimer() {
+        const mins = parseInt(this.customTimerInput, 10);
+        if (!isNaN(mins) && mins > 0) {
+            this._startTimer(mins, `Timer ${mins} Min.`);
         }
+        this.showCustomTimerModal = false;
+    }
+
+    private _closeCustomTimerModal() {
+        this.showCustomTimerModal = false;
     }
 
     private _stopTimer(id?: string) {
@@ -451,6 +461,29 @@ export class EcoChefCookingMode extends LitElement {
                     </div>
 
                 </div>
+
+                ${this.showCustomTimerModal ? html`
+                    <div class="modal-overlay" style="z-index: 2200;" role="dialog" aria-modal="true" aria-labelledby="custom-timer-title">
+                        <div class="modal-content" style="max-width: 360px; text-align: center; border-radius: 24px; padding: 24px; background: var(--surface); border: 2px solid var(--border);">
+                            <h3 id="custom-timer-title" style="margin: 0 0 12px 0; font-size: 18px; font-weight: 850; color: var(--text-dark);">⏱️ Eigener Timer</h3>
+                            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Dauer in Minuten festlegen:</p>
+                            <input type="number"
+                                   id="custom-timer-input"
+                                   min="1"
+                                   max="180"
+                                   .value="${this.customTimerInput}"
+                                   @input="${(e: Event) => this.customTimerInput = (e.target as HTMLInputElement).value}"
+                                   @keydown="${(e: KeyboardEvent) => { if (e.key === 'Enter') this._submitCustomTimer(); else if (e.key === 'Escape') this._closeCustomTimerModal(); }}"
+                                   style="width: 100%; padding: 12px; font-size: 18px; text-align: center; font-weight: bold; border-radius: 12px; border: 2px solid var(--border); background: var(--bg-color); color: var(--text-dark); box-sizing: border-box; margin-bottom: 16px;"
+                                   aria-label="Timer-Minuten"
+                                   autofocus />
+                            <div style="display: flex; gap: 8px;">
+                                <button class="main-btn" @click="${this._submitCustomTimer}" style="flex: 1; padding: 10px; font-size: 14px; border-radius: 12px;">Starten</button>
+                                <button class="secondary-btn" @click="${this._closeCustomTimerModal}" style="flex: 1; padding: 10px; font-size: 14px; border-radius: 12px;">Abbrechen</button>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
             </div>
         `;
     }
