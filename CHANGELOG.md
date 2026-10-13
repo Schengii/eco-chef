@@ -9,6 +9,9 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Fixed
+- **A11y/E2E (Vorratskammer)**: Die `aria-label`s von „Manuell Hinzufügen“ und „EAN Abfragen“ enthielten den sichtbaren Text nicht mehr (WCAG 2.5.3 „Label in Name“) und ließen `e2e/pantry.e2e.ts` scheitern. Labels beginnen jetzt mit dem sichtbaren Text.
+
 ### Geplant
 - Mehrsprachige Unterstützung (i18n) für Englisch und Französisch
 - Erweiterte Barcode-Datenbank-Offline-Caches

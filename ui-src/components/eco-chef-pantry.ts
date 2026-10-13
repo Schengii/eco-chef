@@ -604,14 +604,14 @@ export class EcoChefPantry extends LitElement {
                                @input="${(e: Event) => this.barcodeInput = (e.target as HTMLInputElement).value}" 
                                aria-label="Barcode oder EAN eingeben"
                                style="flex: 1; padding: 10px; border-radius: 12px; border: 2px solid var(--border); background: var(--surface); color: var(--text-dark); font-family: inherit; font-size: 13px;" />
-                        <button class="scan-btn" @click="${this.handleBarcodeSearch}" style="padding: 10px 14px; font-size: 12px;" aria-label="EAN bei OpenFoodFacts abfragen">
+                        <button class="scan-btn" @click="${this.handleBarcodeSearch}" style="padding: 10px 14px; font-size: 12px;" aria-label="EAN Abfragen bei OpenFoodFacts">
                             EAN Abfragen
                         </button>
                         <button class="scan-btn" @click="${this.startLiveScanner}" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-color: #075985; padding: 10px 14px; font-size: 12px;" title="Barcode live mit der Kamera erfassen" aria-label="Barcode mit Live-Kamera scannen">
                             📷 Live-Scan
                         </button>
                     </div>
-                    <button class="add-btn" @click="${this.handleAdd}" aria-label="Zutat zur Reste-Kammer hinzufügen">Manuell Hinzufügen</button>
+                    <button class="add-btn" @click="${this.handleAdd}" aria-label="Manuell Hinzufügen: Zutat zur Reste-Kammer">Manuell Hinzufügen</button>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
