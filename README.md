@@ -354,7 +354,7 @@ Das Projekt ist für den Einsatz von KI-Assistenten (insbesondere [Claude Code](
 - Spezifische Fehlermeldungen je nach Fehlertyp (403, 429, Timeout, Netzwerk)
 
 #### ✅ Verbessert: API-Key Sicherheit
-- Webpack `DefinePlugin` injiziert den API-Key zur Build-Zeit aus `.env`
+- Webpack `DefinePlugin` injiziert den API-Key zur Build-Zeit aus `.env` (nur im Dev-Modus; Produktions-Bundles enthalten bewusst keinen Key und nutzen den Server-Proxy)
 - `.env.example`-Vorlage hinzugefügt
 
 ---
