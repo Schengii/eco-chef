@@ -9,6 +9,9 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Added
+- **Web Analytics (Web-Version)**: Cookielose Reichweitenmessung über Vercel Web Analytics (`insights.service.ts`). Lädt nur auf einer echten Web-Domain, nicht in der Cordova-App und nicht auf localhost. Datenschutzerklärung um den Abschnitt „Reichweitenmessung“ ergänzt.
+
 ### Fixed
 - **A11y/E2E (Vorratskammer)**: Die `aria-label`s von „Manuell Hinzufügen“ und „EAN Abfragen“ enthielten den sichtbaren Text nicht mehr (WCAG 2.5.3 „Label in Name“) und ließen `e2e/pantry.e2e.ts` scheitern. Labels beginnen jetzt mit dem sichtbaren Text.
 
