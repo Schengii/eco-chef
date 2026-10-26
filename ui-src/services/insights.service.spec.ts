@@ -1,24 +1,18 @@
 /**
  * @jest-environment jsdom
+ * @jest-environment-options {"url": "http://localhost:4444/"}
  */
 import { initInsights } from './insights.service';
 
 const SELECTOR = 'script[src="/_vercel/insights/script.js"]';
 
-function setLocation(url: string): void {
-    window.history.replaceState({}, '', url);
-}
-
-describe('initInsights', () => {
+describe('initInsights (lokal)', () => {
     afterEach(() => {
         document.head.innerHTML = '';
         delete (window as unknown as { cordova?: unknown }).cordova;
-        delete (window as unknown as { va?: unknown }).va;
-        delete (window as unknown as { vaq?: unknown }).vaq;
     });
 
     it('lädt das Skript nicht auf localhost', () => {
-        setLocation('http://localhost:4444/');
         initInsights();
         expect(document.querySelector(SELECTOR)).toBeNull();
     });
