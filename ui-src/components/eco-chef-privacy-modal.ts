@@ -25,10 +25,13 @@ export class EcoChefPrivacyModal extends LitElement {
                         <p><strong>2. Nutzung der Google Gemini API</strong><br>
                         Wenn Sie die Funktion "Rezept Zaubern" nutzen, werden die eingegebenen Zutaten, Portionsgrößen sowie das Kühlschrankfoto an Server von Google (Gemini API) übertragen, um das Rezept zu generieren. Google verarbeitet diese Daten gemäß seinen API-Datenschutzbestimmungen. Es werden keine Identifikatoren Ihres Geräts an Google übermittelt.</p>
                         
-                        <p><strong>3. Ihre Rechte (DSGVO)</strong><br>
+                        <p><strong>3. Reichweitenmessung (nur Web-Version)</strong><br>
+                        Die Web-Version von EcoChef nutzt Vercel Web Analytics (Vercel Inc., USA) zur anonymisierten, cookielosen Auswertung von Seitenaufrufen (z. B. Seite, Referrer, Land, Gerätetyp). Es werden keine Cookies gesetzt, keine Profile gebildet und Besucher nicht seitenübergreifend wiedererkannt. Ihre Rezepte, Zutaten und Einstellungen sind davon nicht betroffen. In der Android-App und bei lokaler Entwicklung ist die Messung nicht aktiv. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem stabilen und nutzbaren Webangebot).</p>
+
+                        <p><strong>4. Ihre Rechte (DSGVO)</strong><br>
                         Da alle Daten lokal gespeichert werden, haben Sie die volle Kontrolle: Sie können alle Daten über die App-Einstellungen ("Alle App-Daten löschen") oder durch das Löschen der Browserdaten Ihres Geräts unwiderruflich entfernen. Damit wird Ihr Recht auf Löschung (Art. 17 DSGVO) vollständig gewahrt.</p>
                         
-                        <p><strong>4. Kontakt</strong><br>
+                        <p><strong>5. Kontakt</strong><br>
                         EcoChef App - Lokale Cordova App ohne externe Server-Datenbank.</p>
                     </div>
                     <button class="main-btn" @click="${this._close}" style="margin-top: 24px;" aria-label="Schließen">Schließen</button>
