@@ -1,4 +1,5 @@
 import type { ReactiveController, ReactiveControllerHost } from 'lit';
+import { Logger } from '../services/logger';
 
 export interface CameraHost extends ReactiveControllerHost {
     readonly renderRoot: HTMLElement | DocumentFragment;
@@ -30,7 +31,7 @@ export class CameraController implements ReactiveController {
                     this.host.announce('Foto erfolgreich über App-Kamera aufgenommen.');
                 },
                 (error: string) => {
-                    console.error('Cordova Camera error:', error);
+                    Logger.error('Cordova Camera error:', error);
                     this.host.announce('Fehler bei der App-Kamera.');
                 },
                 {
@@ -60,7 +61,7 @@ export class CameraController implements ReactiveController {
             if (video) video.srcObject = this.stream;
             this.host.announce('Webcam-Vorschau gestartet.');
         } catch (err) {
-            console.warn('Webcam access failed, falling back to file picker', err);
+            Logger.warn('Webcam access failed, falling back to file picker', err);
             this.showWebcam = false;
             this.host.requestUpdate();
             this.triggerFilePicker();

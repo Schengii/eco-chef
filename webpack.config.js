@@ -97,8 +97,10 @@ export default (env, {mode}) => {
             clean: true
         },
         performance: {
-            // The lazily loaded Gemini SDK chunk is intentionally large; only the startup bundle is budgeted.
+            hints: mode === 'production' ? 'warning' : false,
+            // The lazily loaded Gemini SDK chunk is intentionally large; only the startup bundle and single chunks are budgeted.
             maxEntrypointSize: 340 * 1024,
+            maxAssetSize: 350 * 1024,
             assetFilter: (assetFilename) => !/^genai\./.test(assetFilename) && !assetFilename.endsWith('.map'),
         },
         optimization: {

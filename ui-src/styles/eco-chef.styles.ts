@@ -381,6 +381,12 @@ export const ecoChefStyles = css`
         background: var(--primary);
         color: white;
     }
+    .saved-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary-dark);
+        box-shadow: var(--shadow-md), 0 0 0 2px var(--primary-light);
+    }
     .saved-btn:active { transform: scale(0.95); }
 
     .shopping-list-container, .saved-recipes-container { animation: fadeIn 0.3s ease-out; }

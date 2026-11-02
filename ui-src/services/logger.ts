@@ -4,5 +4,11 @@ const isDev = process.env.NODE_ENV !== 'production';
 export const Logger = {
     debug: (...args: unknown[]): void => {
         if (isDev) console.debug('[EcoChef]', ...args);
+    },
+    warn: (...args: unknown[]): void => {
+        if (isDev) console.warn('[EcoChef]', ...args);
+    },
+    error: (...args: unknown[]): void => {
+        if (isDev) console.error('[EcoChef]', ...args);
     }
 };

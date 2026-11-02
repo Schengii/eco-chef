@@ -655,7 +655,8 @@ export class EcoChef extends LitElement {
                           @set-recipe-rating="${(e: CustomEvent) => this.setRecipeRating(e.detail.rating)}"
                           @change-portions="${(e: CustomEvent) => this.generator.changePortions(e.detail.persons)}"
                           @mark-cooked="${this.markAsCooked}"
-                          @start-cooking="${this.startCooking}"
+                          @save-recipe="${() => { if (this.recipe) this.book.save(this.recipe, this.recipeImage, this.currentRating); }}"
+                          @start-cooking="${() => this.startCooking()}"
                           @print-recipe="${this.printRecipe}"
                           @regenerate-recipe="${(e: CustomEvent) => this.generator.regenerate(e.detail.additionalPrompt)}"
                           @update-recipe="${(e: CustomEvent) => {
@@ -880,8 +881,9 @@ export class EcoChef extends LitElement {
         return this._loadedTabs.has(tab) ? content() : this.renderTabSpinner();
     }
 
-    startCooking() {
+    async startCooking() {
         if (!this.recipe || this.recipe.instructions.length === 0) return;
+        await this._loadTabComponent('cooking-mode');
         this.currentCookingStep = 0;
         this.isCookingMode = true;
         this.analyzeCurrentStep();

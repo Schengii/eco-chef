@@ -87,12 +87,16 @@ export class EcoChefRecipeView extends LitElement {
         this.dispatchEvent(new CustomEvent('print-recipe', { bubbles: true, composed: true }));
     }
 
+    private _saveRecipe() {
+        this.dispatchEvent(new CustomEvent('save-recipe', { bubbles: true, composed: true }));
+    }
+
     private _closeRecipe() {
         this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
     }
 
     private _isIngredientInPantry(itemName: string): boolean {
-        const cleanName = itemName.toLowerCase().replace(/[\d\s\.,]+(g|ml|l|stk\.|pkg\.|kg|dose|dosen|zehen|zehe|prise|prisen|el|tl|etwas|paar)\b/g, '').trim();
+        const cleanName = itemName.toLowerCase().replace(/[\d\s.,]+(g|ml|l|stk\.|pkg\.|kg|dose|dosen|zehen|zehe|prise|prisen|el|tl|etwas|paar)\b/g, '').trim();
         if (cleanName.length < 2) return false;
         return this.pantryItems.some(p => {
             const pClean = p.name.toLowerCase().trim();
@@ -296,6 +300,9 @@ export class EcoChefRecipeView extends LitElement {
 
                 <button class="main-btn" @click="${this._markAsCooked}" style="background-color: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); margin-top: 15px; margin-bottom: 10px; border: 2px solid #059669; color: white;">
                     🍳 Als gekocht markieren
+                </button>
+                <button class="main-btn" @click="${this._saveRecipe}" style="background-color: #0284c7; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3); margin-top: 0; margin-bottom: 10px; border: 2px solid #0369a1; color: white;" aria-label="Rezept im Kochbuch speichern">
+                    💾 Rezept speichern${this.currentRating ? ` (${this.currentRating}⭐)` : ''}
                 </button>
                 <button class="main-btn" @click="${this._startCooking}" style="background-color: #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); margin-top: 0; margin-bottom: 10px; border: 2px solid #d97706; color: white;">
                     👨‍🍳 Kochmodus starten

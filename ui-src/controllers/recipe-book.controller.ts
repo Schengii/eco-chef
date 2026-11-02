@@ -22,10 +22,22 @@ export class RecipeBookController implements ReactiveController {
 
     hostConnected(): void {}
 
-    /** (Re)reads the cookbook from storage. */
+    /** (Re)reads the cookbook from storage; asynchronously restores from IndexedDB if localStorage is empty. */
     load(): void {
         this.saved = StorageService.getSavedRecipes().map(r => ({ ...r, ingredientsList: normalizeIngredients(r.ingredientsList) }));
         this.host.requestUpdate();
+        if (this.saved.length === 0) {
+            void this.restoreFromIndexedDb();
+        }
+    }
+
+    /** Attempts asynchronous restore from IndexedDB if localStorage had no recipes. */
+    async restoreFromIndexedDb(): Promise<void> {
+        const restored = await StorageService.restoreRecipesFromIndexedDb();
+        if (restored.length > 0) {
+            this.saved = restored.map(r => ({ ...r, ingredientsList: normalizeIngredients(r.ingredientsList) }));
+            this.host.requestUpdate();
+        }
     }
 
     /** Replaces the whole cookbook (backup restore). */

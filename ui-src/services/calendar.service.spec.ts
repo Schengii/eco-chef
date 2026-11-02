@@ -1,3 +1,4 @@
+/** @jest-environment jsdom */
 import { CalendarService } from './calendar.service';
 import { MealPlan } from '../models/eco-chef.models';
 
@@ -54,5 +55,36 @@ describe('CalendarService', () => {
         expect(emptyIcs).toContain('BEGIN:VCALENDAR');
         expect(emptyIcs).toContain('END:VCALENDAR');
         expect(emptyIcs).not.toContain('BEGIN:VEVENT');
+    });
+
+    it('downloadIcsFile should trigger file download and return true on success', () => {
+        const createObjectURLSpy = jest.fn().mockReturnValue('blob:mock-url');
+        const revokeObjectURLSpy = jest.fn();
+        window.URL.createObjectURL = createObjectURLSpy;
+        window.URL.revokeObjectURL = revokeObjectURLSpy;
+
+        const appendChildSpy = jest.spyOn(document.body, 'appendChild');
+        const removeChildSpy = jest.spyOn(document.body, 'removeChild');
+
+        const result = CalendarService.downloadIcsFile(mockPlan, 'custom-test.ics');
+
+        expect(result).toBe(true);
+        expect(createObjectURLSpy).toHaveBeenCalled();
+        expect(appendChildSpy).toHaveBeenCalled();
+        expect(removeChildSpy).toHaveBeenCalled();
+        expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-url');
+    });
+
+    it('downloadIcsFile should catch exceptions and return false on error', () => {
+        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        jest.spyOn(document.body, 'appendChild').mockImplementation(() => {
+            throw new Error('Simulated DOM failure');
+        });
+
+        const result = CalendarService.downloadIcsFile(mockPlan);
+
+        expect(result).toBe(false);
+        expect(consoleErrorSpy).toHaveBeenCalled();
+        consoleErrorSpy.mockRestore();
     });
 });
