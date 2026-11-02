@@ -527,7 +527,7 @@ export class EcoChefSettings extends LitElement {
                                 try {
                                     const parsed = JSON.parse(ev.target?.result as string);
                                     this.dispatchEvent(new CustomEvent('import-full-backup', { detail: { data: parsed }, bubbles: true, composed: true }));
-                                } catch (err) {
+                                } catch {
                                     showToast('Ungültige Backup-Datei.', 'error');
                                 }
                             };

@@ -3,6 +3,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ecoChefStyles } from '../styles/eco-chef.styles';
 import { Recipe } from '../models/eco-chef.models';
+import { filterRecipes } from '../services/recipe-filter';
 import { showToast } from './eco-chef-toast';
 
 @customElement('eco-chef-saved-recipes')
@@ -26,14 +27,7 @@ export class EcoChefSavedRecipes extends LitElement {
     @state() private savedFilterRating = 0;
 
     private getFilteredSavedRecipes(): Recipe[] {
-        return this.savedRecipesList.filter(item => {
-            const query = this.searchQuery.toLowerCase().trim();
-            const matchesQuery = !query ||
-                item.title.toLowerCase().includes(query) ||
-                (item.ingredientsList && item.ingredientsList.some(i => i.item.toLowerCase().includes(query)));
-            const matchesRating = this.savedFilterRating === 0 || (item.rating && item.rating >= this.savedFilterRating);
-            return matchesQuery && matchesRating;
-        });
+        return filterRecipes(this.savedRecipesList, this.savedFilterRating, this.searchQuery);
     }
 
     private _openRecipe(recipe: Recipe) {

@@ -80,8 +80,8 @@ export class EcoChefFridgeGuide extends LitElement {
         .zone-temp {
             font-size: 11px;
             font-weight: 800;
-            background: var(--primary);
-            color: white;
+            background: var(--primary-dark);
+            color: #ffffff;
             padding: 3px 8px;
             border-radius: 10px;
         }
@@ -100,8 +100,9 @@ export class EcoChefFridgeGuide extends LitElement {
             margin: 0 0 6px 0;
         }
         .detail-desc {
-            font-size: 12px;
-            color: var(--text-muted);
+            font-size: 13px;
+            color: var(--text-dark);
+            opacity: 0.88;
             margin: 0 0 10px 0;
             line-height: 1.5;
         }
